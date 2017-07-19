@@ -89,6 +89,7 @@ extern CInterfaces g_cInterfaces;
 #include "structs\quaternion.h"
 #include "structs\modelinfo.h"
 #include "structs\checksum_md5.h"
+#include "structs\messages.h"
 #include "libraries\interfaces.h"
 #include "Utils.h"
 #include "structs\weapon.h"

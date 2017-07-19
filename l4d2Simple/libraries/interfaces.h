@@ -32,6 +32,7 @@ public:
 	CModelRender* ModelRender;
 	CRenderView* RenderView;
 	CMoveHelper* MoveHelper;
+	CUserMessages* UserMessage;
 	ICvar* Cvar;
 
 	ClientModeShared* ClientMode;
@@ -65,6 +66,7 @@ public:
 		// Input = *(CInput**)((*(DWORD**)Client)[15] + 0x1);
 
 		Input = (CInput*)*(PDWORD**)*(PDWORD**)(pdwClient[indexes::CreateMove] + 0x28);
+		UserMessage = (CUserMessages*)*(PDWORD**)*(PDWORD**)(pdwClient[indexes::DispatchUserMessage] + 0x5);
 
 		DWORD dwInitAddr = (DWORD)(pdwClient[0]);
 		for (DWORD dwIter = 0; dwIter <= 0xFF; dwIter++)

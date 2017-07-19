@@ -6,8 +6,11 @@ namespace indexes
 	const int GetAllClasses = 7;
 	const int CreateMove = 20;
 	const int FrameStageNotify = 34;
+	const int DispatchUserMessage = 35;
 	const int InKeyEvent = -1;
-	const int HudUpdate = 9;
+	const int HudProcessInput = 9;
+	const int HudUpdate = 10;
+	const int IN_IsKeyDown = 18;
 
 	// Engine
 	const int GetScreenSize = 5;

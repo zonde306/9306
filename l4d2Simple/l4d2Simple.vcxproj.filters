@@ -147,6 +147,24 @@
     <ClInclude Include="structs\keyvalues.h">
       <Filter>头文件\structs</Filter>
     </ClInclude>
+    <ClInclude Include="structs\messages.h">
+      <Filter>头文件\structs</Filter>
+    </ClInclude>
+    <ClInclude Include="libraries\utl_dict.h">
+      <Filter>头文件\libraries</Filter>
+    </ClInclude>
+    <ClInclude Include="libraries\utl_map.h">
+      <Filter>头文件\libraries</Filter>
+    </ClInclude>
+    <ClInclude Include="libraries\utl_btree.h">
+      <Filter>头文件\libraries</Filter>
+    </ClInclude>
+    <ClInclude Include="libraries\utl_fixedmemory.h">
+      <Filter>头文件\libraries</Filter>
+    </ClInclude>
+    <ClInclude Include="libraries\util_blockmemory.h">
+      <Filter>头文件\libraries</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="structs\checksum_md5.cpp">

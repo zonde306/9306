@@ -524,7 +524,7 @@ inline T& CUtlMemory<T, I>::operator[](I i)
 {
 	// Avoid function calls in the asserts to improve debug build performance
 	Assert(m_nGrowSize != EXTERNAL_CONST_BUFFER_MARKER); //Assert( !IsReadOnly() );
-	Assert((uint32)i < (uint32)m_nAllocationCount);
+	Assert((uint32_t)i < (uint32_t)m_nAllocationCount);
 	return m_pMemory[(uint32_t)i];
 }
 
@@ -532,8 +532,8 @@ template< class T, class I >
 inline const T& CUtlMemory<T, I>::operator[](I i) const
 {
 	// Avoid function calls in the asserts to improve debug build performance
-	Assert((uint32)i < (uint32)m_nAllocationCount);
-	return m_pMemory[(uint32)i];
+	Assert((uint32_t)i < (uint32_t)m_nAllocationCount);
+	return m_pMemory[(uint32_t)i];
 }
 
 template< class T, class I >
@@ -541,16 +541,16 @@ inline T& CUtlMemory<T, I>::Element(I i)
 {
 	// Avoid function calls in the asserts to improve debug build performance
 	Assert(m_nGrowSize != EXTERNAL_CONST_BUFFER_MARKER); //Assert( !IsReadOnly() );
-	Assert((uint32)i < (uint32)m_nAllocationCount);
-	return m_pMemory[(uint32)i];
+	Assert((uint32_t)i < (uint32_t)m_nAllocationCount);
+	return m_pMemory[(uint32_t)i];
 }
 
 template< class T, class I >
 inline const T& CUtlMemory<T, I>::Element(I i) const
 {
 	// Avoid function calls in the asserts to improve debug build performance
-	Assert((uint32)i < (uint32)m_nAllocationCount);
-	return m_pMemory[(uint32)i];
+	Assert((uint32_t)i < (uint32_t)m_nAllocationCount);
+	return m_pMemory[(uint32_t)i];
 }
 
 
@@ -626,7 +626,7 @@ inline bool CUtlMemory<T, I>::IsIdxValid(I i) const
 	// If we always cast 'i' and 'm_nAllocationCount' to unsigned then we can
 	// do our range checking with a single comparison instead of two. This gives
 	// a modest speedup in debug builds.
-	return (uint32)i < (uint32)m_nAllocationCount;
+	return (uint32_t)i < (uint32_t)m_nAllocationCount;
 }
 
 //-----------------------------------------------------------------------------

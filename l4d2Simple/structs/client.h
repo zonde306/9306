@@ -149,9 +149,16 @@ struct ClientClass
 class CClient
 {
 public:
-  ClientClass* GetAllClasses()
-  {
-    typedef ClientClass*(__thiscall* fn)(void*);
-    return ((fn)VMT.GetFunction(this, indexes::GetAllClasses))(this);
-  }
+	ClientClass* GetAllClasses()
+	{
+		typedef ClientClass*(__thiscall* fn)(void*);
+		return ((fn)VMT.GetFunction(this, indexes::GetAllClasses))(this);
+	}
+
+	bool IsKeyDown(const char* name, bool& isdown)
+	{
+		typedef bool(__stdcall* Fn)(void*, const char*, bool&);
+		return ((Fn)VMT.GetFunction(this, indexes::IN_IsKeyDown))(this, name, isdown);
+	}
+
 };

@@ -167,6 +167,9 @@ static FnConMsg PrintToConsole;				// 打印信息到控制台
 typedef int(__stdcall* FnCL_Move)(double what, float accumulation_extra_samples, bool bFinalTick);
 FnCL_Move oCL_Move;
 
+typedef bool(__thiscall* FnDispatchUserMessage)(void*, int, bf_read&);
+FnDispatchUserMessage oDispatchUserMessage;
+
 // -------------------------------- Cheats Function --------------------------------
 void thirdPerson();
 void showSpectator();
@@ -210,6 +213,7 @@ DWORD WINAPI StartCheat(LPVOID params)
 	Utils::log("GlobalsVariable 0x%X", (DWORD)g_cInterfaces.Globals);
 	Utils::log("InputSystem 0x%X", (DWORD)g_cInterfaces.InputSystem);
 	Utils::log("Input 0x%X", (DWORD)g_cInterfaces.Input);
+	Utils::log("UserMessages 0x%X", (DWORD)g_cInterfaces.UserMessage);
 
 	if ((oCL_Move = (FnCL_Move)Utils::FindPattern("engine.dll",
 		XorStr("55 8B EC B8 ? ? ? ? E8 ? ? ? ? A1 ? ? ? ? 33 C5 89 45 FC 53 56 57 E8"))) != nullptr)
@@ -217,6 +221,14 @@ DWORD WINAPI StartCheat(LPVOID params)
 		g_pbSendPacket = (bool*)((DWORD)oCL_Move + 0x91);
 		Utils::log("CL_Move = 0x%X | bSendPacket = 0x%X", (DWORD)oCL_Move, (DWORD)g_pbSendPacket);
 	}
+	else
+		Utils::log("CL_Move not found");
+
+	if ((oDispatchUserMessage = (FnDispatchUserMessage)Utils::FindPattern("client.dll",
+		XorStr("55 8B EC 8B 45 08 83 EC 28 85 C0"))) != nullptr)
+		Utils::log("DispatchUserMessage = 0x%X", (DWORD)oDispatchUserMessage);
+	else
+		Utils::log("DispatchUserMessage not found");
 
 	typedef ClientModeShared*(*FnGetClientMode)();
 	FnGetClientMode GetClientModeNormal = nullptr;
