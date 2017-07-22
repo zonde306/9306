@@ -781,6 +781,33 @@ void bindAlias(int wait)
 	g_cInterfaces.Engine->ClientCmd("echo \"echo \"========= alias end =========\"\"");
 }
 
+byte g_bMoveData[0x200];
+
+// engine pred not 100% perfect but almost
+void RunEnginePrediction(CUserCmd* cmd)
+{
+	CBaseEntity* client = GetLocalClient();
+	if (g_cInterfaces.MoveHelper == nullptr || cmd == nullptr || client == nullptr)
+		return;
+	
+	float curTime = g_cInterfaces.Globals->curtime;
+	float frameTime = g_cInterfaces.Globals->frametime;
+	int flags = client->GetNetProp<int>("m_fFlags", "DT_BasePlayer");
+
+	g_cInterfaces.Globals->curtime = client->GetTickBase() * g_cInterfaces.Globals->interval_per_tick;
+	g_cInterfaces.Globals->frametime = g_cInterfaces.Globals->interval_per_tick;
+
+	g_cInterfaces.MoveHelper->SetHost(client);
+	g_cInterfaces.Prediction->SetupMove(client, cmd, nullptr, &g_bMoveData);
+	g_cInterfaces.GameMovement->ProcessMovement(client, &g_bMoveData);
+	g_cInterfaces.Prediction->FinishMove(client, cmd, &g_bMoveData);
+	g_cInterfaces.MoveHelper->SetHost(nullptr);
+
+	g_cInterfaces.Globals->curtime = curTime;
+	g_cInterfaces.Globals->frametime = frameTime;
+	client->SetNetProp("m_fFlags", flags, "DT_BasePlayer");
+}
+
 // 检查该实体是否为生还者/特感/普感/Witch
 bool IsValidEntity(CBaseEntity* entity)
 {
@@ -1711,6 +1738,11 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 		weapon->GetNetProp<float>("m_flNextPrimaryAttack", "DT_BaseCombatWeapon") : FLT_MAX);
 	int weaponId = (weapon != nullptr ? weapon->GetWeaponID() : 0);
 	int myTeam = client->GetTeam();
+
+	// 修复声音 bug
+	if (weapon != nullptr && IsGunWeapon(weaponId) && nextAttack <= serverTime &&
+		weapon->GetNetProp<int>("m_iClip1", "DT_BaseCombatWeapon") > 0)
+		RunEnginePrediction(pCmd);
 
 	// 自动连跳
 	if (g_bAutoBunnyHop && (GetAsyncKeyState(VK_SPACE) & 0x8000))

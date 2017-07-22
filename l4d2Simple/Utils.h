@@ -697,6 +697,11 @@ DWORD Utils::FindPattern(DWORD dwAddress, DWORD dwLength, const std::string& szP
 			firstMatch = 0;
 		}
 	}
+
+#ifdef _DEBUG
+	Utils::log("start = 0x%X end = 0x%X pattern = %s", dwAddress, dwLength, szPattern.c_str());
+#endif
+
 	return NULL;
 }
 
@@ -978,6 +983,8 @@ void Utils::log(const char* text, ...)
 {
 	char buffer[1024];
 
+#ifdef _DEBUG
+
 	time_t t;
 	time(&t);
 
@@ -993,17 +1000,23 @@ void Utils::log(const char* text, ...)
 	strftime(buffer, 1024, "[%H:%M:%S] ", &tmp);
 	file << buffer;
 
+#endif
+
 	// 格式化字符串
 	va_list ap;
 	va_start(ap, text);
 	vsprintf_s(buffer, text, ap);
 	va_end(ap);
 
+#ifdef _DEBUG
+
 	// 输出
 	file << buffer << "\n";
 
 	// 完毕
 	file.close();
+
+#endif
 
 	// 输出到控制台
 	g_cInterfaces.Engine->ClientCmd("echo \"%s\"", buffer);
@@ -1013,6 +1026,9 @@ void Utils::log(const char* text, ...)
 void Utils::log(const wchar_t* text, ...)
 {
 	wchar_t buffer[1024];
+
+#ifdef _DEBUG
+
 	char ctime[64];
 
 	time_t t;
@@ -1030,17 +1046,23 @@ void Utils::log(const wchar_t* text, ...)
 	strftime(ctime, 1024, "[%H:%M:%S] ", &tmp);
 	file << c2w(ctime);
 
+#endif
+
 	// 格式化字符串
 	va_list ap;
 	va_start(ap, text);
 	vswprintf_s(buffer, text, ap);
 	va_end(ap);
 
+#ifdef _DEBUG
+
 	// 输出
 	file << buffer << L"\n";
 
 	// 完毕
 	file.close();
+
+#endif
 
 	// 输出到控制台
 	g_cInterfaces.Engine->ClientCmd("echo \"%s\"", w2c(buffer));
