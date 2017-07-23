@@ -164,11 +164,22 @@ static FnConColorMsg PrintToConsoleColor;	// 打印信息到控制台（支持颜色）
 typedef void(__cdecl* FnConMsg)(char const*, ...);
 static FnConMsg PrintToConsole;				// 打印信息到控制台
 
-typedef int(__stdcall* FnCL_Move)(double what, float accumulation_extra_samples, bool bFinalTick);
-FnCL_Move oCL_Move;
+typedef int(__stdcall* FnCL_Move)(double, float, bool);
+int __stdcall Hooked_CL_Move(double, float, bool);
+FnCL_Move oCL_Move;							// 玩家数据处理
 
 typedef bool(__thiscall* FnDispatchUserMessage)(void*, int, bf_read&);
-FnDispatchUserMessage oDispatchUserMessage;
+FnDispatchUserMessage DispatchUserMessage;	// 用户消息处理
+
+typedef void(__cdecl* FnSharedRandomFloat)(const char*, float, float, int);
+FnSharedRandomFloat SharedRandomFloat;		// 随机数
+
+typedef int(__stdcall* FnTraceLine)(void* ebp, void* esi, const Vector&, const Vector&, unsigned int mask,
+	const IHandleEntity*, int, trace_t*);
+FnTraceLine UTIL_TraceRay;					// 光线跟踪
+
+typedef const char*(__cdecl* FnWeaponIdToAlias)(unsigned int);
+FnWeaponIdToAlias WeaponIdToAlias;			// 获取武器的名字
 
 // -------------------------------- Cheats Function --------------------------------
 void thirdPerson();
@@ -214,6 +225,7 @@ DWORD WINAPI StartCheat(LPVOID params)
 	Utils::log("InputSystem 0x%X", (DWORD)g_cInterfaces.InputSystem);
 	Utils::log("Input 0x%X", (DWORD)g_cInterfaces.Input);
 	Utils::log("UserMessages 0x%X", (DWORD)g_cInterfaces.UserMessage);
+	Utils::log("MoveHelper 0x%X", (DWORD)g_cInterfaces.MoveHelper);
 
 	if ((oCL_Move = (FnCL_Move)Utils::FindPattern("engine.dll",
 		XorStr("55 8B EC B8 ? ? ? ? E8 ? ? ? ? A1 ? ? ? ? 33 C5 89 45 FC 53 56 57 E8"))) != nullptr)
@@ -224,9 +236,27 @@ DWORD WINAPI StartCheat(LPVOID params)
 	else
 		Utils::log("CL_Move not found");
 
-	if ((oDispatchUserMessage = (FnDispatchUserMessage)Utils::FindPattern("client.dll",
+	if ((SharedRandomFloat = (FnSharedRandomFloat)Utils::FindPattern("client.dll",
+		XorStr("55 8B EC 83 EC 08 A1 ? ? ? ? 53 56 57 8B 7D 14 8D 4D 14 51 89 7D F8 89 45 FC E8 ? ? ? ? 6A 04 8D 55 FC 52 8D 45 14 50 E8 ? ? ? ? 6A 04 8D 4D F8 51 8D 55 14 52 E8 ? ? ? ? 8B 75 08 56 E8 ? ? ? ? 50 8D 45 14 56 50 E8 ? ? ? ? 8D 4D 14 51 E8 ? ? ? ? 8B 15 ? ? ? ? 8B 5D 14 83 C4 30 83 7A 30 00 74 26 57 53 56 68 ? ? ? ? 68 ? ? ? ? 8D 45 14 68 ? ? ? ? 50 C7 45 ? ? ? ? ? FF 15 ? ? ? ? 83 C4 1C 53 B9 ? ? ? ? FF 15 ? ? ? ? D9 45 10"))) != nullptr)
+		Utils::log("SharedRandomFloat = 0x%X", (DWORD)SharedRandomFloat);
+	else
+		Utils::log("SharedRandomFloat not found");
+
+	if ((UTIL_TraceRay = (FnTraceLine)Utils::FindPattern("client.dll",
+		XorStr("53 8B DC 83 EC 08 83 E4 F0 83 C4 04 55 8B 6B 04 89 6C 24 04 8B EC 83 EC 6C 56 8B 43 08"))) != nullptr)
+		Utils::log("UTIL_TraceRay = 0x%X", (DWORD)UTIL_TraceRay);
+	else
+		Utils::log("UTIL_TraceRay not found");
+
+	if((WeaponIdToAlias = (FnWeaponIdToAlias)Utils::FindPattern("client.dll",
+		XorStr("55 8B EC 8B 45 08 83 F8 37"))) != nullptr)
+		Utils::log("WeaponIdToAlias = 0x%X", (DWORD)WeaponIdToAlias);
+	else
+		Utils::log("WeaponIdToAlias not found");
+
+	if ((DispatchUserMessage = (FnDispatchUserMessage)Utils::FindPattern("client.dll",
 		XorStr("55 8B EC 8B 45 08 83 EC 28 85 C0"))) != nullptr)
-		Utils::log("DispatchUserMessage = 0x%X", (DWORD)oDispatchUserMessage);
+		Utils::log("DispatchUserMessage = 0x%X", (DWORD)DispatchUserMessage);
 	else
 		Utils::log("DispatchUserMessage not found");
 
@@ -781,7 +811,25 @@ void bindAlias(int wait)
 	g_cInterfaces.Engine->ClientCmd("echo \"echo \"========= alias end =========\"\"");
 }
 
-byte g_bMoveData[0x200];
+CMoveData g_bMoveData;
+
+#define StartEnginePrediction(_client,_cmd)	float curTime = g_cInterfaces.Globals->curtime;\
+float frameTime = g_cInterfaces.Globals->frametime;\
+int flags = _client->GetNetProp<int>("m_fFlags", "DT_BasePlayer");\
+g_cInterfaces.Globals->curtime = _client->GetTickBase() * g_cInterfaces.Globals->interval_per_tick;\
+g_cInterfaces.Globals->frametime = g_cInterfaces.Globals->interval_per_tick;\
+g_cInterfaces.GameMovement->StartTrackPredictionErrors(_client);\
+ZeroMemory(&g_bMoveData, sizeof(g_bMoveData));\
+g_cInterfaces.MoveHelper->SetHost(_client);\
+g_cInterfaces.Prediction->SetupMove(client, _cmd, nullptr, &g_bMoveData);\
+g_cInterfaces.GameMovement->ProcessMovement(client, &g_bMoveData);\
+g_cInterfaces.Prediction->FinishMove(client, _cmd, &g_bMoveData);
+
+#define EndEnginePrediction(_client)	g_cInterfaces.GameMovement->FinishTrackPredictionErrors(_client);\
+g_cInterfaces.MoveHelper->SetHost(nullptr);\
+g_cInterfaces.Globals->curtime = curTime;\
+g_cInterfaces.Globals->frametime = frameTime;\
+client->SetNetProp("m_fFlags", flags, "DT_BasePlayer");
 
 // engine pred not 100% perfect but almost
 void RunEnginePrediction(CUserCmd* cmd)
@@ -797,10 +845,13 @@ void RunEnginePrediction(CUserCmd* cmd)
 	g_cInterfaces.Globals->curtime = client->GetTickBase() * g_cInterfaces.Globals->interval_per_tick;
 	g_cInterfaces.Globals->frametime = g_cInterfaces.Globals->interval_per_tick;
 
+	ZeroMemory(&g_bMoveData, sizeof(g_bMoveData));
+	g_cInterfaces.GameMovement->StartTrackPredictionErrors(client);
 	g_cInterfaces.MoveHelper->SetHost(client);
 	g_cInterfaces.Prediction->SetupMove(client, cmd, nullptr, &g_bMoveData);
 	g_cInterfaces.GameMovement->ProcessMovement(client, &g_bMoveData);
 	g_cInterfaces.Prediction->FinishMove(client, cmd, &g_bMoveData);
+	g_cInterfaces.GameMovement->FinishTrackPredictionErrors(client);
 	g_cInterfaces.MoveHelper->SetHost(nullptr);
 
 	g_cInterfaces.Globals->curtime = curTime;
@@ -1739,11 +1790,6 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 	int weaponId = (weapon != nullptr ? weapon->GetWeaponID() : 0);
 	int myTeam = client->GetTeam();
 
-	// 修复声音 bug
-	if (weapon != nullptr && IsGunWeapon(weaponId) && nextAttack <= serverTime &&
-		weapon->GetNetProp<int>("m_iClip1", "DT_BaseCombatWeapon") > 0)
-		RunEnginePrediction(pCmd);
-
 	// 自动连跳
 	if (g_bAutoBunnyHop && (GetAsyncKeyState(VK_SPACE) & 0x8000))
 	{
@@ -1784,6 +1830,9 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 				pCmd->sidemove = 400.f;
 		}
 	}
+
+	// 启动声音修复
+	// StartEnginePrediction(client, pCmd);
 
 	// 自动瞄准
 	if (g_bAimBot && weapon != nullptr && (GetAsyncKeyState(VK_LBUTTON) & 0x8000))
@@ -1944,6 +1993,9 @@ end_trigger_bot:
 			pCmd->buttons &= ~IN_ATTACK;
 		}
 	}
+
+	// 完成声音修复
+	// EndEnginePrediction(client);
 
 	// 近战武器快速攻击
 	if ((pCmd->buttons & IN_ZOOM) && weaponId == Weapon_Melee && myTeam == 2)

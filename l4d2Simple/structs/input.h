@@ -133,6 +133,77 @@ public:
 	}
 };
 
+class CMoveData
+{
+public:
+	bool			m_bFirstRunOfFunctions : 1;
+	bool			m_bGameCodeMovedPlayer : 1;
+	// bool			m_bNoAirControl : 1;
+
+	CBaseHandle		m_nPlayerHandle;	// edict index on server, client entity handle on client
+
+	int				m_nImpulseCommand;	// Impulse command issued.
+	QAngle			m_vecViewAngles;	// Command view angles (local space)
+	QAngle			m_vecAbsViewAngles;	// Command view angles (world space)
+	int				m_nButtons;			// Attack buttons.
+	int				m_nOldButtons;		// From host_client->oldbuttons;
+	float			m_flForwardMove;
+	float			m_flSideMove;
+	float			m_flUpMove;
+
+	float			m_flMaxSpeed;
+	float			m_flClientMaxSpeed;
+
+	// Variables from the player edict (sv_player) or entvars on the client.
+	// These are copied in here before calling and copied out after calling.
+	Vector			m_vecVelocity;		// edict::velocity		// Current movement direction.
+	// Vector			m_vecOldVelocity;
+	// float			somefloat;
+	QAngle			m_vecAngles;		// edict::angles
+	QAngle			m_vecOldAngles;
+
+	// Output only
+	float			m_outStepHeight;	// how much you climbed this move
+	Vector			m_outWishVel;		// This is where you tried 
+	Vector			m_outJumpVel;		// This is your jump velocity
+
+	// Movement constraints	(radius 0 means no constraint)
+	Vector			m_vecConstraintCenter;
+	float			m_flConstraintRadius;
+	float			m_flConstraintWidth;
+	float			m_flConstraintSpeedFactor;
+	// bool			m_bConstraintPastRadius;
+
+	void			SetAbsOrigin(const Vector &vec);
+	const Vector	&GetAbsOrigin() const;
+
+public:
+	Vector			m_vecAbsOrigin;		// edict::origin
+};
+
+class IGameMovement
+{
+public:
+	virtual			~IGameMovement(void) {}
+
+	// Process the current movement command
+	virtual void	ProcessMovement(CBaseEntity *pPlayer, CMoveData *pMove) = 0;
+	virtual void	StartTrackPredictionErrors(CBaseEntity *pPlayer) = 0;
+	virtual void	FinishTrackPredictionErrors(CBaseEntity *pPlayer) = 0;
+	virtual void	DiffPrint(char const *fmt, ...) = 0;
+
+	// Allows other parts of the engine to find out the normal and ducked player bbox sizes
+	virtual Vector	GetPlayerMins(bool ducked) const = 0;
+	virtual Vector	GetPlayerMaxs(bool ducked) const = 0;
+	virtual Vector  GetPlayerViewOffset(bool ducked) const = 0;
+
+	virtual bool	IsMovingPlayerStuck(void) const = 0;
+	virtual CBaseEntity*	GetMovingPlayer(void) const = 0;
+	virtual void	UnblockPusher(CBaseEntity* pPlayer, CBaseEntity *pPusher) = 0;
+
+	virtual void	SetupMovementBounds(CMoveData *pMove) = 0;
+};
+
 class CPrediction
 {
 public:
@@ -147,6 +218,48 @@ public:
 		typedef void(__thiscall* OriginalFn)(PVOID, CBaseEntity*, CUserCmd*, PVOID);
 		VMT.getvfunc<OriginalFn>(this, indexes::FinishMove)(this, player, ucmd, moveData);
 	}
+
+	/*
+	void StartPrediction(CUserCmd* pCmd)
+	{
+		CBaseEntity* client = GetLocalClient();
+		if (g_cInterfaces.MoveHelper == nullptr || pCmd == nullptr || client == nullptr)
+			return;
+
+		m_flOldCurtime = g_cInterfaces.Globals->curtime;
+		m_flOldFrametime = g_cInterfaces.Globals->frametime;
+		m_flOldFrametime = client->GetNetProp<int>("m_fFlags", "DT_BasePlayer");
+
+		g_cInterfaces.Globals->curtime = client->GetTickBase() * g_cInterfaces.Globals->interval_per_tick;
+		g_cInterfaces.Globals->frametime = g_cInterfaces.Globals->interval_per_tick;
+		((IGameMovement*)g_cInterfaces.GameMovement)->StartTrackPredictionErrors(client);
+
+		ZeroMemory(&m_MoveData, sizeof(m_MoveData));
+		g_cInterfaces.MoveHelper->SetHost(client);
+		g_cInterfaces.Prediction->SetupMove(client, pCmd, nullptr, &g_bMoveData);
+		g_cInterfaces.GameMovement->ProcessMovement(client, &g_bMoveData);
+		g_cInterfaces.Prediction->FinishMove(client, pCmd, &g_bMoveData);
+	}
+
+	void EndPrediction(CUserCmd* pCmd)
+	{
+		CBaseEntity* client = GetLocalClient();
+		if (g_cInterfaces.MoveHelper == nullptr || pCmd == nullptr || client == nullptr)
+			return;
+
+		((IGameMovement*)g_cInterfaces.GameMovement)->FinishTrackPredictionErrors(client);
+		g_cInterfaces.MoveHelper->SetHost(nullptr);
+		g_cInterfaces.Globals->curtime = m_flOldCurtime;
+		g_cInterfaces.Globals->frametime = m_flOldFrametime;
+		client->SetNetProp("m_fFlags", m_iOldFlags, "DT_BasePlayer");
+	}
+
+private:
+	float m_flOldCurtime;
+	float m_flOldFrametime;
+	int m_iOldFlags;
+	CMoveData m_MoveData;
+	*/
 };
 
 class ClientModeShared
@@ -192,6 +305,16 @@ public:
 	}
 
 };
+
+inline const Vector &CMoveData::GetAbsOrigin() const
+{
+	return m_vecAbsOrigin;
+}
+
+inline void CMoveData::SetAbsOrigin(const Vector & vec)
+{
+	m_vecAbsOrigin = vec;
+}
 
 enum JoystickAxis_t
 {

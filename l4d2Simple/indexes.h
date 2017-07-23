@@ -89,6 +89,7 @@ namespace indexes
 
 	// GameMovement
 	const int ProccessMovement = 1;
+	const int PlayerMove = 18;
 
 	// Entity
 	const int GetClientClass = 1;

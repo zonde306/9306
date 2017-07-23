@@ -25,7 +25,7 @@ public:
 
 	CPlayerInfoManager* PlayerInfo;
 	CPrediction* Prediction;
-	CGameMovement* GameMovement;
+	IGameMovement* GameMovement;
 	CDebugOverlay* DebugOverlay;
 	IGameEventManager2* GameEvent;
 	IInputInternal* InputSystem;
@@ -54,7 +54,7 @@ public:
 		Surface = (CSurface*)GetPointer("vguimatsurface.dll", "VGUI_Surface");
 		PlayerInfo = (CPlayerInfoManager*)GetPointer("server.dll", "PlayerInfoManager");
 		Prediction = (CPrediction*)GetPointer("client.dll", "VClientPrediction");
-		GameMovement = (CGameMovement*)GetPointer("client.dll", "GameMovement");
+		GameMovement = (IGameMovement*)GetPointer("client.dll", "GameMovement");
 		DebugOverlay = (CDebugOverlay*)GetPointer("engine.dll", "VDebugOverlay");
 		GameEvent = (IGameEventManager2*)GetPointer("engine.dll", "GAMEEVENTSMANAGER002");
 		ModelRender = (CModelRender*)GetPointer("engine.dll", "VEngineModel");
@@ -67,6 +67,7 @@ public:
 
 		Input = (CInput*)*(PDWORD**)*(PDWORD**)(pdwClient[indexes::CreateMove] + 0x28);
 		UserMessage = (CUserMessages*)*(PDWORD**)*(PDWORD**)(pdwClient[indexes::DispatchUserMessage] + 0x5);
+		MoveHelper = (CMoveHelper*)((*(DWORD**)GameMovement)[indexes::PlayerMove] + 0x4E);
 
 		DWORD dwInitAddr = (DWORD)(pdwClient[0]);
 		for (DWORD dwIter = 0; dwIter <= 0xFF; dwIter++)
