@@ -1346,11 +1346,6 @@ HRESULT WINAPI Hooked_EndScene(IDirect3DDevice9* device)
 	// 备份之前绘制设置
 	g_pDrawRender->BeginRendering();
 
-#ifdef _DEBUG
-	g_pDrawRender->RenderRect(DrawManager::GREEN, 50, 50, 50, 50);
-	g_pDrawRender->DrawString2(70.0f, 70.0f, DrawManager::ORANGE, "some text");
-#endif
-
 	// 还原备份的设置
 	g_pDrawRender->EndRendering();
 
