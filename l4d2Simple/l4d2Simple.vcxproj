@@ -148,6 +148,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="d3dfont\D3DFont.h" />
     <ClInclude Include="d3dukmdt.h" />
     <ClInclude Include="d3dumddi.h" />
     <ClInclude Include="definitions.h" />
@@ -197,6 +198,7 @@
     <ClInclude Include="Utils.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="d3dfont\D3DFont.cpp" />
     <ClCompile Include="detours\detourxs.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="structs\checksum_md5.cpp" />

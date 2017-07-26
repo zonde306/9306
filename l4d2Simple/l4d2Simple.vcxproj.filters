@@ -165,6 +165,9 @@
     <ClInclude Include="libraries\util_blockmemory.h">
       <Filter>头文件\libraries</Filter>
     </ClInclude>
+    <ClInclude Include="d3dfont\D3DFont.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="structs\checksum_md5.cpp">
@@ -175,6 +178,9 @@
     </ClCompile>
     <ClCompile Include="detours\detourxs.cpp">
       <Filter>头文件\detours</Filter>
+    </ClCompile>
+    <ClCompile Include="d3dfont\D3DFont.cpp">
+      <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

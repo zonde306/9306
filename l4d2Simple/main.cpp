@@ -187,7 +187,8 @@ void showSpectator();
 void bindAlias(int);
 
 // -------------------------------- Golbals Variable --------------------------------
-D3D9Hooker* g_pDeviceHooker;											// D3D9 Device 钩子
+static DrawManager* g_pDrawRender;										// D3D EndScene 绘制工具
+static D3D9Hooker* g_pDeviceHooker;										// D3D9 Device 钩子
 static bool* g_pbSendPacket;											// 数据包是否发送到服务器
 static CUserCmd* g_pUserCommands;										// 本地玩家当前按键
 std::map<std::string, ConVar*> g_tConVar;								// 控制台变量
@@ -427,8 +428,10 @@ DWORD WINAPI StartCheat(LPVOID params)
 					if ((DWORD)entity == (DWORD)g_pCurrentAiming)
 						g_pCurrentAiming = nullptr;
 
+					/*
 					Utils::log("player %d death, killed by %d%s", victim, attacker,
 						(event->GetBool("headshot") ? " | headshot" : ""));
+					*/
 				}
 
 				if (_strcmpi(eventName, "infected_death") == 0)
@@ -446,8 +449,10 @@ DWORD WINAPI StartCheat(LPVOID params)
 					if ((DWORD)entity == (DWORD)g_pCurrentAiming)
 						g_pCurrentAiming = nullptr;
 
+					/*
 					Utils::log("infected %d death, killed by %d%s", victim, attacker,
 						(event->GetBool("headshot") ? " | headshot" : ""));
+					*/
 				}
 			}
 		};
@@ -483,6 +488,9 @@ void ResetDeviceHook(IDirect3DDevice9* device)
 	oDrawIndexedPrimitive = g_vmtDeviceHooker->SetupHook(82, Hooked_DrawIndexedPrimitive);
 	oCreateQuery = g_vmtDeviceHooker->SetupHook(118, Hooked_CreateQuery);
 	g_vmtDeviceHooker->HookTable(true);
+
+	// 初始化绘图
+	g_pDrawRender = new DrawManager(device);
 
 	Utils::log("pD3DDevice = 0x%X", (DWORD)device);
 	Utils::log("oReset = 0x%X", (DWORD)oReset);
@@ -811,7 +819,7 @@ void bindAlias(int wait)
 	g_cInterfaces.Engine->ClientCmd("echo \"echo \"========= alias end =========\"\"");
 }
 
-CMoveData g_bMoveData;
+static CMoveData g_bMoveData;
 
 #define StartEnginePrediction(_client,_cmd)	float curTime = g_cInterfaces.Globals->curtime;\
 float frameTime = g_cInterfaces.Globals->frametime;\
@@ -1291,7 +1299,13 @@ HRESULT WINAPI Hooked_Reset(IDirect3DDevice9* device, D3DPRESENT_PARAMETERS* pp)
 		showHint = true;
 	}
 
-	return oReset(device, pp);
+	g_pDrawRender->OnLostDevice();
+
+	HRESULT result = oReset(device, pp);
+
+	g_pDrawRender->OnResetDevice();
+
+	return result;
 }
 
 HRESULT WINAPI Hooked_Present(IDirect3DDevice9* device, const RECT* source, const RECT* dest, HWND window, const RGNDATA* region)
@@ -1328,6 +1342,17 @@ HRESULT WINAPI Hooked_EndScene(IDirect3DDevice9* device)
 		ResetDeviceHook(device);
 		showHint = true;
 	}
+
+	// 备份之前绘制设置
+	g_pDrawRender->BeginRendering();
+
+#ifdef _DEBUG
+	g_pDrawRender->RenderRect(DrawManager::GREEN, 50, 50, 50, 50);
+	g_pDrawRender->DrawString2(70.0f, 70.0f, DrawManager::ORANGE, "some text");
+#endif
+
+	// 还原备份的设置
+	g_pDrawRender->EndRendering();
 
 	return oEndScene(device);
 }
@@ -2039,7 +2064,7 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 			velocity = client->GetNetProp<Vector>("m_vecPunchAngleVel", "DT_BasePlayer");
 		}
 
-		// 在这里可以使用 DebugOverlay 来绘制
+		// 在这里可以使用 DebugOverlay 来进行 3D 绘制
 	}
 
 	oFrameStageNotify(stage);
@@ -2055,6 +2080,7 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 	time_t currentTime = time(NULL);
 	if (nextUpdate <= currentTime)
 	{
+		// 计时，用于每隔 1 秒触发一次
 		nextUpdate = currentTime + 1;
 		static DWORD fmWait = 45;
 		static bool connected = false;
@@ -2097,6 +2123,12 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 				}
 #endif
 				g_bDrawBoxEsp = !g_bDrawBoxEsp;
+
+				if (g_pDrawRender != nullptr)
+				{
+					g_pDrawRender->PushRenderText(DrawManager::WHITE, "box esp %s",
+						(g_bDrawBoxEsp ? "enable" : "disable"));
+				}
 			}
 
 			// 修改 mat_fullbright 实现全图高亮
@@ -2212,7 +2244,7 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 			// 显示全部玩家
 			/*
 			if (GetAsyncKeyState(VK_CAPITAL) & 0x01)
-			showSpectator();
+				showSpectator();
 			*/
 
 			// 打开/关闭 自动连跳的自动保持速度
@@ -2221,6 +2253,12 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 				g_bAutoStrafe = !g_bAutoStrafe;
 				g_cInterfaces.Engine->ClientCmd("echo \"[segt] auto strafe set %s\"",
 					(g_bAutoStrafe ? "enable" : "disabled"));
+
+				if (g_pDrawRender != nullptr)
+				{
+					g_pDrawRender->PushRenderText(DrawManager::WHITE, "auto strafe %s",
+						(g_bDrawBoxEsp ? "enable" : "disable"));
+				}
 			}
 
 			// 打开/关闭 自动开枪
@@ -2229,6 +2267,12 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 				g_bTriggerBot = !g_bTriggerBot;
 				g_cInterfaces.Engine->ClientCmd("echo \"[segt] trigger bot set %s\"",
 					(g_bTriggerBot ? "enable" : "disabled"));
+
+				if (g_pDrawRender != nullptr)
+				{
+					g_pDrawRender->PushRenderText(DrawManager::WHITE, "trigger bot %s",
+						(g_bDrawBoxEsp ? "enable" : "disable"));
+				}
 			}
 
 			// 打开/关闭 自动瞄准
@@ -2237,6 +2281,12 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 				g_bAimBot = !g_bAimBot;
 				g_cInterfaces.Engine->ClientCmd("echo \"[segt] aim bot set %s\"",
 					(g_bAimBot ? "enable" : "disabled"));
+
+				if (g_pDrawRender != nullptr)
+				{
+					g_pDrawRender->PushRenderText(DrawManager::WHITE, "auto aim %s",
+						(g_bDrawBoxEsp ? "enable" : "disable"));
+				}
 			}
 
 			// 打开/关闭 空格自动连跳
@@ -2245,6 +2295,12 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 				g_bAutoBunnyHop = !g_bAutoBunnyHop;
 				g_cInterfaces.Engine->ClientCmd("echo \"[segt] auto bunnyHop set %s\"",
 					(g_bAutoBunnyHop ? "enable" : "disabled"));
+
+				if (g_pDrawRender != nullptr)
+				{
+					g_pDrawRender->PushRenderText(DrawManager::WHITE, "auto bhop %s",
+						(g_bDrawBoxEsp ? "enable" : "disable"));
+				}
 			}
 
 			// 打开/关闭 静音瞄准
@@ -2253,6 +2309,12 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 				g_bSilentAimbot = !g_bSilentAimbot;
 				g_cInterfaces.Engine->ClientCmd("echo \"[segt] silent aim %s\"",
 					(g_bSilentAimbot ? "enable" : "disabled"));
+
+				if (g_pDrawRender != nullptr)
+				{
+					g_pDrawRender->PushRenderText(DrawManager::WHITE, "silent aimbot %s",
+						(g_bDrawBoxEsp ? "enable" : "disable"));
+				}
 			}
 
 			// 去除 CRC 验证
@@ -2297,21 +2359,58 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 			Utils::log("*** disconnected ***");
 		}
 
-		if (GetAsyncKeyState(VK_ADD) & 0x01)
+		if (GetAsyncKeyState(VK_ADD) & 0x8000)
 		{
 			g_cInterfaces.Engine->ClientCmd("alias fastmelee_loop \"+attack; slot1; wait 1; -attack; slot2; wait %d; fastmelee_launcher\"", ++fmWait);
 			g_cInterfaces.Engine->ClientCmd("echo \"fastmelee wait set %d\"", fmWait);
+
+			if (g_pDrawRender != nullptr)
+				g_pDrawRender->PushRenderText(DrawManager::WHITE, "fast melee wait tick set %d", fmWait);
 		}
 
-		if (GetAsyncKeyState(VK_SUBTRACT) & 0x01)
+		if (GetAsyncKeyState(VK_SUBTRACT) & 0x8000)
 		{
 			g_cInterfaces.Engine->ClientCmd("alias fastmelee_loop \"+attack; slot1; wait 1; -attack; slot2; wait %d; fastmelee_launcher\"", --fmWait);
 			g_cInterfaces.Engine->ClientCmd("echo \"fastmelee wait set %d\"", fmWait);
+
+			if (g_pDrawRender != nullptr)
+				g_pDrawRender->PushRenderText(DrawManager::WHITE, "fast melee wait tick set %d", fmWait);
 		}
 
-		if (GetAsyncKeyState(VK_END) & 0x01)
+		if (GetAsyncKeyState(VK_MULTIPLY) & 0x8000)
 		{
-			ExitProcess(0);
+			g_fAimbotFieldOfView += 1.0f;
+			g_cInterfaces.Engine->ClientCmd("echo \"aimbot fov set %.2f\"", g_fAimbotFieldOfView);
+
+			if (g_pDrawRender != nullptr)
+				g_pDrawRender->PushRenderText(DrawManager::WHITE, "aimbot angles set %.0f", g_fAimbotFieldOfView);
+		}
+
+		if (GetAsyncKeyState(VK_DIVIDE) & 0x8000)
+		{
+			g_fAimbotFieldOfView -= 1.0f;
+			g_cInterfaces.Engine->ClientCmd("echo \"aimbot fov set %.2f\"", g_fAimbotFieldOfView);
+
+			if (g_pDrawRender != nullptr)
+				g_pDrawRender->PushRenderText(DrawManager::WHITE, "aimbot angles set %.0f", g_fAimbotFieldOfView);
+		}
+
+		static byte iExitGame = 0;
+		if (GetAsyncKeyState(VK_END) & 0x8000)
+		{
+			// 按住 End 键三秒强制退出游戏游戏，用于游戏无响应
+			if (++iExitGame >= 3)
+				ExitProcess(0);
+
+			if (g_pDrawRender != nullptr)
+				g_pDrawRender->PushRenderText(DrawManager::WHITE, "force exit proccess timer (%d/3)", iExitGame);
+		}
+		else if (iExitGame != 0)
+		{
+			// 按住不足 3 秒就放开则取消计时
+			iExitGame = 0;
+			if (g_pDrawRender != nullptr)
+				g_pDrawRender->PushRenderText(DrawManager::WHITE, "force exit proccess timer stopped");
 		}
 
 		if (GetAsyncKeyState(VK_DELETE) & 0x01)

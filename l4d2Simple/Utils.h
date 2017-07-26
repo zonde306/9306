@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include <TlHelp32.h>
+#include "./d3dfont/D3DFont.h"
 // #include "ntdll.h"
 
 #define INRANGE( x, a, b ) ( x >= a && x <= b )
@@ -135,7 +136,7 @@ public:
 			Utils::log("%s (%d) 错误：获取顶层窗口失败", __FILE__, __LINE__);
 			return false;
 		}
-		
+
 		pD3D = Direct3DCreate9(D3D_SDK_VERSION);
 		if (pD3D == nullptr)
 		{
@@ -150,7 +151,7 @@ public:
 			if (pD3D != nullptr)
 				pD3D->Release();
 			pD3D = nullptr;
-			
+
 			Utils::log("%s (%d) 错误：获取显示模式失败", __FILE__, __LINE__);
 			return false;
 		}
@@ -171,13 +172,13 @@ public:
 			D3DCREATE_SOFTWARE_VERTEXPROCESSING | D3DCREATE_DISABLE_DRIVER_MANAGEMENT, &pp, &pDevice);
 		if (FAILED(hr))
 		{
-			if(hr == D3DERR_INVALIDCALL)
+			if (hr == D3DERR_INVALIDCALL)
 				Utils::log("%s (%d) 错误：参数错误，请检查指针是否有效", __FILE__, __LINE__);
-			else if(hr == D3DERR_DEVICELOST)
+			else if (hr == D3DERR_DEVICELOST)
 				Utils::log("%s (%d) 错误：设备对象丢失了", __FILE__, __LINE__);
-			else if(hr == D3DERR_NOTAVAILABLE)
+			else if (hr == D3DERR_NOTAVAILABLE)
 				Utils::log("%s (%d) 错误：不支持这个功能", __FILE__, __LINE__);
-			else if(hr == D3DERR_OUTOFVIDEOMEMORY)
+			else if (hr == D3DERR_OUTOFVIDEOMEMORY)
 				Utils::log("%s (%d) 错误：内存不足", __FILE__, __LINE__);
 			else
 				Utils::log("%s (%d) 错误：发生位置错误 %d", __FILE__, __LINE__, hr);
@@ -250,25 +251,36 @@ public:
 	DrawManager(IDirect3DDevice9* pDevice);
 	~DrawManager();
 
+	// 在 Reset 之前调用
 	void OnLostDevice();
+
+	// 在 Reset 之后调用
 	void OnResetDevice();
 
+	// 在 EndScene 之前，绘制开始之前调用
 	void BeginRendering();
+
+	// 在 EndScene 之前，绘制完成之后调用
 	void EndRendering();
 
 	void RenderLine(D3DCOLOR color, int x1, int y1, int x2, int y2);
 	void RenderRect(D3DCOLOR color, int x, int y, int w, int h);
 	void RenderCircle(D3DCOLOR color, int x, int y, int r, int resolution = 64);
 	void RenderText(D3DCOLOR color, int x, int y, bool centered, const char* fmt, ...);
+	void RenderText(D3DCOLOR color, int x, int y, bool centered, const wchar_t* fmt, ...);
 	void FillRect(D3DCOLOR color, int x, int y, int w, int h);
 
-	void DrawString(int x, int y, const std::string& text, D3DCOLOR color);
+	void DrawString2(float x, float y, D3DCOLOR color, const char* text, ...);
 	void DrawString(int x, int y, D3DCOLOR color, const char* text, ...);
+	void DrawString(int x, int y, D3DCOLOR color, const wchar_t* text, ...);
 	void DrawRect(int x, int y, int width, int height, D3DCOLOR color);
 	void DrawBorderedRect(int x, int y, int width, int height, D3DCOLOR filled, D3DCOLOR color);
 	void DrawLine(int x, int y, int x2, int y2, D3DCOLOR color);
 	void DrawFilledRect(int x, int y, int width, int height, D3DCOLOR color);
 	void DrawCircle(int x, int y, int radius, D3DCOLOR color);
+
+	// 将文本添加到限时绘制队列，这些文本会在添加后的 3 秒之后自动消失
+	void PushRenderText(D3DCOLOR color, const char* text, ...);
 
 	/*
 	* Below are some functions that you can implement yourself as an exercise
@@ -278,6 +290,28 @@ public:
 	* void FillPolygon(DWORD color, int* x, int* y, int npoints);
 	* void FillGradient(DWORD from, Color to, bool isVertical, int x, int y, int w, int h);
 	*/
+
+	// 常用颜色
+	enum D3DColor
+	{
+		WHITE = D3DCOLOR_ARGB(255, 255, 255, 255),		// 白色
+		BLACK = D3DCOLOR_ARGB(255, 0, 0, 0),			// 黑色
+		RED = D3DCOLOR_ARGB(255, 255, 0, 0),			// 红色
+		GREEN = D3DCOLOR_ARGB(255, 0, 128, 0),			// 绿色
+		LAWNGREEN = D3DCOLOR_ARGB(255, 124, 252, 0),	// 草绿色
+		BLUE = D3DCOLOR_ARGB(255, 0, 200, 255),			// 蓝色
+		DEEPSKYBLUE = D3DCOLOR_ARGB(255, 0, 191, 255),	// 深蓝色
+		SKYBLUE = D3DCOLOR_ARGB(255, 0, 122, 204),		// 天蓝色
+		YELLOW = D3DCOLOR_ARGB(255, 255, 255, 0),		// 黄色
+		ORANGE = D3DCOLOR_ARGB(255, 255, 165, 0),		// 橙色
+		DARKORANGE = D3DCOLOR_ARGB(255, 255, 140, 0),	// 暗橙色
+		PURPLE = D3DCOLOR_ARGB(255, 125, 0, 255),		// 紫色
+		CYAN = D3DCOLOR_ARGB(255, 0, 255, 255),			// 青色
+		PINK = D3DCOLOR_ARGB(255, 255, 20, 147),		// 粉色
+		GRAY = D3DCOLOR_ARGB(255, 128, 128, 128),		// 灰色
+		DARKGRAY = D3DCOLOR_ARGB(255, 73, 73, 73),		// 暗灰色
+		DARKERGRAY = D3DCOLOR_ARGB(255, 31, 31, 31)		// 浅灰色
+	};
 
 protected:
 	struct D3DVertex
@@ -292,6 +326,19 @@ protected:
 		D3DCOLOR color;
 	};
 
+	struct TextQueue
+	{
+		TextQueue(D3DCOLOR color, const std::string& text) :
+			text(text), color(color)
+		{
+			destoryTime = time(nullptr) + 3;
+		}
+
+		std::string text;
+		D3DCOLOR color;
+		time_t destoryTime;
+	};
+
 private:
 	void ReleaseObjects();
 	void CreateObjects();
@@ -300,7 +347,12 @@ private:
 	IDirect3DDevice9*		m_pDevice;
 	IDirect3DStateBlock9*	m_pStateBlock;
 	ID3DXFont*				m_pDefaultFont;
+	CD3DFont*				m_pFont;
 	ID3DXLine*				m_pLine;
+	ID3DXSprite*			m_pTextSprite;
+
+	// 文本绘制队列
+	std::vector<TextQueue> m_textDrawQueue;
 };
 
 struct D3DVertex
@@ -339,47 +391,120 @@ void DrawManager::OnResetDevice()
 void DrawManager::ReleaseObjects()
 {
 	if (m_pStateBlock)
+	{
 		m_pStateBlock->Release();
+		m_pStateBlock = nullptr;
+	}
 
 	if (m_pDefaultFont)
+	{
 		m_pDefaultFont->Release();
+		m_pDefaultFont = nullptr;
+	}
 
 	if (m_pLine)
+	{
 		m_pLine->Release();
+		m_pLine = nullptr;
+	}
+
+	if (m_pTextSprite)
+	{
+		m_pTextSprite->Release();
+		m_pTextSprite = nullptr;
+	}
+
+	if (m_pFont)
+	{
+		delete m_pFont;
+		m_pFont = nullptr;
+	}
 }
 
 void DrawManager::CreateObjects()
 {
 	if (FAILED(m_pDevice->CreateStateBlock(D3DSBT_ALL, &m_pStateBlock)))
 	{
-		throw "Failed to create the state block";
+		throw std::exception("Failed to create the state block");
 	}
 
-	if (FAILED(D3DXCreateFontA(m_pDevice, 16, 0, 0, 0, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS,
-		DEFAULT_QUALITY, DEFAULT_PITCH, "Fixedsys", &m_pDefaultFont)))
+	if (FAILED(D3DXCreateFontA(m_pDevice, 14, 0, FW_BOLD, 1, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS,
+		DEFAULT_QUALITY, DEFAULT_PITCH|FF_DONTCARE, "Arial", &m_pDefaultFont)))
 	{
-		throw "Failed to create the default font";
+		throw std::exception("Failed to create the default font");
 	}
 
 	if (FAILED(D3DXCreateLine(m_pDevice, &m_pLine)))
 	{
-		throw "Failed to create the line";
+		throw std::exception("Failed to create the line");
 	}
+
+	if (FAILED(D3DXCreateSprite(m_pDevice, &m_pTextSprite)))
+	{
+		throw std::exception("Failed to create the sprite");
+	}
+
+	m_pFont = new CD3DFont("Arial", 14);
+	m_pFont->InitializeDeviceObjects(m_pDevice);
+	m_pFont->RestoreDeviceObjects();
 }
 
 void DrawManager::BeginRendering()
 {
 	m_pStateBlock->Capture();
+
+	m_pDevice->SetTexture(0, nullptr);
+	m_pDevice->SetPixelShader(nullptr);
 	m_pDevice->SetFVF(D3DFVF_XYZRHW | D3DFVF_DIFFUSE);
 	m_pDevice->SetRenderState(D3DRS_ZENABLE, false);
 	m_pDevice->SetRenderState(D3DRS_ALPHABLENDENABLE, false);
 	m_pDevice->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
 	m_pDevice->SetRenderState(D3DRS_SCISSORTESTENABLE, false);
 	m_pDevice->SetRenderState(D3DRS_COLORWRITEENABLE, 0xFFFFFFFF);
+
+	// 绘制 2D 框可以进行的优化
+	// m_pDevice->SetRenderState(D3DRS_CULLMODE, D3DCULL_CCW);
+
+	// 修复颜色不正确
+	m_pDevice->SetRenderState(D3DRS_LIGHTING, false);
+	m_pDevice->SetRenderState(D3DRS_FOGENABLE, false);
+	m_pDevice->SetRenderState(D3DRS_ZENABLE, D3DZB_FALSE);
+	m_pDevice->SetRenderState(D3DRS_ALPHATESTENABLE, false);
+	m_pDevice->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE);
+	m_pDevice->SetRenderState(D3DRS_FILLMODE, D3DFILL_SOLID);
+	m_pDevice->SetRenderState(D3DRS_SCISSORTESTENABLE, true);
+	m_pDevice->SetRenderState(D3DRS_ZWRITEENABLE, false);
+	m_pDevice->SetRenderState(D3DRS_MULTISAMPLEANTIALIAS, true);
+	m_pDevice->SetRenderState(D3DRS_ANTIALIASEDLINEENABLE, true);
+	m_pDevice->SetRenderState(D3DRS_ALPHABLENDENABLE, true);
+	m_pDevice->SetRenderState(D3DRS_SRGBWRITEENABLE, false);
+	m_pDevice->SetRenderState(D3DRS_SEPARATEALPHABLENDENABLE, true);
+	m_pDevice->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
+	m_pDevice->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
+	m_pDevice->SetRenderState(D3DRS_SRCBLENDALPHA, D3DBLEND_INVDESTALPHA);
+	m_pDevice->SetRenderState(D3DRS_DESTBLENDALPHA, D3DBLEND_ONE);
 }
 
 void DrawManager::EndRendering()
 {
+	// 绘制文本列表
+	if (!this->m_textDrawQueue.empty())
+	{
+		int drawQueue = 1;
+		time_t currentTime = time(nullptr);
+		std::vector<DrawManager::TextQueue>::iterator i;
+		for (i = this->m_textDrawQueue.begin(); i != this->m_textDrawQueue.end(); )
+		{
+			// 绘制文本
+			this->DrawString2(15.0f, 15.0f * drawQueue++, i->color, i->text.c_str());
+
+			if (i->destoryTime <= currentTime)
+				i = this->m_textDrawQueue.erase(i);
+			else
+				++i;
+		}
+	}
+
 	m_pStateBlock->Apply();
 }
 
@@ -432,32 +557,75 @@ void DrawManager::RenderText(D3DCOLOR color, int x, int y, bool centered, const 
 	char buffer[512];
 	va_list args;
 	va_start(args, fmt);
-	vsprintf_s(buffer, fmt, args);
+	int len = vsprintf_s(buffer, fmt, args);
 	va_end(args);
-
-	auto drawShadow = [&](RECT rect)
-	{
-		rect.left++;
-		m_pDefaultFont->DrawTextA(NULL, buffer, -1, &rect, DT_TOP | DT_LEFT | DT_NOCLIP, 0xFF000000);
-		rect.top++;
-		m_pDefaultFont->DrawTextA(NULL, buffer, -1, &rect, DT_TOP | DT_LEFT | DT_NOCLIP, 0xFF000000);
-	};
 
 	if (centered)
 	{
 		RECT rec = { 0, 0, 0, 0 };
-		m_pDefaultFont->DrawTextA(NULL, buffer, -1, &rec, DT_CALCRECT | DT_NOCLIP, color);
+		m_pDefaultFont->DrawTextA(NULL, buffer, len, &rec, DT_CALCRECT | DT_NOCLIP, color);
 		rec = { x - rec.right / 2, y, 0, 0 };
 
-		// drawShadow(rec);
-		// m_pDefaultFont->DrawTextA(NULL, buffer, -1, &rec, DT_TOP | DT_LEFT | DT_NOCLIP, color);
+		/*
+		rec.left++;
+		m_pDefaultFont->DrawTextA(NULL, buffer, len, &rec, DT_TOP | DT_LEFT | DT_NOCLIP, 0xFF000000);
+		rec.top++;
+		m_pDefaultFont->DrawTextA(NULL, buffer, len, &rec, DT_TOP | DT_LEFT | DT_NOCLIP, 0xFF000000);
+		*/
+
+		m_pDefaultFont->DrawTextA(NULL, buffer, len, &rec, DT_TOP | DT_LEFT | DT_NOCLIP, color);
+
 	}
 	else
 	{
 		RECT rec = { x, y, 1000, 100 };
 
-		// drawShadow(rec);
-		m_pDefaultFont->DrawTextA(NULL, buffer, -1, &rec, DT_TOP | DT_LEFT | DT_NOCLIP, color);
+		/*
+		rec.left++;
+		m_pDefaultFont->DrawTextA(NULL, buffer, len, &rec, DT_TOP | DT_LEFT | DT_NOCLIP, 0xFF000000);
+		rec.top++;
+		m_pDefaultFont->DrawTextA(NULL, buffer, len, &rec, DT_TOP | DT_LEFT | DT_NOCLIP, 0xFF000000);
+		*/
+
+		m_pDefaultFont->DrawTextA(NULL, buffer, len, &rec, DT_TOP | DT_LEFT | DT_NOCLIP, color);
+	}
+}
+
+void DrawManager::RenderText(D3DCOLOR color, int x, int y, bool centered, const wchar_t * fmt, ...)
+{
+	wchar_t buffer[512];
+	va_list args;
+	va_start(args, fmt);
+	int len = vswprintf_s(buffer, fmt, args);
+	va_end(args);
+
+	if (centered)
+	{
+		RECT rec = { 0, 0, 0, 0 };
+		m_pDefaultFont->DrawTextW(NULL, buffer, len, &rec, DT_CALCRECT | DT_NOCLIP, color);
+		rec = { x - rec.right / 2, y, 0, 0 };
+
+		/*
+		rec.left++;
+		m_pDefaultFont->DrawTextW(NULL, buffer, len, &rec, DT_TOP | DT_LEFT | DT_NOCLIP, 0xFF000000);
+		rec.top++;
+		m_pDefaultFont->DrawTextW(NULL, buffer, len, &rec, DT_TOP | DT_LEFT | DT_NOCLIP, 0xFF000000);
+		*/
+
+		m_pDefaultFont->DrawTextW(NULL, buffer, len, &rec, DT_TOP | DT_LEFT | DT_NOCLIP, color);
+	}
+	else
+	{
+		RECT rec = { x, y, 1000, 100 };
+
+		/*
+		rec.left++;
+		m_pDefaultFont->DrawTextW(NULL, buffer, len, &rec, DT_TOP | DT_LEFT | DT_NOCLIP, 0xFF000000);
+		rec.top++;
+		m_pDefaultFont->DrawTextW(NULL, buffer, len, &rec, DT_TOP | DT_LEFT | DT_NOCLIP, 0xFF000000);
+		*/
+
+		m_pDefaultFont->DrawTextW(NULL, buffer, len, &rec, DT_TOP | DT_LEFT | DT_NOCLIP, color);
 	}
 }
 
@@ -473,15 +641,18 @@ void DrawManager::FillRect(D3DCOLOR color, int x, int y, int w, int h)
 	m_pDevice->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, &vertices[0], sizeof(D3DVertex));
 }
 
-void DrawManager::DrawString(int x, int y, const std::string & text, D3DCOLOR color)
+void DrawManager::DrawString2(float x, float y, D3DCOLOR color, const char * text, ...)
 {
-	RECT Position;
-	Position.left = x + 1;
-	Position.top = y + 1;
-	m_pDefaultFont->DrawTextA(0, text.c_str(), text.length(), &Position, DT_NOCLIP, D3DCOLOR_ARGB(255, 0, 0, 0));
-	Position.left = x;
-	Position.top = y;
-	m_pDefaultFont->DrawTextA(0, text.c_str(), text.length(), &Position, DT_NOCLIP, color);
+	va_list ap;
+	va_start(ap, text);
+
+	char buffer[1024];
+	int len = vsprintf_s(buffer, text, ap);
+
+	va_end(ap);
+
+#undef DrawText
+	m_pFont->DrawText(x, y, color, buffer, D3DFONT_CENTERED);
 }
 
 void DrawManager::DrawString(int x, int y, D3DCOLOR color, const char * text, ...)
@@ -489,12 +660,47 @@ void DrawManager::DrawString(int x, int y, D3DCOLOR color, const char * text, ..
 	va_list ap;
 	va_start(ap, text);
 
-	char buffer[512];
-	vsprintf_s(buffer, text, ap);
+	char buffer[1024];
+	int len = vsprintf_s(buffer, text, ap);
 
 	va_end(ap);
 
-	DrawString(x, y, buffer, color);
+	RECT Position;
+	/*
+	Position.left = x + 1;
+	Position.top = y + 1;
+	m_pDefaultFont->DrawTextA(0, buffer, len, &Position, DT_NOCLIP, D3DCOLOR_ARGB(255, 0, 0, 0));
+	*/
+	Position.left = x;
+	Position.top = y;
+
+	m_pTextSprite->Begin(D3DXSPRITE_ALPHABLEND);
+	m_pDefaultFont->DrawTextA(m_pTextSprite, buffer, len, &Position, DT_CENTER | DT_NOCLIP, color);
+	m_pTextSprite->End();
+}
+
+void DrawManager::DrawString(int x, int y, D3DCOLOR color, const wchar_t * text, ...)
+{
+	va_list ap;
+	va_start(ap, text);
+
+	wchar_t buffer[1024];
+	int len = vswprintf_s(buffer, text, ap);
+
+	va_end(ap);
+
+	RECT Position;
+	/*
+	Position.left = x + 1;
+	Position.top = y + 1;
+	m_pDefaultFont->DrawTextA(0, buffer, len, &Position, DT_NOCLIP, D3DCOLOR_ARGB(255, 0, 0, 0));
+	*/
+	Position.left = x;
+	Position.top = y;
+
+	m_pTextSprite->Begin(D3DXSPRITE_ALPHABLEND);
+	m_pDefaultFont->DrawTextW(m_pTextSprite, buffer, len, &Position, DT_CENTER | DT_NOCLIP, color);
+	m_pTextSprite->End();
 }
 
 void DrawManager::DrawRect(int x, int y, int width, int height, D3DCOLOR color)
@@ -562,6 +768,18 @@ void DrawManager::DrawCircle(int x, int y, int radius, D3DCOLOR color)
 	}
 
 	m_pLine->Draw(DotPoints, Points, color);
+}
+
+void DrawManager::PushRenderText(D3DCOLOR color, const char* text, ...)
+{
+	static char buffer[1024];
+
+	va_list ap;
+	va_start(text, ap);
+	vsprintf_s(buffer, text, ap);
+	va_end(ap);
+
+	this->m_textDrawQueue.push_back(DrawManager::TextQueue(color, buffer));
 }
 
 // GBK 转 UTF-8
@@ -859,7 +1077,7 @@ T Utils::readMemory(Arg... offset)
 		if (finalAddress != NULL)
 			return *(T*)finalAddress;
 	}
-	catch(...)
+	catch (...)
 	{
 		Utils::log("错误：读取地址为 0x%X 的内容失败。", currentAddress);
 	}
@@ -923,7 +1141,7 @@ T Utils::writeMemory(T value, Arg... offset)
 		if (finalAddress != NULL)
 			return (*(T*)finalAddress = value);
 	}
-	catch(...)
+	catch (...)
 	{
 		Utils::log("错误：读取地址为 0x%X 的内容失败。", currentAddress);
 	}
