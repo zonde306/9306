@@ -5,7 +5,7 @@
 
 // D3D 的函数 jmp 挂钩
 static DetourXS *g_detReset, *g_detPresent, *g_detEndScene, *g_detDrawIndexedPrimitive,
-	*g_detCreateQuery;
+*g_detCreateQuery;
 
 CNetVars* g_pNetVars;
 CInterfaces g_cInterfaces;
@@ -181,7 +181,7 @@ FnTraceLine UTIL_TraceRay;					// 光线跟踪
 typedef const char*(__cdecl* FnWeaponIdToAlias)(unsigned int);
 FnWeaponIdToAlias WeaponIdToAlias;			// 获取武器的名字
 
-// -------------------------------- Cheats Function --------------------------------
+											// -------------------------------- Cheats Function --------------------------------
 void thirdPerson();
 void showSpectator();
 void bindAlias(int);
@@ -196,7 +196,10 @@ static float g_fAimbotFieldOfView = 30.0f;								// 自动瞄准角度
 static CBaseEntity* g_pCurrentAiming;									// 当前的自动瞄准目标
 static DWORD g_iClientModules, g_iEngineModules, g_iMaterialModules;	// 有用的 DLL 文件地址
 static bool g_bDrawBoxEsp = true, g_bTriggerBot = false, g_bAimBot = false, g_bAutoBunnyHop = true,
-	g_bRapidFire = true, g_bSilentAimbot = false, g_bAutoStrafe = false, g_bDrawCrosshairs = true;
+g_bRapidFire = true, g_bSilentAimbot = false, g_bAutoStrafe = false, g_bDrawCrosshairs = true;
+
+std::string GetZombieClassName(CBaseEntity* player);
+bool IsValidEntity(CBaseEntity* entity);
 
 DWORD WINAPI StartCheat(LPVOID params)
 {
@@ -249,7 +252,7 @@ DWORD WINAPI StartCheat(LPVOID params)
 	else
 		Utils::log("UTIL_TraceRay not found");
 
-	if((WeaponIdToAlias = (FnWeaponIdToAlias)Utils::FindPattern("client.dll",
+	if ((WeaponIdToAlias = (FnWeaponIdToAlias)Utils::FindPattern("client.dll",
 		XorStr("55 8B EC 8B 45 08 83 F8 37"))) != nullptr)
 		Utils::log("WeaponIdToAlias = 0x%X", (DWORD)WeaponIdToAlias);
 	else
@@ -285,9 +288,9 @@ DWORD WINAPI StartCheat(LPVOID params)
 	/*
 	if (g_cInterfaces.ClientModeHook && indexes::SharedCreateMove > -1)
 	{
-		oCreateMoveShared = (FnCreateMoveShared)g_cInterfaces.ClientModeHook->HookFunction(indexes::SharedCreateMove, Hooked_CreateMoveShared);
-		g_cInterfaces.ClientModeHook->HookTable(true);
-		Utils::log("oCreateMoveShared = 0x%X", (DWORD)oCreateMoveShared);
+	oCreateMoveShared = (FnCreateMoveShared)g_cInterfaces.ClientModeHook->HookFunction(indexes::SharedCreateMove, Hooked_CreateMoveShared);
+	g_cInterfaces.ClientModeHook->HookTable(true);
+	Utils::log("oCreateMoveShared = 0x%X", (DWORD)oCreateMoveShared);
 	}
 	*/
 
@@ -415,14 +418,14 @@ DWORD WINAPI StartCheat(LPVOID params)
 
 					// 攻击者（击杀者）
 					int attacker = g_cInterfaces.Engine->GetPlayerForUserID(event->GetInt("attacker"));
-					if(attacker <= 0)
+					if (attacker <= 0)
 						attacker = event->GetInt("attackerentid");
 
 					if (victim <= 0)
 						return;
 
 					CBaseEntity* entity = g_cInterfaces.ClientEntList->GetClientEntity(victim);
-					if (entity == nullptr)
+					if (!IsValidEntity(entity))
 						return;
 
 					if ((DWORD)entity == (DWORD)g_pCurrentAiming)
@@ -430,11 +433,17 @@ DWORD WINAPI StartCheat(LPVOID params)
 
 					/*
 					Utils::log("player %d death, killed by %d%s", victim, attacker,
-						(event->GetBool("headshot") ? " | headshot" : ""));
+					(event->GetBool("headshot") ? " | headshot" : ""));
 					*/
-				}
 
-				if (_strcmpi(eventName, "infected_death") == 0)
+					if (g_pDrawRender)
+					{
+						g_pDrawRender->PushRenderText(DrawManager::BLUE, "player %s killed by %d%s",
+							GetZombieClassName(entity).c_str(), attacker,
+							(event->GetBool("headshot") ? " + headshot" : ""));
+					}
+				}
+				else if (_strcmpi(eventName, "infected_death") == 0)
 				{
 					int victim = event->GetInt("infected_id");
 					if (victim <= 0)
@@ -443,7 +452,7 @@ DWORD WINAPI StartCheat(LPVOID params)
 					int attacker = g_cInterfaces.Engine->GetPlayerForUserID(event->GetInt("attacker"));
 
 					CBaseEntity* entity = g_cInterfaces.ClientEntList->GetClientEntity(victim);
-					if (entity == nullptr)
+					if (!IsValidEntity(entity))
 						return;
 
 					if ((DWORD)entity == (DWORD)g_pCurrentAiming)
@@ -451,8 +460,277 @@ DWORD WINAPI StartCheat(LPVOID params)
 
 					/*
 					Utils::log("infected %d death, killed by %d%s", victim, attacker,
-						(event->GetBool("headshot") ? " | headshot" : ""));
+					(event->GetBool("headshot") ? " | headshot" : ""));
 					*/
+
+					if (g_pDrawRender)
+					{
+						g_pDrawRender->PushRenderText(DrawManager::BLUE, "infected %s killed by %d%s",
+							GetZombieClassName(entity).c_str(), attacker,
+							(event->GetBool("headshot") ? " + headshot" : ""));
+					}
+				}
+				else if (_strcmpi(eventName, "player_spawn") == 0)
+				{
+					int client = g_cInterfaces.Engine->GetPlayerForUserID(event->GetInt("userid"));
+					if (client <= 0)
+						return;
+
+					CBaseEntity* entity = g_cInterfaces.ClientEntList->GetClientEntity(client);
+					if (!IsValidEntity(entity))
+						return;
+
+					if (g_pDrawRender)
+					{
+						g_pDrawRender->PushRenderText(DrawManager::BLUE, "player %s spawned",
+							GetZombieClassName(entity).c_str());
+					}
+				}
+				else if (_strcmpi(eventName, "player_connect") == 0)
+				{
+					if (event->GetInt("bot"))
+						return;
+
+					const char* name = event->GetString("name");
+					const char* steamId = event->GetString("networkid");
+					const char* ip = event->GetString("address");
+
+					if (g_pDrawRender)
+					{
+						g_pDrawRender->PushRenderText(DrawManager::ORANGE,
+							"client %s (%s) connect... ip %s", name, steamId, ip);
+					}
+				}
+				else if (_strcmpi(eventName, "player_disconnect") == 0)
+				{
+					if (event->GetInt("bot"))
+						return;
+
+					const char* name = event->GetString("name");
+					const char* steamId = event->GetString("networkid");
+					const char* reason = event->GetString("reason");
+
+					if (g_pDrawRender)
+					{
+						g_pDrawRender->PushRenderText(DrawManager::ORANGE,
+							"client %s (%s) disconnect... reason %s", name, steamId, reason);
+					}
+				}
+				else if (_strcmpi(eventName, "player_say") == 0 || _strcmpi(eventName, "player_chat") == 0)
+				{
+					int client = g_cInterfaces.Engine->GetPlayerForUserID(event->GetInt("userid"));
+					const char* text = event->GetString("text");
+
+					bool teamOnly = (eventName[7] == 'c' ? event->GetBool("teamonly") : false);
+
+					if (client <= 0 || text == nullptr || text[0] == '\0' || !teamOnly)
+						return;
+
+					CBaseEntity* entity = g_cInterfaces.ClientEntList->GetClientEntity(client);
+					if (!IsValidEntity(entity))
+						return;
+
+					if (g_pDrawRender)
+					{
+						int team = entity->GetTeam();
+						if (team == 2)
+						{
+							g_pDrawRender->PushRenderText(DrawManager::SKYBLUE,
+								"%s: %s", GetZombieClassName(entity).c_str(), text);
+						}
+						else if (team == 3)
+						{
+							g_pDrawRender->PushRenderText(DrawManager::RED,
+								"%s: %s", GetZombieClassName(entity).c_str(), text);
+						}
+						else
+						{
+							g_pDrawRender->PushRenderText(DrawManager::WHITE,
+								"%s: %s", GetZombieClassName(entity).c_str(), text);
+						}
+					}
+				}
+				else if (_strcmpi(eventName, "player_team") == 0)
+				{
+					if (event->GetBool("disconnect"))
+						return;
+
+					int client = g_cInterfaces.Engine->GetPlayerForUserID(event->GetInt("userid"));
+					int oldTeam = event->GetInt("oldteam");
+					int newTeam = event->GetInt("team");
+					if (client <= 0 || newTeam == 0)
+						return;
+
+					CBaseEntity* entity = g_cInterfaces.ClientEntList->GetClientEntity(client);
+					if (!IsValidEntity(entity))
+						return;
+
+					if (g_pDrawRender)
+					{
+						g_pDrawRender->PushRenderText(DrawManager::ORANGE,
+							"player %s join %d from %d", GetZombieClassName(entity).c_str(),
+							newTeam, oldTeam);
+					}
+				}
+				else if (_strcmpi(eventName, "door_unlocked") == 0)
+				{
+					int client = g_cInterfaces.Engine->GetPlayerForUserID(event->GetInt("userid"));
+					bool checkpoint = event->GetBool("checkpoint");
+					if (client <= 0 || !checkpoint)
+						return;
+
+					g_pDrawRender->PushRenderText(DrawManager::ORANGE,
+						"saferoom unlock by %d", client);
+				}
+				else if (_strcmpi(eventName, "vote_started") == 0)
+				{
+					const char* issue = event->GetString("issue");
+					const char* param = event->GetString("param1");
+					const char* data = event->GetString("votedata");
+					int team = event->GetInt("team");
+					int voter = event->GetInt("initiator");
+
+					if (team <= 1 || voter <= 0)
+						return;
+
+					CBaseEntity* entity = g_cInterfaces.ClientEntList->GetClientEntity(voter);
+					if (!IsValidEntity(entity))
+						return;
+
+					if (g_pDrawRender)
+					{
+						g_pDrawRender->PushRenderText(DrawManager::PINK,
+							"%s start team %d vote, issue: %s, param: %s, data: %s",
+							GetZombieClassName(entity).c_str(), team, issue, param, data);
+					}
+				}
+				else if (_strcmpi(eventName, "vote_passed") == 0)
+				{
+					const char* param = event->GetString("param1");
+					const char* details = event->GetString("details");
+					int team = event->GetInt("team");
+
+					if (g_pDrawRender)
+					{
+						g_pDrawRender->PushRenderText(DrawManager::PINK,
+							"team %d vote passed, param: %s, details: %s",
+							team, param, details);
+					}
+				}
+				else if (_strcmpi(eventName, "vote_cast_yes") == 0)
+				{
+					int client = event->GetInt("entityid");
+					int team = event->GetInt("team");
+
+					if (client <= 0 || team <= 1)
+						return;
+
+					CBaseEntity* entity = g_cInterfaces.ClientEntList->GetClientEntity(client);
+					if (!IsValidEntity(entity))
+						return;
+
+					if (g_pDrawRender)
+					{
+						g_pDrawRender->PushRenderText(DrawManager::PINK,
+							"team %d player %s vote yes", team, GetZombieClassName(entity).c_str());
+					}
+				}
+				else if (_strcmpi(eventName, "vote_cast_no") == 0)
+				{
+					int client = event->GetInt("entityid");
+					int team = event->GetInt("team");
+
+					if (client <= 0 || team <= 1)
+						return;
+
+					CBaseEntity* entity = g_cInterfaces.ClientEntList->GetClientEntity(client);
+					if (!IsValidEntity(entity))
+						return;
+
+					if (g_pDrawRender)
+					{
+						g_pDrawRender->PushRenderText(DrawManager::PINK,
+							"team %d player %s vote no", team, GetZombieClassName(entity).c_str());
+					}
+				}
+				else if (_strcmpi(eventName, "tank_spawn") == 0)
+				{
+					int client = g_cInterfaces.Engine->GetPlayerForUserID(event->GetInt("userid"));
+					if (client <= 0)
+						return;
+
+					if (g_pDrawRender)
+					{
+						g_pDrawRender->PushRenderText(DrawManager::RED, "tank spawn!!! %d", client);
+					}
+				}
+				else if (_strcmpi(eventName, "friendly_fire") == 0)
+				{
+					// 受害者
+					int victim = g_cInterfaces.Engine->GetPlayerForUserID(event->GetInt("userid"));
+
+					// 攻击者
+					int attacker = g_cInterfaces.Engine->GetPlayerForUserID(event->GetInt("attacker"));
+
+					// 是谁的错
+					int guilty = g_cInterfaces.Engine->GetPlayerForUserID(event->GetInt("guilty"));
+
+					// 伤害类型
+					// int damageType = event->GetInt("type");
+
+					if (victim <= 0 || attacker <= 0)
+						return;
+
+					CBaseEntity* entityAttacker = g_cInterfaces.ClientEntList->GetClientEntity(attacker);
+					CBaseEntity* entityVictim = g_cInterfaces.ClientEntList->GetClientEntity(victim);
+					if (!IsValidEntity(entityAttacker) || !IsValidEntity(entityVictim))
+						return;
+
+					if (g_pDrawRender)
+					{
+						int team = entityAttacker->GetTeam();
+						if (team == 2)
+						{
+							g_pDrawRender->PushRenderText(DrawManager::SKYBLUE,
+								"%s attack firends %s guilty is %s",
+								GetZombieClassName(entityAttacker).c_str(),
+								GetZombieClassName(entityVictim).c_str(),
+								(guilty == victim ? "victim" : "attacker"));
+						}
+						else if (team == 3)
+						{
+							g_pDrawRender->PushRenderText(DrawManager::RED,
+								"%s attack firends %s guilty is %s",
+								GetZombieClassName(entityAttacker).c_str(),
+								GetZombieClassName(entityVictim).c_str(),
+								(guilty == victim ? "victim" : "attacker"));
+						}
+						else
+						{
+							g_pDrawRender->PushRenderText(DrawManager::WHITE,
+								"%s attack firends %s guilty is %s",
+								GetZombieClassName(entityAttacker).c_str(),
+								GetZombieClassName(entityVictim).c_str(),
+								(guilty == victim ? "victim" : "attacker"));
+						}
+					}
+				}
+				else if (_strcmpi(eventName, "tank_killed") == 0)
+				{
+					// 受害者
+					int victim = g_cInterfaces.Engine->GetPlayerForUserID(event->GetInt("userid"));
+
+					// 攻击者
+					int attacker = g_cInterfaces.Engine->GetPlayerForUserID(event->GetInt("attacker"));
+
+					if (victim <= 0)
+						return;
+
+					if (g_pDrawRender)
+					{
+						g_pDrawRender->PushRenderText(DrawManager::GREEN,
+							"tank %d killed by %d", victim, attacker);
+					}
 				}
 			}
 		};
@@ -463,6 +741,20 @@ DWORD WINAPI StartCheat(LPVOID params)
 
 		if (!g_cInterfaces.GameEvent->AddListener(listener, "infected_death", false))
 			Utils::log("HookEvent infected_death fail");
+
+		g_cInterfaces.GameEvent->AddListener(listener, "player_spawn", false);
+		g_cInterfaces.GameEvent->AddListener(listener, "player_connect", false);
+		g_cInterfaces.GameEvent->AddListener(listener, "player_disconnect", false);
+		g_cInterfaces.GameEvent->AddListener(listener, "player_chat", false);
+		g_cInterfaces.GameEvent->AddListener(listener, "player_team", false);
+		g_cInterfaces.GameEvent->AddListener(listener, "door_unlocked", false);
+		g_cInterfaces.GameEvent->AddListener(listener, "vote_started", false);
+		g_cInterfaces.GameEvent->AddListener(listener, "vote_passed", false);
+		g_cInterfaces.GameEvent->AddListener(listener, "vote_cast_yes", false);
+		g_cInterfaces.GameEvent->AddListener(listener, "vote_cast_no", false);
+		g_cInterfaces.GameEvent->AddListener(listener, "tank_spawn", false);
+		g_cInterfaces.GameEvent->AddListener(listener, "friendly_fire", false);
+		g_cInterfaces.GameEvent->AddListener(listener, "tank_killed", false);
 	}
 
 	return 0;
@@ -513,17 +805,17 @@ void thirdPerson()
 		/*
 		if (local->GetNetProp<int>("m_hObserverTarget", "DT_BasePlayer") == -1)
 		{
-			// 第三人称
-			local->SetNetProp<int>("m_hObserverTarget", 0, "DT_BasePlayer");
-			local->SetNetProp<int>("m_iObserverMode", 1, "DT_BasePlayer");
-			local->SetNetProp<int>("m_bDrawViewmodel", 0, "DT_BasePlayer");
+		// 第三人称
+		local->SetNetProp<int>("m_hObserverTarget", 0, "DT_BasePlayer");
+		local->SetNetProp<int>("m_iObserverMode", 1, "DT_BasePlayer");
+		local->SetNetProp<int>("m_bDrawViewmodel", 0, "DT_BasePlayer");
 		}
 		else if (local->GetNetProp<int>("m_hObserverTarget", "DT_BasePlayer") == 0)
 		{
-			// 第一人称
-			local->SetNetProp<int>("m_hObserverTarget", -1, "DT_BasePlayer");
-			local->SetNetProp<int>("m_iObserverMode", 0, "DT_BasePlayer");
-			local->SetNetProp<int>("m_bDrawViewmodel", 1, "DT_BasePlayer");
+		// 第一人称
+		local->SetNetProp<int>("m_hObserverTarget", -1, "DT_BasePlayer");
+		local->SetNetProp<int>("m_iObserverMode", 0, "DT_BasePlayer");
+		local->SetNetProp<int>("m_bDrawViewmodel", 1, "DT_BasePlayer");
 		}
 		*/
 	}
@@ -845,7 +1137,7 @@ void RunEnginePrediction(CUserCmd* cmd)
 	CBaseEntity* client = GetLocalClient();
 	if (g_cInterfaces.MoveHelper == nullptr || cmd == nullptr || client == nullptr)
 		return;
-	
+
 	float curTime = g_cInterfaces.Globals->curtime;
 	float frameTime = g_cInterfaces.Globals->frametime;
 	int flags = client->GetNetProp<int>("m_fFlags", "DT_BasePlayer");
@@ -876,7 +1168,7 @@ bool IsValidEntity(CBaseEntity* entity)
 	try
 	{
 		if (entity == nullptr || !(cc = entity->GetClientClass()) || (id = cc->m_ClassID) == ET_WORLD ||
-			 !IsValidEntityId(id) || entity->IsDormant())
+			!IsValidEntityId(id) || entity->IsDormant())
 			return false;
 
 		solid = entity->GetNetProp<int>("m_usSolidFlags", "DT_BaseCombatCharacter");
@@ -1411,7 +1703,7 @@ HRESULT WINAPI Hooked_CreateQuery(IDirect3DDevice9* device, D3DQUERYTYPE type, I
 
 	/*	不要启用这个，会导致屏幕变黑的
 	if (type == D3DQUERYTYPE_OCCLUSION)
-		type = D3DQUERYTYPE_TIMESTAMP;
+	type = D3DQUERYTYPE_TIMESTAMP;
 	*/
 
 	return oCreateQuery(device, type, query);
@@ -1725,7 +2017,7 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 
 			int aiming = *(int*)(local + m_iCrosshairsId);
 			CBaseEntity* target = (aiming > 0 ? g_cInterfaces.ClientEntList->GetClientEntity(aiming) : GetAimingTarget(-1));
-			
+
 #ifdef _DEBUG
 			try
 			{
@@ -2239,7 +2531,7 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 			// 显示全部玩家
 			/*
 			if (GetAsyncKeyState(VK_CAPITAL) & 0x01)
-				showSpectator();
+			showSpectator();
 			*/
 
 			// 打开/关闭 自动连跳的自动保持速度

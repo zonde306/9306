@@ -27,9 +27,19 @@ public:
 
 		va_list argp;
 		va_start(argp, Command);
-		vsprintf_s(cmd, Command, argp);
+		int len = vsprintf_s(cmd, Command, argp);
 		va_end(argp);
 		
+		// È¥³ýÎÞÐ§×Ö·û
+		for (int i = 0; i < len; ++i)
+		{
+			if (cmd[i] == '\0')
+				break;
+
+			if (cmd[i] == '\n' || cmd[i] == '\r' || cmd[i] == '\t')
+				cmd[i] = ' ';
+		}
+
 		typedef void(__thiscall* Fn)(void*, const char*);
 		return ((Fn)VMT.GetFunction(this, indexes::ClientCmd))(this, cmd);
 	}
