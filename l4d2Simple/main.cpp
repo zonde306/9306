@@ -182,7 +182,7 @@ FnTraceLine UTIL_TraceRay;					// 光线跟踪
 typedef const char*(__cdecl* FnWeaponIdToAlias)(unsigned int);
 FnWeaponIdToAlias WeaponIdToAlias;			// 获取武器的名字
 
-											// -------------------------------- Cheats Function --------------------------------
+// -------------------------------- Cheats Function --------------------------------
 void thirdPerson();
 void showSpectator();
 void bindAlias(int);
@@ -496,11 +496,13 @@ DWORD WINAPI StartCheat(LPVOID params)
 					const char* steamId = event->GetString("networkid");
 					const char* ip = event->GetString("address");
 
+					/*
 					if (g_pDrawRender)
 					{
 						g_pDrawRender->PushRenderText(DrawManager::ORANGE,
 							"client %s (%s) connect... ip %s", name, steamId, ip);
 					}
+					*/
 				}
 				else if (_strcmpi(eventName, "player_disconnect") == 0)
 				{
@@ -511,11 +513,13 @@ DWORD WINAPI StartCheat(LPVOID params)
 					const char* steamId = event->GetString("networkid");
 					const char* reason = event->GetString("reason");
 
+					/*
 					if (g_pDrawRender)
 					{
 						g_pDrawRender->PushRenderText(DrawManager::ORANGE,
 							"client %s (%s) disconnect... reason %s", name, steamId, reason);
 					}
+					*/
 				}
 				else if (_strcmpi(eventName, "player_say") == 0 || _strcmpi(eventName, "player_chat") == 0)
 				{
@@ -566,12 +570,14 @@ DWORD WINAPI StartCheat(LPVOID params)
 					if (!IsValidEntity(entity))
 						return;
 
+					/*
 					if (g_pDrawRender)
 					{
 						g_pDrawRender->PushRenderText(DrawManager::ORANGE,
 							"player %s join %d from %d", GetZombieClassName(entity).c_str(),
 							newTeam, oldTeam);
 					}
+					*/
 				}
 				else if (_strcmpi(eventName, "door_unlocked") == 0)
 				{
@@ -743,7 +749,10 @@ DWORD WINAPI StartCheat(LPVOID params)
 		if (!g_cInterfaces.GameEvent->AddListener(listener, "infected_death", false))
 			Utils::log("HookEvent infected_death fail");
 
-		g_cInterfaces.GameEvent->AddListener(listener, "player_spawn", false);
+		if (!g_cInterfaces.GameEvent->AddListener(listener, "player_spawn", false))
+			Utils::log("HookEvent player_spawn fail");
+
+		/*
 		g_cInterfaces.GameEvent->AddListener(listener, "player_connect", false);
 		g_cInterfaces.GameEvent->AddListener(listener, "player_disconnect", false);
 		g_cInterfaces.GameEvent->AddListener(listener, "player_chat", false);
@@ -756,6 +765,7 @@ DWORD WINAPI StartCheat(LPVOID params)
 		g_cInterfaces.GameEvent->AddListener(listener, "tank_spawn", false);
 		g_cInterfaces.GameEvent->AddListener(listener, "friendly_fire", false);
 		g_cInterfaces.GameEvent->AddListener(listener, "tank_killed", false);
+		*/
 	}
 
 	return 0;
@@ -1684,7 +1694,8 @@ HRESULT WINAPI Hooked_EndScene(IDirect3DDevice9* device)
 		Vector myEyeOrigin = local->GetEyePosition();
 		Vector myOrigin = local->GetAbsOrigin();
 
-		int maxEntity = g_cInterfaces.ClientEntList->GetHighestEntityIndex();
+		// int maxEntity = g_cInterfaces.ClientEntList->GetHighestEntityIndex();
+		int maxEntity = 512;	// GetHighestEntityIndex 一般得到的是 2048，但每帧遍历 2048 次会严重降低 fps
 		for (int i = 1; i <= maxEntity; ++i)
 		{
 			CBaseEntity* entity = g_cInterfaces.ClientEntList->GetClientEntity(i);
@@ -1743,6 +1754,7 @@ HRESULT WINAPI Hooked_EndScene(IDirect3DDevice9* device)
 
 					// 去除 float 的小数位，因为没必要
 					ss << std::setprecision(0);
+					ss.precision(0);
 
 					// 检查是否为生还者
 					if (classId == ET_SURVIVORBOT || classId == ET_CTERRORPLAYER)
@@ -1762,7 +1774,7 @@ HRESULT WINAPI Hooked_EndScene(IDirect3DDevice9* device)
 						else
 						{
 							// 生还者显示血量，临时血量
-							ss << "[" << entity->GetHealth() << " + " <<
+							ss << "[" << entity->GetHealth() << " + " << std::setprecision(0) <<
 								entity->GetNetProp<float>("m_healthBuffer", "DT_TerrorPlayer") << "] ";
 						}
 					}
@@ -1810,10 +1822,11 @@ HRESULT WINAPI Hooked_EndScene(IDirect3DDevice9* device)
 							DrawManager::ORANGE, ss.str().c_str());
 					}
 
+					// 清空内容
 					ss.str("");
 
 					// 显示距离
-					ss << dist;
+					ss << std::setprecision(0) << dist;
 
 					// 给生还者显示弹药
 					if (classId == ET_SURVIVORBOT || classId == ET_CTERRORPLAYER)
@@ -1962,14 +1975,16 @@ HRESULT WINAPI Hooked_EndScene(IDirect3DDevice9* device)
 			}
 #endif
 
-			D3DCOLOR color = DrawManager::GREEN;
+			// 默认绿色准星，根据瞄准的东西会有不同的颜色
+			D3DCOLOR color = DrawManager::LAWNGREEN;
+
 			if (target != nullptr)
 			{
 				int classId = target->GetClientClass()->m_ClassID;
 				if (target->GetTeam() == local->GetTeam())
 				{
-					// 敌人 - 红色
-					color = DrawManager::RED;
+					// 队友 - 蓝色
+					color = DrawManager::BLUE;
 				}
 				else if (classId == ET_INFECTED)
 				{
@@ -1980,6 +1995,11 @@ HRESULT WINAPI Hooked_EndScene(IDirect3DDevice9* device)
 				{
 					// Witch - 粉色
 					color = DrawManager::PINK;
+				}
+				else
+				{
+					// 敌人 - 红色
+					color = DrawManager::RED;
 				}
 			}
 			
@@ -2227,7 +2247,7 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 						else
 						{
 							// 生还者显示血量，临时血量
-							ss << L"[" << entity->GetHealth() << L" + " <<
+							ss << L"[" << entity->GetHealth() << L" + " << std::setprecision(0) <<
 								entity->GetNetProp<float>("m_healthBuffer", "DT_TerrorPlayer") << "] ";
 						}
 					}
@@ -2274,7 +2294,7 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 					ss.str(L"");
 
 					// 显示距离
-					ss << dist;
+					ss << std::setprecision(0) << dist;
 
 					// 给生还者显示弹药
 					if (classId == ET_SURVIVORBOT || classId == ET_CTERRORPLAYER)
