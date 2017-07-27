@@ -1447,8 +1447,10 @@ Vector GetHeadHitboxPosition(CBaseEntity* entity)
 		break;
 	}
 
+	/*
 	if (!position.IsValid())
 		position = GetHeadPosition(entity);
+	*/
 
 	return position;
 }
