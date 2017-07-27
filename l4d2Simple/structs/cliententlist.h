@@ -20,5 +20,4 @@ public:
 		typedef CBaseEntity*(__thiscall* Fn)(void*, void*);
 		return ((Fn)VMT.GetFunction(this, indexes::GetClientEntityFromHandle))(this, Handle);
 	}
-
 };

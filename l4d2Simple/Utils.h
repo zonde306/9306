@@ -268,7 +268,7 @@ public:
 	void RenderCircle(D3DCOLOR color, int x, int y, int r, int resolution = 64);
 	void RenderText(D3DCOLOR color, int x, int y, bool centered, const char* fmt, ...);
 	void RenderText(D3DCOLOR color, int x, int y, bool centered, const wchar_t* fmt, ...);
-	void FillRect(D3DCOLOR color, int x, int y, int w, int h);
+	void RenderFillRect(D3DCOLOR color, int x, int y, int w, int h);
 
 #ifndef ORIGINAL_CD3DFONT
 	HRESULT DrawString2(float x, float y, D3DCOLOR color, const char* text, ...);
@@ -286,8 +286,11 @@ public:
 	void DrawFilledRect(int x, int y, int width, int height, D3DCOLOR color);
 	void DrawCircle(int x, int y, int radius, D3DCOLOR color);
 
-	// 将文本添加到限时绘制队列，这些文本会在添加后的 3 秒之后自动消失
+	// 将文本添加到限时绘制队列，这些文本会在添加后的 5 秒之后自动消失
 	void PushRenderText(D3DCOLOR color, const char* text, ...);
+	
+	// 获取当前字体的大小
+	inline int GetFontSize();
 
 	/*
 	* Below are some functions that you can implement yourself as an exercise
@@ -335,10 +338,10 @@ protected:
 
 	struct TextQueue
 	{
-		TextQueue(D3DCOLOR color, const std::string& text) :
+		TextQueue(D3DCOLOR color, const std::string& text, int second = 3) :
 			text(text), color(color)
 		{
-			destoryTime = time(nullptr) + 3;
+			destoryTime = time(nullptr) + second;
 		}
 
 		std::string text;
@@ -648,7 +651,7 @@ void DrawManager::RenderText(D3DCOLOR color, int x, int y, bool centered, const 
 	}
 }
 
-void DrawManager::FillRect(D3DCOLOR color, int x, int y, int w, int h)
+void DrawManager::RenderFillRect(D3DCOLOR color, int x, int y, int w, int h)
 {
 	D3DVertex vertices[4] =
 	{
@@ -826,7 +829,12 @@ void DrawManager::PushRenderText(D3DCOLOR color, const char* text, ...)
 
 	va_end(ap);
 
-	this->m_textDrawQueue.push_back(DrawManager::TextQueue(color, std::move(buffer)));
+	this->m_textDrawQueue.push_back(DrawManager::TextQueue(color, std::move(buffer), 5));
+}
+
+inline int DrawManager::GetFontSize()
+{
+	return m_iFontSize;
 }
 
 // GBK 转 UTF-8

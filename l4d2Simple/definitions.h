@@ -479,19 +479,78 @@ enum WeaponID_t
 enum EntityType_t
 {
 	ET_INVALID = -1,
+	ET_TANKROCK = 13,
+	ET_WORLD = 260,
+
+	// 生还者
 	ET_CTERRORPLAYER = 231,
 	ET_SURVIVORBOT = 274,
-	ET_BOOMER = 0,
+
+	// 普感
 	ET_INFECTED = 263,
-	ET_TANK = 275,
 	ET_WITCH = 276,
+
+	// 特感
+	ET_BOOMER = 0,
+	ET_TANK = 275,
 	ET_JOCKEY = 264,
 	ET_SPITTER = 271,
 	ET_CHARGER = 99,
 	ET_HUNTER = 262,
 	ET_SMOKER = 269,
-	ET_TANKROCK = 13,
-	ET_WORLD = 260
+	
+	// 武器 - 冲锋枪
+	ET_WeaponMP5 = 164,
+	ET_WeaponSilenced = 165,
+
+	// 武器 - 霰弹枪
+	ET_WeaponAuto = 2,
+	ET_WeaponSpas = 162,
+	ET_WeaponChrome = 161,
+	ET_WeaponPump = 148,
+
+	// 武器 - 步枪
+	ET_WeaponAK47 = 152,
+	ET_WeaponDesert = 153,
+	ET_WeaponSG552 = 155,
+	ET_WeaponRifle = 1,
+	ET_WeaponM60 = 154,
+	ET_WeaponGrenadeLauncher = 96,
+
+	// 武器 - 狙击枪
+	ET_WeaponScout = 170,
+	ET_WeaponMilitary = 169,
+	ET_WeaponAWP = 168,
+	
+	// 武器 - 手枪
+	ET_WeaponMagnum = 116,
+	ET_WeaponPistol = 131,
+	
+	// 武器 - 近战武器
+	ET_WeaponChainsaw = 39,
+	ET_WeaponMelee = 230,
+
+	// 武器 - 投掷武器
+	ET_WeaponPipeBomb = 129,
+	ET_WeaponMolotov = 118,
+	ET_WeaponVomitjar = 106,
+	
+	// 武器 - 医疗品/升级包
+	ET_WeaponIncendiary = 111,
+	ET_WeaponExplosive = 110,
+	ET_WeaponDefibrillator = 109,
+	ET_WeaponFirstAidKit = 73,
+	
+	// 武器 - 药物
+	ET_WeaponPainPills = 121,
+	ET_WeaponAdrenaline = 105,
+	
+	// 武器 - 携带物品
+	ET_WeaponOxygen = 120,
+	ET_WeaponGnome = 95,
+	ET_WeaponGascan = 94,
+	ET_WeaponFirework = 72,
+	ET_WeaponCola = 44
 };
 
 enum ZombieClass_t
