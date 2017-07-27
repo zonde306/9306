@@ -507,7 +507,7 @@ void DrawManager::EndRendering()
 		{
 			// »æÖÆÎÄ±¾
 #ifndef ORIGINAL_CD3DFONT
-			this->DrawString2(10.0f, m_iFontSize * ++drawQueue + 10.0f, i->color, i->text.c_str());
+			this->DrawString2(10.0f, m_iFontSize * ++drawQueue + 12.0f, i->color, i->text.c_str());
 #else
 			this->DrawString2(25.0f, 15.0f * drawQueue++, i->color, Utils::c2w(i->text).c_str());
 #endif

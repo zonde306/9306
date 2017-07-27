@@ -2544,7 +2544,7 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 				if (g_pDrawRender != nullptr)
 				{
 					g_pDrawRender->PushRenderText(DrawManager::WHITE, "auto strafe %s",
-						(g_bDrawBoxEsp ? "enable" : "disable"));
+						(g_bAutoStrafe ? "enable" : "disable"));
 				}
 			}
 
@@ -2558,7 +2558,7 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 				if (g_pDrawRender != nullptr)
 				{
 					g_pDrawRender->PushRenderText(DrawManager::WHITE, "trigger bot %s",
-						(g_bDrawBoxEsp ? "enable" : "disable"));
+						(g_bTriggerBot ? "enable" : "disable"));
 				}
 			}
 
@@ -2572,7 +2572,7 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 				if (g_pDrawRender != nullptr)
 				{
 					g_pDrawRender->PushRenderText(DrawManager::WHITE, "auto aim %s",
-						(g_bDrawBoxEsp ? "enable" : "disable"));
+						(g_bAimBot ? "enable" : "disable"));
 				}
 			}
 
@@ -2586,7 +2586,7 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 				if (g_pDrawRender != nullptr)
 				{
 					g_pDrawRender->PushRenderText(DrawManager::WHITE, "auto bhop %s",
-						(g_bDrawBoxEsp ? "enable" : "disable"));
+						(g_bAutoBunnyHop ? "enable" : "disable"));
 				}
 			}
 
@@ -2600,7 +2600,7 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 				if (g_pDrawRender != nullptr)
 				{
 					g_pDrawRender->PushRenderText(DrawManager::WHITE, "silent aimbot %s",
-						(g_bDrawBoxEsp ? "enable" : "disable"));
+						(g_bSilentAimbot ? "enable" : "disable"));
 				}
 			}
 
