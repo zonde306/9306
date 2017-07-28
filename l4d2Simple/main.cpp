@@ -200,7 +200,7 @@ static CUserCmd* g_pUserCommands;										// 本地玩家当前按键
 std::map<std::string, ConVar*> g_tConVar;								// 控制台变量
 static float g_fAimbotFieldOfView = 30.0f;								// 自动瞄准角度
 static CBaseEntity* g_pCurrentAiming;									// 当前的自动瞄准目标
-static DWORD g_iClientModules, g_iEngineModules, g_iMaterialModules;	// 有用的 DLL 文件地址
+static DWORD g_iClientBase, g_iEngineBase, g_iMaterialModules;	// 有用的 DLL 文件地址
 static bool g_bDrawBoxEsp = true, g_bTriggerBot = false, g_bAimBot = false, g_bAutoBunnyHop = true,
 	g_bRapidFire = true, g_bSilentAimbot = false, g_bAutoStrafe = false, g_bDrawCrosshairs = true;
 
@@ -209,12 +209,12 @@ bool IsValidEntity(CBaseEntity* entity);
 
 DWORD WINAPI StartCheat(LPVOID params)
 {
-	g_iClientModules = Utils::GetModuleBase("client.dll");
-	g_iEngineModules = Utils::GetModuleBase("engine.dll");
+	g_iClientBase = Utils::GetModuleBase("client.dll");
+	g_iEngineBase = Utils::GetModuleBase("engine.dll");
 	g_iMaterialModules = Utils::GetModuleBase("materialsystem.dll");
 
-	Utils::log("client.dll 0x%X", g_iClientModules);
-	Utils::log("engine.dll 0x%X", g_iEngineModules);
+	Utils::log("client.dll 0x%X", g_iClientBase);
+	Utils::log("engine.dll 0x%X", g_iEngineBase);
 	Utils::log("materialsystem.dll 0x%X", g_iMaterialModules);
 	Utils::log("VEngineClient 0x%X", (DWORD)g_cInterfaces.Engine);
 	Utils::log("EngineTraceClient 0x%X", (DWORD)g_cInterfaces.Trace);
@@ -241,32 +241,33 @@ DWORD WINAPI StartCheat(LPVOID params)
 		XorStr("55 8B EC B8 ? ? ? ? E8 ? ? ? ? A1 ? ? ? ? 33 C5 89 45 FC 53 56 57 E8"))) != nullptr)
 	{
 		g_pbSendPacket = (bool*)((DWORD)oCL_Move + 0x91);
-		Utils::log("CL_Move = 0x%X | bSendPacket = 0x%X", (DWORD)oCL_Move, (DWORD)g_pbSendPacket);
+		Utils::log("CL_Move = engine.dll + 0x%X | bSendPacket = 0x%X",
+			(DWORD)oCL_Move - g_iEngineBase, (DWORD)g_pbSendPacket);
 	}
 	else
 		Utils::log("CL_Move not found");
 
 	if ((SharedRandomFloat = (FnSharedRandomFloat)Utils::FindPattern("client.dll",
 		XorStr("55 8B EC 83 EC 08 A1 ? ? ? ? 53 56 57 8B 7D 14 8D 4D 14 51 89 7D F8 89 45 FC E8 ? ? ? ? 6A 04 8D 55 FC 52 8D 45 14 50 E8 ? ? ? ? 6A 04 8D 4D F8 51 8D 55 14 52 E8 ? ? ? ? 8B 75 08 56 E8 ? ? ? ? 50 8D 45 14 56 50 E8 ? ? ? ? 8D 4D 14 51 E8 ? ? ? ? 8B 15 ? ? ? ? 8B 5D 14 83 C4 30 83 7A 30 00 74 26 57 53 56 68 ? ? ? ? 68 ? ? ? ? 8D 45 14 68 ? ? ? ? 50 C7 45 ? ? ? ? ? FF 15 ? ? ? ? 83 C4 1C 53 B9 ? ? ? ? FF 15 ? ? ? ? D9 45 10"))) != nullptr)
-		Utils::log("SharedRandomFloat = 0x%X", (DWORD)SharedRandomFloat);
+		Utils::log("SharedRandomFloat = client.dll + 0x%X", (DWORD)SharedRandomFloat - g_iClientBase);
 	else
 		Utils::log("SharedRandomFloat not found");
 
 	if ((UTIL_TraceRay = (FnTraceLine)Utils::FindPattern("client.dll",
 		XorStr("53 8B DC 83 EC 08 83 E4 F0 83 C4 04 55 8B 6B 04 89 6C 24 04 8B EC 83 EC 6C 56 8B 43 08"))) != nullptr)
-		Utils::log("UTIL_TraceRay = 0x%X", (DWORD)UTIL_TraceRay);
+		Utils::log("UTIL_TraceRay = client.dll + 0x%X", (DWORD)UTIL_TraceRay - g_iClientBase);
 	else
 		Utils::log("UTIL_TraceRay not found");
 
 	if ((WeaponIdToAlias = (FnWeaponIdToAlias)Utils::FindPattern("client.dll",
 		XorStr("55 8B EC 8B 45 08 83 F8 37"))) != nullptr)
-		Utils::log("WeaponIdToAlias = 0x%X", (DWORD)WeaponIdToAlias);
+		Utils::log("WeaponIdToAlias = client.dll + 0x%X", (DWORD)WeaponIdToAlias - g_iClientBase);
 	else
 		Utils::log("WeaponIdToAlias not found");
 
 	if ((DispatchUserMessage = (FnDispatchUserMessage)Utils::FindPattern("client.dll",
 		XorStr("55 8B EC 8B 45 08 83 EC 28 85 C0"))) != nullptr)
-		Utils::log("DispatchUserMessage = 0x%X", (DWORD)DispatchUserMessage);
+		Utils::log("DispatchUserMessage = client.dll + 0x%X", (DWORD)DispatchUserMessage - g_iClientBase);
 	else
 		Utils::log("DispatchUserMessage not found");
 
@@ -278,7 +279,8 @@ DWORD WINAPI StartCheat(LPVOID params)
 	{
 		g_cInterfaces.ClientModeHook = std::make_unique<CVMTHookManager>(g_cInterfaces.ClientMode);
 		// printo("ClientModePtr", g_cInterfaces.ClientMode);
-		Utils::log("ClientModeShared = 0x%X", (DWORD)g_cInterfaces.ClientMode);
+		Utils::log("GetClientMode = client.dll + 0x%X", (DWORD)GetClientModeNormal - g_iClientBase);
+		Utils::log("g_pClientMode = 0x%X", (DWORD)g_cInterfaces.ClientMode);
 		Utils::log("m_pChatElement = 0x%X", (DWORD)g_cInterfaces.ClientMode->GetHudChat());
 	}
 	else
@@ -2450,6 +2452,7 @@ finish_draw:
 	oPaintTraverse(pPanel, panel, forcePaint, allowForce);
 }
 
+static bool* bSendPacket;
 void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frametime, bool active)
 {
 	static bool showHint = true;
@@ -2460,7 +2463,7 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 
 	DWORD dwEBP = NULL;
 	__asm mov dwEBP, ebp;
-	bool* bSendPacket = (bool*)(*(byte**)dwEBP - 0x21);
+	bSendPacket = (bool*)(*(byte**)dwEBP - 0x21);
 
 	oCreateMove(sequence_number, input_sample_frametime, active);
 
@@ -2780,21 +2783,21 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 				else
 				{
 #endif
-					if (Utils::readMemory<int>(g_iClientModules + r_drawothermodels) == 2)
+					if (Utils::readMemory<int>(g_iClientBase + r_drawothermodels) == 2)
 					{
-						Utils::writeMemory(1, g_iClientModules + r_drawothermodels);
-						Utils::writeMemory(0, g_iClientModules + cl_drawshadowtexture);
+						Utils::writeMemory(1, g_iClientBase + r_drawothermodels);
+						Utils::writeMemory(0, g_iClientBase + cl_drawshadowtexture);
 					}
 					else
 					{
-						Utils::writeMemory(2, g_iClientModules + r_drawothermodels);
-						Utils::writeMemory(1, g_iClientModules + cl_drawshadowtexture);
+						Utils::writeMemory(2, g_iClientBase + r_drawothermodels);
+						Utils::writeMemory(1, g_iClientBase + cl_drawshadowtexture);
 					}
 
 					g_cInterfaces.Engine->ClientCmd("echo \"r_drawothermodels set %d\"",
-						Utils::readMemory<int>(g_iClientModules + r_drawothermodels));
+						Utils::readMemory<int>(g_iClientBase + r_drawothermodels));
 					g_cInterfaces.Engine->ClientCmd("echo \"cl_drawshadowtexture set %d\"",
-						Utils::readMemory<int>(g_iClientModules + cl_drawshadowtexture));
+						Utils::readMemory<int>(g_iClientBase + cl_drawshadowtexture));
 #ifdef USE_CVAR_CHANGE
 				}
 #endif
@@ -2863,7 +2866,7 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 				else
 				{
 #endif
-					char* mode = Utils::readMemory<char*>(g_iClientModules + mp_gamemode);
+					char* mode = Utils::readMemory<char*>(g_iClientBase + mp_gamemode);
 					if (mode != nullptr)
 					{
 						DWORD oldProtect = NULL;
@@ -2905,11 +2908,11 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 				}
 #endif
 
-				if (Utils::readMemory<int>(g_iEngineModules + sv_cheats) != 1)
+				if (Utils::readMemory<int>(g_iEngineBase + sv_cheats) != 1)
 				{
-					Utils::writeMemory(1, g_iEngineModules + sv_cheats);
+					Utils::writeMemory(1, g_iEngineBase + sv_cheats);
 					g_cInterfaces.Engine->ClientCmd("echo \"sv_cheats set %d\"",
-						Utils::readMemory<int>(g_iEngineModules + sv_cheats));
+						Utils::readMemory<int>(g_iEngineBase + sv_cheats));
 				}
 			}
 
@@ -3009,14 +3012,14 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 					g_tConVar["sv_consistency"]->SetValue(0);
 #endif
 
-				if (Utils::readMemory<int>(g_iEngineModules + sv_pure) != 0 ||
-					Utils::readMemory<int>(g_iEngineModules + sv_consistency) != 0)
+				if (Utils::readMemory<int>(g_iEngineBase + sv_pure) != 0 ||
+					Utils::readMemory<int>(g_iEngineBase + sv_consistency) != 0)
 				{
-					Utils::writeMemory(0, g_iEngineModules + sv_pure);
-					Utils::writeMemory(0, g_iEngineModules + sv_consistency);
+					Utils::writeMemory(0, g_iEngineBase + sv_pure);
+					Utils::writeMemory(0, g_iEngineBase + sv_consistency);
 
 					g_cInterfaces.Engine->ClientCmd("echo \"sv_pure and sv_consistency set %d\"",
-						Utils::readMemory<int>(g_iEngineModules + sv_pure));
+						Utils::readMemory<int>(g_iEngineBase + sv_pure));
 				}
 			}
 

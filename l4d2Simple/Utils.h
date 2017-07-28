@@ -973,9 +973,9 @@ DWORD Utils::FindPattern(DWORD dwAddress, DWORD dwLength, const std::string& szP
 
 DWORD Utils::FindPattern(const std::string& szModules, const std::string& szPattern)
 {
-	static HMODULE hmModule = GetModuleHandleSafe(szModules);
-	static PIMAGE_DOS_HEADER pDOSHeader = (PIMAGE_DOS_HEADER)hmModule;
-	static PIMAGE_NT_HEADERS pNTHeaders = (PIMAGE_NT_HEADERS)(((DWORD)hmModule) + pDOSHeader->e_lfanew);
+	HMODULE hmModule = GetModuleHandleSafe(szModules);
+	PIMAGE_DOS_HEADER pDOSHeader = (PIMAGE_DOS_HEADER)hmModule;
+	PIMAGE_NT_HEADERS pNTHeaders = (PIMAGE_NT_HEADERS)(((DWORD)hmModule) + pDOSHeader->e_lfanew);
 	return FindPattern(((DWORD)hmModule) + pNTHeaders->OptionalHeader.BaseOfCode, ((DWORD)hmModule) + pNTHeaders->OptionalHeader.SizeOfCode, szPattern);
 }
 
