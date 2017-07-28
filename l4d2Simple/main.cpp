@@ -2,20 +2,26 @@
 
 #define USE_PLAYER_INFO
 #define USE_CVAR_CHANGE
-#define USE_D3D_DRAW
+// #define USE_D3D_DRAW
 
 // D3D 的函数 jmp 挂钩
-static DetourXS *g_detReset, *g_detPresent, *g_detEndScene, *g_detDrawIndexedPrimitive,
-*g_detCreateQuery;
+static std::unique_ptr<DetourXS> g_pDetourReset, g_pDetourPresent, g_pDetourEndScene,
+	g_pDetourDrawIndexedPrimitive, g_pDetourCreateQuery;
 
-CNetVars* g_pNetVars;
+std::unique_ptr<CNetVars> g_pNetVars;
 CInterfaces g_cInterfaces;
 
 // D3D Device 虚表挂钩
-static CVMTHookManager* g_vmtDeviceHooker;
+static std::unique_ptr<CVMTHookManager> g_pVMTDevice;
 
 // 当前 dll 文件实例
 HINSTANCE g_hMyInstance;
+
+// D3D EndScene 绘制工具
+static std::unique_ptr<DrawManager> g_pDrawRender;
+
+// D3D9 Device 钩子
+static std::unique_ptr<D3D9Hooker> g_pDeviceHooker;
 
 DWORD WINAPI StartCheat(LPVOID params);
 
@@ -29,7 +35,7 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved)
 		g_cInterfaces.GetInterfaces();
 
 		// 初始化 NetProp 表
-		g_pNetVars = new CNetVars();
+		g_pNetVars = std::make_unique<CNetVars>();
 
 		// se异常捕获器
 		_set_se_translator([](unsigned int expCode, EXCEPTION_POINTERS* pExp) -> void
@@ -92,17 +98,18 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved)
 	}
 	else if (reason == DLL_PROCESS_DETACH)
 	{
-		DETOURXS_DESTORY(g_detReset);
-		DETOURXS_DESTORY(g_detPresent);
-		DETOURXS_DESTORY(g_detEndScene);
-		DETOURXS_DESTORY(g_detDrawIndexedPrimitive);
-		DETOURXS_DESTORY(g_detCreateQuery);
+		DETOURXS_DESTORY(g_pDetourReset);
+		DETOURXS_DESTORY(g_pDetourPresent);
+		DETOURXS_DESTORY(g_pDetourEndScene);
+		DETOURXS_DESTORY(g_pDetourDrawIndexedPrimitive);
+		DETOURXS_DESTORY(g_pDetourCreateQuery);
 		VMTHOOK_DESTORY(g_cInterfaces.ClientModeHook);
 		VMTHOOK_DESTORY(g_cInterfaces.PanelHook);
 		VMTHOOK_DESTORY(g_cInterfaces.ClientHook);
 		VMTHOOK_DESTORY(g_cInterfaces.PredictionHook);
 		VMTHOOK_DESTORY(g_cInterfaces.ModelRenderHook);
-		VMTHOOK_DESTORY(g_vmtDeviceHooker);
+		VMTHOOK_DESTORY(g_cInterfaces.GameEventHook);
+		VMTHOOK_DESTORY(g_pVMTDevice);
 	}
 
 	return TRUE;
@@ -188,8 +195,6 @@ void showSpectator();
 void bindAlias(int);
 
 // -------------------------------- Golbals Variable --------------------------------
-static DrawManager* g_pDrawRender;										// D3D EndScene 绘制工具
-static D3D9Hooker* g_pDeviceHooker;										// D3D9 Device 钩子
 static bool* g_pbSendPacket;											// 数据包是否发送到服务器
 static CUserCmd* g_pUserCommands;										// 本地玩家当前按键
 std::map<std::string, ConVar*> g_tConVar;								// 控制台变量
@@ -197,7 +202,7 @@ static float g_fAimbotFieldOfView = 30.0f;								// 自动瞄准角度
 static CBaseEntity* g_pCurrentAiming;									// 当前的自动瞄准目标
 static DWORD g_iClientModules, g_iEngineModules, g_iMaterialModules;	// 有用的 DLL 文件地址
 static bool g_bDrawBoxEsp = true, g_bTriggerBot = false, g_bAimBot = false, g_bAutoBunnyHop = true,
-g_bRapidFire = true, g_bSilentAimbot = false, g_bAutoStrafe = false, g_bDrawCrosshairs = true;
+	g_bRapidFire = true, g_bSilentAimbot = false, g_bAutoStrafe = false, g_bDrawCrosshairs = true;
 
 std::string GetZombieClassName(CBaseEntity* player);
 bool IsValidEntity(CBaseEntity* entity);
@@ -271,7 +276,7 @@ DWORD WINAPI StartCheat(LPVOID params)
 		XorStr("8B 0D ? ? ? ? 8B 01 8B 90 ? ? ? ? FF D2 8B 04 85 ? ? ? ? C3"))) != nullptr &&
 		(g_cInterfaces.ClientMode = GetClientModeNormal()) != nullptr)
 	{
-		g_cInterfaces.ClientModeHook = new CVMTHookManager(g_cInterfaces.ClientMode);
+		g_cInterfaces.ClientModeHook = std::make_unique<CVMTHookManager>(g_cInterfaces.ClientMode);
 		// printo("ClientModePtr", g_cInterfaces.ClientMode);
 		Utils::log("ClientModeShared = 0x%X", (DWORD)g_cInterfaces.ClientMode);
 		Utils::log("m_pChatElement = 0x%X", (DWORD)g_cInterfaces.ClientMode->GetHudChat());
@@ -371,22 +376,22 @@ DWORD WINAPI StartCheat(LPVOID params)
 #endif
 	}
 
-	g_pDeviceHooker = new D3D9Hooker();
+	g_pDeviceHooker = std::make_unique<D3D9Hooker>();
 	g_pDeviceHooker->StartDeviceHook([&](IDirect3D9* pD3D, IDirect3DDevice9* pDeivce, DWORD* pVMT) -> void
 	{
 		// 虚函数表修改跳转
-		g_detReset = new DetourXS((void*)pVMT[16], Hooked_Reset);
-		g_detPresent = new DetourXS((void*)pVMT[17], Hooked_Present);
-		g_detEndScene = new DetourXS((void*)pVMT[42], Hooked_EndScene);
-		g_detDrawIndexedPrimitive = new DetourXS((void*)pVMT[82], Hooked_DrawIndexedPrimitive);
-		g_detCreateQuery = new DetourXS((void*)pVMT[118], Hooked_CreateQuery);
+		g_pDetourReset = std::make_unique<DetourXS>((void*)pVMT[16], Hooked_Reset);
+		g_pDetourPresent = std::make_unique<DetourXS>((void*)pVMT[17], Hooked_Present);
+		g_pDetourEndScene = std::make_unique<DetourXS>((void*)pVMT[42], Hooked_EndScene);
+		g_pDetourDrawIndexedPrimitive = std::make_unique<DetourXS>((void*)pVMT[82], Hooked_DrawIndexedPrimitive);
+		g_pDetourCreateQuery = std::make_unique<DetourXS>((void*)pVMT[118], Hooked_CreateQuery);
 
 		// 获取原函数
-		oReset = (FnReset)g_detReset->GetTrampoline();
-		oPresent = (FnPresent)g_detPresent->GetTrampoline();
-		oEndScene = (FnEndScene)g_detEndScene->GetTrampoline();
-		oDrawIndexedPrimitive = (FnDrawIndexedPrimitive)g_detDrawIndexedPrimitive->GetTrampoline();
-		oCreateQuery = (FnCreateQuery)g_detCreateQuery->GetTrampoline();
+		oReset = (FnReset)g_pDetourReset->GetTrampoline();
+		oPresent = (FnPresent)g_pDetourPresent->GetTrampoline();
+		oEndScene = (FnEndScene)g_pDetourEndScene->GetTrampoline();
+		oDrawIndexedPrimitive = (FnDrawIndexedPrimitive)g_pDetourDrawIndexedPrimitive->GetTrampoline();
+		oCreateQuery = (FnCreateQuery)g_pDetourCreateQuery->GetTrampoline();
 
 		Utils::log("Trampoline oReset = 0x%X", (DWORD)oReset);
 		Utils::log("Trampoline oPresent = 0x%X", (DWORD)oPresent);
@@ -777,23 +782,23 @@ void ResetDeviceHook(IDirect3DDevice9* device)
 	g_pDeviceHooker->GetDevice() = device;
 
 	// 将修改的 Jump 还原
-	DETOURXS_DESTORY(g_detReset);
-	DETOURXS_DESTORY(g_detPresent);
-	DETOURXS_DESTORY(g_detEndScene);
-	DETOURXS_DESTORY(g_detDrawIndexedPrimitive);
-	DETOURXS_DESTORY(g_detCreateQuery);
+	DETOURXS_DESTORY(g_pDetourReset);
+	DETOURXS_DESTORY(g_pDetourPresent);
+	DETOURXS_DESTORY(g_pDetourEndScene);
+	DETOURXS_DESTORY(g_pDetourDrawIndexedPrimitive);
+	DETOURXS_DESTORY(g_pDetourCreateQuery);
 
 	// 使用 VMT 来 Hook
-	g_vmtDeviceHooker = new CVMTHookManager(device);
-	oReset = g_vmtDeviceHooker->SetupHook(16, Hooked_Reset);
-	oPresent = g_vmtDeviceHooker->SetupHook(17, Hooked_Present);
-	oEndScene = g_vmtDeviceHooker->SetupHook(42, Hooked_EndScene);
-	oDrawIndexedPrimitive = g_vmtDeviceHooker->SetupHook(82, Hooked_DrawIndexedPrimitive);
-	oCreateQuery = g_vmtDeviceHooker->SetupHook(118, Hooked_CreateQuery);
-	g_vmtDeviceHooker->HookTable(true);
+	g_pVMTDevice = std::make_unique<CVMTHookManager>(device);
+	oReset = g_pVMTDevice->SetupHook(16, Hooked_Reset);
+	oPresent = g_pVMTDevice->SetupHook(17, Hooked_Present);
+	oEndScene = g_pVMTDevice->SetupHook(42, Hooked_EndScene);
+	oDrawIndexedPrimitive = g_pVMTDevice->SetupHook(82, Hooked_DrawIndexedPrimitive);
+	oCreateQuery = g_pVMTDevice->SetupHook(118, Hooked_CreateQuery);
+	g_pVMTDevice->HookTable(true);
 
 	// 初始化绘图
-	g_pDrawRender = new DrawManager(device);
+	g_pDrawRender = std::make_unique<DrawManager>(device);
 
 	Utils::log("pD3DDevice = 0x%X", (DWORD)device);
 	Utils::log("oReset = 0x%X", (DWORD)oReset);
@@ -1604,6 +1609,9 @@ HRESULT WINAPI Hooked_Reset(IDirect3DDevice9* device, D3DPRESENT_PARAMETERS* pp)
 		showHint = true;
 	}
 
+	if (!g_pDrawRender)
+		g_pDrawRender = std::make_unique<DrawManager>(device);
+
 	g_pDrawRender->OnLostDevice();
 
 	HRESULT result = oReset(device, pp);
@@ -1647,6 +1655,10 @@ HRESULT WINAPI Hooked_EndScene(IDirect3DDevice9* device)
 		ResetDeviceHook(device);
 		showHint = true;
 	}
+
+	// 初始化
+	if (!g_pDrawRender)
+		g_pDrawRender = std::make_unique<DrawManager>(device);
 
 	// 备份之前绘制设置
 	g_pDrawRender->BeginRendering();
@@ -1768,7 +1780,7 @@ HRESULT WINAPI Hooked_EndScene(IDirect3DDevice9* device)
 						{
 							// 玩家被控了
 							ss << "[" << entity->GetHealth() +
-								entity->GetNetProp<float>("m_healthBuffer", "DT_TerrorPlayer") <<
+								(int)entity->GetNetProp<float>("m_healthBuffer", "DT_TerrorPlayer") <<
 								" + grabbed] ";
 						}
 						else
@@ -1826,7 +1838,7 @@ HRESULT WINAPI Hooked_EndScene(IDirect3DDevice9* device)
 					ss.str("");
 
 					// 显示距离
-					ss << std::setprecision(0) << dist;
+					ss << std::setprecision(0) << (int)dist;
 
 					// 给生还者显示弹药
 					if (classId == ET_SURVIVORBOT || classId == ET_CTERRORPLAYER)
@@ -2241,7 +2253,7 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 						{
 							// 玩家被控了
 							ss << L"[" << entity->GetHealth() +
-								entity->GetNetProp<float>("m_healthBuffer", "DT_TerrorPlayer") <<
+								(int)entity->GetNetProp<float>("m_healthBuffer", "DT_TerrorPlayer") <<
 								L" + grabbed] ";
 						}
 						else
@@ -2294,7 +2306,7 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 					ss.str(L"");
 
 					// 显示距离
-					ss << std::setprecision(0) << dist;
+					ss << std::setprecision(0) << (int)dist;
 
 					// 给生还者显示弹药
 					if (classId == ET_SURVIVORBOT || classId == ET_CTERRORPLAYER)

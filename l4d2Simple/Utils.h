@@ -10,110 +10,103 @@
 
 extern HINSTANCE g_hMyInstance;
 
-class CNetVars
+CNetVars::CNetVars()
 {
-public:
-	CNetVars()
+	_tables.clear();
+
+	ClientClass* clientClass = g_cInterfaces.Client->GetAllClasses();
+	if (clientClass == nullptr)
 	{
-		_tables.clear();
-
-		ClientClass* clientClass = g_cInterfaces.Client->GetAllClasses();
-		if (clientClass == nullptr)
-		{
-			Utils::log("ERROR: ClientClass was not found");
-			return;
-		}
-
-		while (clientClass)
-		{
-			RecvTable *recvTable = clientClass->m_pRecvTable;
-
-			_tables.push_back(recvTable);
-
-			clientClass = clientClass->m_pNext;
-		}
+		Utils::log("ERROR: ClientClass was not found");
+		return;
 	}
 
-	int GetOffset(const char* tableName, const char* propName)
+	while (clientClass)
 	{
-		int offset = GetProp(tableName, propName);
-		if (offset <= -1)
-		{
-			Utils::log("ERROR: Failed to find offset for prop: %s from table: %s", propName, tableName);
-			return -1;
-		}
+		RecvTable *recvTable = clientClass->m_pRecvTable;
 
+		_tables.push_back(recvTable);
 
-		return offset;
+		clientClass = clientClass->m_pNext;
+	}
+}
+
+int CNetVars::GetOffset(const char* tableName, const char* propName)
+{
+	int offset = GetProp(tableName, propName);
+	if (offset <= -1)
+	{
+		Utils::log("ERROR: Failed to find offset for prop: %s from table: %s", propName, tableName);
+		return -1;
 	}
 
-private:
-	int GetProp(const char* tableName, const char* propName, RecvProp **prop = 0)
-	{
-		RecvTable* recvTable = GetTable(tableName);
-		if (!recvTable)
-		{
-			Utils::log("ERROR: Failed to find table: %s", tableName);
-			return -1;
-		}
-		int offset = GetProp(recvTable, propName, prop);
-		if (offset <= -1)
-		{
-			Utils::log("ERROR: Failed to find offset for prop: %s from table: %s", propName, tableName);
-			return -1;
-		}
 
-		return offset;
+	return offset;
+}
+
+int CNetVars::GetProp(const char* tableName, const char* propName, RecvProp **prop)
+{
+	RecvTable* recvTable = GetTable(tableName);
+	if (!recvTable)
+	{
+		Utils::log("ERROR: Failed to find table: %s", tableName);
+		return -1;
 	}
-	int GetProp(RecvTable *recvTable, const char *propName, RecvProp **prop = 0)
+	int offset = GetProp(recvTable, propName, prop);
+	if (offset <= -1)
 	{
-		int extraOffset = 0;
-		for (int i = 0; i < recvTable->m_nProps; ++i)
+		Utils::log("ERROR: Failed to find offset for prop: %s from table: %s", propName, tableName);
+		return -1;
+	}
+
+	return offset;
+}
+int CNetVars::GetProp(RecvTable *recvTable, const char *propName, RecvProp **prop)
+{
+	int extraOffset = 0;
+	for (int i = 0; i < recvTable->m_nProps; ++i)
+	{
+		RecvProp* recvProp = &recvTable->m_pProps[i];
+
+		RecvTable *child = recvProp->m_pDataTable;
+
+		if (child && (child->m_nProps > 0))
 		{
-			RecvProp* recvProp = &recvTable->m_pProps[i];
-
-			RecvTable *child = recvProp->m_pDataTable;
-
-			if (child && (child->m_nProps > 0))
+			int tmp = GetProp(child, propName, prop);
+			if (tmp)
 			{
-				int tmp = GetProp(child, propName, prop);
-				if (tmp)
-				{
-					extraOffset += (recvProp->m_Offset + tmp);
-				}
+				extraOffset += (recvProp->m_Offset + tmp);
 			}
-
-			if (_stricmp(recvProp->m_pVarName, propName))
-				continue;
-			if (prop)
-			{
-				*prop = recvProp;
-			}
-			return (recvProp->m_Offset + extraOffset);
 		}
-		return extraOffset;
+
+		if (_stricmp(recvProp->m_pVarName, propName))
+			continue;
+		if (prop)
+		{
+			*prop = recvProp;
+		}
+		return (recvProp->m_Offset + extraOffset);
 	}
+	return extraOffset;
+}
 
-	RecvTable *GetTable(const char *tableName)
+RecvTable *CNetVars::GetTable(const char *tableName)
+{
+	if (_tables.empty())
 	{
-		if (_tables.empty())
-		{
-			Utils::log("ERROR: Failed to find table: %s (_tables is empty)", tableName);
-			return nullptr;
-		}
-
-		for each (RecvTable* table in _tables)
-		{
-			if (!table)
-				continue;
-			if (_stricmp(table->m_pNetTableName, tableName) == 0)
-				return table;
-		}
+		Utils::log("ERROR: Failed to find table: %s (_tables is empty)", tableName);
 		return nullptr;
 	}
 
-	std::vector<RecvTable*> _tables;
-};
+	for each (RecvTable* table in _tables)
+	{
+		if (!table)
+			continue;
+		if (_stricmp(table->m_pNetTableName, tableName) == 0)
+			return table;
+	}
+	return nullptr;
+}
 
 class D3D9Hooker
 {
@@ -288,7 +281,7 @@ public:
 
 	// 将文本添加到限时绘制队列，这些文本会在添加后的 5 秒之后自动消失
 	void PushRenderText(D3DCOLOR color, const char* text, ...);
-	
+
 	// 获取当前字体的大小
 	inline int GetFontSize();
 
