@@ -61,6 +61,7 @@ int CNetVars::GetProp(const char* tableName, const char* propName, RecvProp **pr
 
 	return offset;
 }
+
 int CNetVars::GetProp(RecvTable *recvTable, const char *propName, RecvProp **prop)
 {
 	int extraOffset = 0;
@@ -256,11 +257,22 @@ public:
 	// 在 EndScene 之前，绘制完成之后调用
 	void EndRendering();
 
+	// 绘制一条线（必须在调用 BeginRendering 之后才可以使用）
 	void RenderLine(D3DCOLOR color, int x1, int y1, int x2, int y2);
+
+	// 绘制一个矩形（必须在调用 BeginRendering 之后才可以使用）
 	void RenderRect(D3DCOLOR color, int x, int y, int w, int h);
+
+	// 绘制一个圆形（必须在调用 BeginRendering 之后才可以使用）
 	void RenderCircle(D3DCOLOR color, int x, int y, int r, int resolution = 64);
-	void RenderText(D3DCOLOR color, int x, int y, bool centered, const char* fmt, ...);
-	void RenderText(D3DCOLOR color, int x, int y, bool centered, const wchar_t* fmt, ...);
+
+	// 绘制文本（必须在调用 BeginRendering 之后才可以使用）
+	__declspec(deprecated) void RenderText(D3DCOLOR color, int x, int y, bool centered, const char* fmt, ...);
+
+	// 绘制文本（必须在调用 BeginRendering 之后才可以使用）
+	__declspec(deprecated) void RenderText(D3DCOLOR color, int x, int y, bool centered, const wchar_t* fmt, ...);
+
+	// 绘制填充矩形（必须在调用 BeginRendering 之后才可以使用）
 	void RenderFillRect(D3DCOLOR color, int x, int y, int w, int h);
 
 #ifndef ORIGINAL_CD3DFONT
@@ -271,13 +283,28 @@ public:
 	void DrawString2(float x, float y, D3DCOLOR color, const wchar_t* text, ...);
 #endif
 
-	void DrawString(int x, int y, D3DCOLOR color, const char* text, ...);
-	void DrawString(int x, int y, D3DCOLOR color, const wchar_t* text, ...);
-	void DrawRect(int x, int y, int width, int height, D3DCOLOR color);
-	void DrawBorderedRect(int x, int y, int width, int height, D3DCOLOR filled, D3DCOLOR color);
-	void DrawLine(int x, int y, int x2, int y2, D3DCOLOR color);
-	void DrawFilledRect(int x, int y, int width, int height, D3DCOLOR color);
-	void DrawCircle(int x, int y, int radius, D3DCOLOR color);
+	// 延迟绘制一条线
+	void AddLine(D3DCOLOR color, int x1, int y1, int x2, int y2);
+
+	// 延迟绘制一个矩形
+	void AddRect(D3DCOLOR color, int x, int y, int w, int h);
+
+	// 延迟绘制一个圆形
+	void AddCircle(D3DCOLOR color, int x, int y, int r, int resolution = 64);
+
+	// 延迟绘制文本（只支持 ASCII 格式字符）
+	void AddText(D3DCOLOR color, int x, int y, bool centered, const char* fmt, ...);
+
+	// 延迟绘制一个填充矩形
+	void AddFillRect(D3DCOLOR color, int x, int y, int w, int h);
+
+	__declspec(deprecated) void DrawString(int x, int y, D3DCOLOR color, const char* text, ...);
+	__declspec(deprecated) void DrawString(int x, int y, D3DCOLOR color, const wchar_t* text, ...);
+	__declspec(deprecated) void DrawRect(int x, int y, int width, int height, D3DCOLOR color);
+	__declspec(deprecated) void DrawBorderedRect(int x, int y, int width, int height, D3DCOLOR filled, D3DCOLOR color);
+	__declspec(deprecated) void DrawLine(int x, int y, int x2, int y2, D3DCOLOR color);
+	__declspec(deprecated) void DrawFilledRect(int x, int y, int width, int height, D3DCOLOR color);
+	__declspec(deprecated) void DrawCircle(int x, int y, int radius, D3DCOLOR color);
 
 	// 将文本添加到限时绘制队列，这些文本会在添加后的 5 秒之后自动消失
 	void PushRenderText(D3DCOLOR color, const char* text, ...);
@@ -342,6 +369,35 @@ protected:
 		time_t destoryTime;
 	};
 
+	struct DelayDraw
+	{
+		DelayDraw(D3DVertex* vertex, size_t len, D3DPRIMITIVETYPE type) :
+			vertex(vertex), type(type), vertexCount(len)
+		{}
+		
+		template<size_t len>
+		DelayDraw(const D3DVertex (&vertex)[len], D3DPRIMITIVETYPE type) :
+			vertex(vertex), type(type), vertexCount(len)
+		{}
+		
+		D3DVertex* vertex;
+		D3DPRIMITIVETYPE type;
+		size_t vertexCount;
+	};
+
+	struct DelayString
+	{
+		DelayString(float x, float y, const std::string& text, D3DCOLOR = DrawManager::WHITE,
+			DWORD flags = 0, D3DCOLOR background = 0) : x(x), y(y), color(color),
+			background(background), text(text)
+		{}
+
+		float x, y;
+		unsigned int flags;
+		D3DCOLOR color, background;
+		std::string text;
+	};
+
 private:
 	void ReleaseObjects();
 	void CreateObjects();
@@ -359,6 +415,10 @@ private:
 
 	// 文本绘制队列
 	std::vector<TextQueue> m_textDrawQueue;
+	
+	// 延迟绘制
+	std::vector<DelayDraw> m_delayDraw;
+	std::vector<DelayString> m_delayString;
 };
 
 DrawManager::DrawManager(IDirect3DDevice9* pDevice, int fontSize)
@@ -520,6 +580,43 @@ void DrawManager::EndRendering()
 
 	}
 
+	// 延迟绘制文本
+	if (!m_delayString.empty())
+	{
+
+#ifndef ORIGINAL_CD3DFONT
+		this->DrawString2Begin();
+#endif
+
+		for (DelayString& each : m_delayString)
+		{
+			if (each.text.empty())
+				continue;
+
+			m_pFont->DrawText(each.x, each.y, each.color, each.text.c_str(), each.flags, each.background);
+		}
+
+#ifndef ORIGINAL_CD3DFONT
+		this->DrawString2Finish();
+#endif
+
+		m_delayString.clear();
+	}
+
+	// 延迟绘制图形
+	if (!m_delayDraw.empty())
+	{
+		for (DelayDraw& each : m_delayDraw)
+		{
+			if (each.vertex == nullptr || each.vertexCount <= 0)
+				continue;
+
+			m_pDevice->DrawPrimitiveUP(each.type, each.vertexCount, each.vertex, sizeof(D3DVertex));
+		}
+
+		m_delayDraw.clear();
+	}
+
 	m_pStateBlock->Apply();
 }
 
@@ -534,6 +631,17 @@ void DrawManager::RenderLine(D3DCOLOR color, int x1, int y1, int x2, int y2)
 	m_pDevice->DrawPrimitiveUP(D3DPT_LINELIST, 1, vertices, sizeof(D3DVertex));
 }
 
+void DrawManager::AddLine(D3DCOLOR color, int x1, int y1, int x2, int y2)
+{
+	D3DVertex vertices[2] =
+	{
+		D3DVertex((float)x1, (float)y1, 1.0f, color),
+		D3DVertex((float)x2, (float)y2, 1.0f, color)
+	};
+
+	this->m_delayDraw.push_back(DelayDraw(std::move(vertices), 1, D3DPT_LINELIST));
+}
+
 void DrawManager::RenderRect(D3DCOLOR color, int x, int y, int w, int h)
 {
 	D3DVertex vertices[5] =
@@ -545,6 +653,20 @@ void DrawManager::RenderRect(D3DCOLOR color, int x, int y, int w, int h)
 		D3DVertex((float)x, (float)y, 1.0f, color)
 	};
 	m_pDevice->DrawPrimitiveUP(D3DPT_LINESTRIP, 4, vertices, sizeof(D3DVertex));
+}
+
+void DrawManager::AddRect(D3DCOLOR color, int x, int y, int w, int h)
+{
+	D3DVertex vertices[5] =
+	{
+		D3DVertex((float)x, (float)y, 1.0f, color),
+		D3DVertex((float)(x + w), (float)y, 1.0f, color),
+		D3DVertex((float)(x + w), (float)(y + h), 1.0f, color),
+		D3DVertex((float)x, (float)(y + h), 1.0f, color),
+		D3DVertex((float)x, (float)y, 1.0f, color)
+	};
+
+	this->m_delayDraw.push_back(DelayDraw(std::move(vertices), 4, D3DPT_LINESTRIP));
 }
 
 void DrawManager::RenderCircle(D3DCOLOR color, int x, int y, int r, int resolution)
@@ -561,6 +683,26 @@ void DrawManager::RenderCircle(D3DCOLOR color, int x, int y, int r, int resoluti
 		if (i > 0)
 		{
 			RenderLine(color, (int)curPointX, (int)curPointY, (int)oldPointX, (int)oldPointY);
+		}
+		oldPointX = curPointX;
+		oldPointY = curPointY;
+	}
+}
+
+void DrawManager::AddCircle(D3DCOLOR color, int x, int y, int r, int resolution)
+{
+	float curPointX;
+	float curPointY;
+	float oldPointX;
+	float oldPointY;
+
+	for (int i = 0; i <= resolution; ++i)
+	{
+		curPointX = (float)(x + r * cos(2 * M_PI * i / resolution));
+		curPointY = (float)(y - r * sin(2 * M_PI * i / resolution));
+		if (i > 0)
+		{
+			this->AddLine(color, (int)curPointX, (int)curPointY, (int)oldPointX, (int)oldPointY);
 		}
 		oldPointX = curPointX;
 		oldPointY = curPointY;
@@ -653,7 +795,21 @@ void DrawManager::RenderFillRect(D3DCOLOR color, int x, int y, int w, int h)
 		D3DVertex((float)x, (float)(y + h), 1.0f, color),
 		D3DVertex((float)(x + w), (float)(y + h), 1.0f, color)
 	};
+
 	m_pDevice->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, &vertices[0], sizeof(D3DVertex));
+}
+
+void DrawManager::AddFillRect(D3DCOLOR color, int x, int y, int w, int h)
+{
+	D3DVertex vertices[4] =
+	{
+		D3DVertex((float)x, (float)y, 1.0f, color),
+		D3DVertex((float)(x + w), (float)y, 1.0f, color),
+		D3DVertex((float)x, (float)(y + h), 1.0f, color),
+		D3DVertex((float)(x + w), (float)(y + h), 1.0f, color)
+	};
+
+	this->m_delayDraw.push_back(DelayDraw(std::move(vertices), 2, D3DPT_TRIANGLESTRIP));
 }
 
 #ifndef ORIGINAL_CD3DFONT
@@ -669,6 +825,19 @@ HRESULT DrawManager::DrawString2(float x, float y, D3DCOLOR color, const char * 
 
 #undef DrawText
 	return m_pFont->DrawText(x, y, color, buffer, 0);
+}
+
+void DrawManager::AddText(D3DCOLOR color, int x, int y, bool centered, const char * fmt, ...)
+{
+	va_list ap;
+	va_start(ap, fmt);
+
+	char buffer[1024];
+	vsprintf_s(buffer, fmt, ap);
+
+	va_end(ap);
+
+	this->m_delayString.push_back(DelayString(x, y, std::move(buffer), color, centered));
 }
 
 inline HRESULT DrawManager::DrawString2Begin()
@@ -936,10 +1105,15 @@ std::wstring Utils::c2w(const std::string& s)
 	return result;
 }
 
-// 搜索特征码，例如 8B 0D 74 8D 70 10 8B 01 8B 90 F8 01 00 00 FF D2 8B 04 85 4C 41 78 10 C3
-// 参数 dwAddress 为开始地址，参数 dwLength 需要搜索的范围，参数 szPattern 为特征码
-DWORD Utils::FindPattern(DWORD dwAddress, DWORD dwLength, const std::string& szPattern)
+DWORD Utils::FindPattern(const std::string& szModules, const std::string& szPattern)
 {
+	HMODULE hmModule = GetModuleHandleSafe(szModules);
+	PIMAGE_DOS_HEADER pDOSHeader = (PIMAGE_DOS_HEADER)hmModule;
+	PIMAGE_NT_HEADERS pNTHeaders = (PIMAGE_NT_HEADERS)(((DWORD)hmModule) + pDOSHeader->e_lfanew);
+	
+	DWORD dwAddress = ((DWORD)hmModule) + pNTHeaders->OptionalHeader.BaseOfCode;
+	DWORD dwLength = ((DWORD)hmModule) + pNTHeaders->OptionalHeader.SizeOfCode;
+
 	const char *pat = szPattern.c_str();
 	DWORD firstMatch = NULL;
 	for (DWORD pCur = dwAddress; pCur < dwLength; pCur++)
@@ -964,19 +1138,54 @@ DWORD Utils::FindPattern(DWORD dwAddress, DWORD dwLength, const std::string& szP
 		}
 	}
 
-#ifdef _DEBUG
-	Utils::log("start = 0x%X end = 0x%X pattern = %s", dwAddress, dwLength, szPattern.c_str());
-#endif
-
 	return NULL;
 }
 
-DWORD Utils::FindPattern(const std::string& szModules, const std::string& szPattern)
+DWORD Utils::FindPattern(const std::string & szModules, const std::string & szPattern, std::string szMask)
 {
 	HMODULE hmModule = GetModuleHandleSafe(szModules);
 	PIMAGE_DOS_HEADER pDOSHeader = (PIMAGE_DOS_HEADER)hmModule;
 	PIMAGE_NT_HEADERS pNTHeaders = (PIMAGE_NT_HEADERS)(((DWORD)hmModule) + pDOSHeader->e_lfanew);
-	return FindPattern(((DWORD)hmModule) + pNTHeaders->OptionalHeader.BaseOfCode, ((DWORD)hmModule) + pNTHeaders->OptionalHeader.SizeOfCode, szPattern);
+
+	BYTE First = szPattern[0];
+	PBYTE BaseAddress = (PBYTE)(((DWORD)hmModule) + pNTHeaders->OptionalHeader.BaseOfCode);
+	PBYTE Max = (PBYTE)(BaseAddress + pNTHeaders->OptionalHeader.SizeOfCode - szPattern.length());
+
+	const static auto CompareByteArray = [](PBYTE Data, const char* Signature, const char* Mask) -> bool
+	{
+		for (; *Signature; ++Signature, ++Data, ++Mask)
+		{
+			if (*Mask == '?' || *Signature == '\x00' || *Signature == '\x2A')
+			{
+				continue;
+			}
+			if (*Data != *Signature)
+			{
+				return false;
+			}
+		}
+		return true;
+	};
+
+	if (szMask.length() < szPattern.length())
+	{
+		for (auto i = szPattern.begin() + (szPattern.length() - 1); i != szPattern.end(); ++i)
+			szMask.push_back(*i == '\x2A' || *i == '\x00' ? '?' : 'x');
+	}
+
+	for (; BaseAddress < Max; ++BaseAddress)
+	{
+		if (*BaseAddress != First)
+		{
+			continue;
+		}
+		if (CompareByteArray(BaseAddress, szPattern.c_str(), szMask.c_str()))
+		{
+			return (DWORD)BaseAddress;
+		}
+	}
+
+	return NULL;
 }
 
 HMODULE Utils::GetModuleHandleSafe(const std::string& pszModuleName)
@@ -1304,12 +1513,12 @@ void Utils::log(const wchar_t* text, ...)
 	localtime_s(&tmp, &t);
 
 	// 文件创建日期
-	strftime(ctime, 1024, "\\segt_%Y%m%d.log", &tmp);
+	strftime(ctime, 64, "\\segt_%Y%m%d.log", &tmp);
 
 	std::wfstream file(GetPath() + ctime, std::ios::out | std::ios::app | std::ios::ate);
 
 	// 日志写入时间
-	strftime(ctime, 1024, "[%H:%M:%S] ", &tmp);
+	strftime(ctime, 64, "[%H:%M:%S] ", &tmp);
 	file << c2w(ctime);
 
 #endif

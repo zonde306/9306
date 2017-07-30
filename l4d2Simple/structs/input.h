@@ -223,16 +223,18 @@ public:
 	void StartPrediction(CUserCmd* pCmd)
 	{
 		CBaseEntity* client = GetLocalClient();
-		if (g_cInterfaces.MoveHelper == nullptr || pCmd == nullptr || client == nullptr)
+		if (g_cInterfaces.MoveHelper == nullptr || pCmd == nullptr || client == nullptr ||
+			m_bPredictionRunning)
 			return;
 
+		m_bPredictionRunning = true;
 		m_flOldCurtime = g_cInterfaces.Globals->curtime;
 		m_flOldFrametime = g_cInterfaces.Globals->frametime;
 		m_flOldFrametime = client->GetNetProp<int>("m_fFlags", "DT_BasePlayer");
 
 		g_cInterfaces.Globals->curtime = client->GetTickBase() * g_cInterfaces.Globals->interval_per_tick;
 		g_cInterfaces.Globals->frametime = g_cInterfaces.Globals->interval_per_tick;
-		((IGameMovement*)g_cInterfaces.GameMovement)->StartTrackPredictionErrors(client);
+		g_cInterfaces.GameMovement->StartTrackPredictionErrors(client);
 
 		ZeroMemory(&m_MoveData, sizeof(m_MoveData));
 		g_cInterfaces.MoveHelper->SetHost(client);
@@ -244,14 +246,17 @@ public:
 	void EndPrediction(CUserCmd* pCmd)
 	{
 		CBaseEntity* client = GetLocalClient();
-		if (g_cInterfaces.MoveHelper == nullptr || pCmd == nullptr || client == nullptr)
+		if (g_cInterfaces.MoveHelper == nullptr || pCmd == nullptr || client == nullptr ||
+			!m_bPredictionRunning)
 			return;
 
-		((IGameMovement*)g_cInterfaces.GameMovement)->FinishTrackPredictionErrors(client);
+		g_cInterfaces.GameMovement->FinishTrackPredictionErrors(client);
 		g_cInterfaces.MoveHelper->SetHost(nullptr);
 		g_cInterfaces.Globals->curtime = m_flOldCurtime;
 		g_cInterfaces.Globals->frametime = m_flOldFrametime;
 		client->SetNetProp("m_fFlags", m_iOldFlags, "DT_BasePlayer");
+
+		m_bPredictionRunning = false;
 	}
 
 private:
@@ -259,6 +264,7 @@ private:
 	float m_flOldFrametime;
 	int m_iOldFlags;
 	CMoveData m_MoveData;
+	bool m_bPredictionRunning = false;
 	*/
 };
 

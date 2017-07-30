@@ -45,8 +45,8 @@ public:
 	static char* gtu(const char* gb2312);
 	static std::string w2c(const std::wstring& ws);
 	static std::wstring c2w(const std::string& s);
-	static DWORD FindPattern(DWORD dwAddress, DWORD dwLength, const std::string& szPattern);
 	static DWORD FindPattern(const std::string& szModules, const std::string& szPattern);
+	static DWORD FindPattern(const std::string& szModules, const std::string& szPattern, std::string szMask);
 	static HMODULE GetModuleHandleSafe(const std::string& pszModuleName);
 	static DWORD GetModuleBase(const std::string& ModuleName, DWORD ProcessID = 0);
 	static DWORD GetModuleBase(const std::string& ModuleName, DWORD* ModuleSize, DWORD ProcessID = 0);

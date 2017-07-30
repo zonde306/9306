@@ -109,16 +109,25 @@ public:
 		return true;
 	}
 	/*Hook/Unhook*/
-	void HookTable(bool hooked)
+	bool HookTable(bool hooked)
 	{
-		if (hooked)
+		try
 		{
-			*pObject = (DWORD)pCopyTable;
+			if (hooked)
+			{
+				*pObject = (DWORD)pCopyTable;
+			}
+			else
+			{
+				*pObject = (DWORD)pOrgTable;
+			}
 		}
-		else
+		catch (std::exception e)
 		{
-			*pObject = (DWORD)pOrgTable;
+			return false;
 		}
+
+		return true;
 	}
 
 	/*Hooks function*/

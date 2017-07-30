@@ -6,7 +6,7 @@
 
 // D3D 的函数 jmp 挂钩
 static std::unique_ptr<DetourXS> g_pDetourReset, g_pDetourPresent, g_pDetourEndScene,
-	g_pDetourDrawIndexedPrimitive, g_pDetourCreateQuery;
+	g_pDetourDrawIndexedPrimitive, g_pDetourCreateQuery, g_pDetourCL_Move, g_pDetourDebugger;
 
 std::unique_ptr<CNetVars> g_pNetVars;
 CInterfaces g_cInterfaces;
@@ -103,6 +103,8 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved)
 		DETOURXS_DESTORY(g_pDetourEndScene);
 		DETOURXS_DESTORY(g_pDetourDrawIndexedPrimitive);
 		DETOURXS_DESTORY(g_pDetourCreateQuery);
+		DETOURXS_DESTORY(g_pDetourDebugger);
+		DETOURXS_DESTORY(g_pDetourCL_Move);
 		VMTHOOK_DESTORY(g_cInterfaces.ClientModeHook);
 		VMTHOOK_DESTORY(g_cInterfaces.PanelHook);
 		VMTHOOK_DESTORY(g_cInterfaces.ClientHook);
@@ -136,7 +138,7 @@ typedef HRESULT(WINAPI* FnPresent)(IDirect3DDevice9*, const RECT*, const RECT*, 
 HRESULT WINAPI Hooked_Present(IDirect3DDevice9*, const RECT*, const RECT*, HWND, const RGNDATA*);
 static FnPresent oPresent;
 
-// -------------------------------- Game Hook Function --------------------------------
+// -------------------------------- Virtual Function Hook --------------------------------
 typedef void(__thiscall* FnPaintTraverse)(void*, unsigned int, bool, bool);
 void __fastcall Hooked_PaintTraverse(void*, void*, unsigned int, bool, bool);
 static FnPaintTraverse oPaintTraverse;
@@ -157,27 +159,29 @@ typedef int(__stdcall* FnInKeyEvent)(int, ButtonCode_t, const char *);
 int __stdcall Hooked_InKeyEvent(int, ButtonCode_t, const char *);
 static FnInKeyEvent oInKeyEvent;
 
-typedef void(__stdcall* FnRunCommand)(CBaseEntity*, CUserCmd*, CMoveHelper*);
-void __stdcall Hooked_RunCommand(CBaseEntity*, CUserCmd*, CMoveHelper*);
+typedef void(__thiscall* FnRunCommand)(void*, CBaseEntity*, CUserCmd*, CMoveHelper*);
+void __fastcall Hooked_RunCommand(void*, void*, CBaseEntity*, CUserCmd*, CMoveHelper*);
 static FnRunCommand oRunCommand;
 
 typedef void(__stdcall* FnDrawModel)(PVOID, PVOID, const ModelRenderInfo_t&, matrix3x4_t*);
 void __stdcall Hooked_DrawModel(PVOID, PVOID, const ModelRenderInfo_t&, matrix3x4_t*);
 static FnDrawModel oDrawModel;
 
-// -------------------------------- Game Call Function --------------------------------
+typedef bool(__stdcall* FnDispatchUserMessage)(int, bf_read*);
+bool __stdcall Hooked_DispatchUserMessage(int, bf_read*);
+FnDispatchUserMessage oDispatchUserMessage;
+
+// -------------------------------- General Function --------------------------------
 typedef void(__cdecl* FnConColorMsg)(class Color const&, char const*, ...);
 static FnConColorMsg PrintToConsoleColor;	// 打印信息到控制台（支持颜色）
 
 typedef void(__cdecl* FnConMsg)(char const*, ...);
 static FnConMsg PrintToConsole;				// 打印信息到控制台
 
-typedef int(__stdcall* FnCL_Move)(double, float, bool);
-int __stdcall Hooked_CL_Move(double, float, bool);
+typedef void(__cdecl* FnCL_Move)(float, bool);
+static void _CL_Move_Hooker();
+void __cdecl Hooked_CL_Move(byte, int, double, float, bool);
 FnCL_Move oCL_Move;							// 玩家数据处理
-
-typedef bool(__thiscall* FnDispatchUserMessage)(void*, int, bf_read&);
-FnDispatchUserMessage DispatchUserMessage;	// 用户消息处理
 
 typedef void(__cdecl* FnSharedRandomFloat)(const char*, float, float, int);
 FnSharedRandomFloat SharedRandomFloat;		// 随机数
@@ -189,6 +193,13 @@ FnTraceLine UTIL_TraceRay;					// 光线跟踪
 typedef const char*(__cdecl* FnWeaponIdToAlias)(unsigned int);
 FnWeaponIdToAlias WeaponIdToAlias;			// 获取武器的名字
 
+typedef bool(__thiscall* FnUserMessagesDispatch)(void*, int, bf_read&);
+FnUserMessagesDispatch DispatchUserMessage;	// 用户消息
+
+typedef bool(__cdecl* FnIsInDebugSession)();
+bool __cdecl Hooked_IsInDebugSession();
+FnIsInDebugSession oPlat_IsInDebugSession;
+
 // -------------------------------- Cheats Function --------------------------------
 void thirdPerson();
 void showSpectator();
@@ -196,11 +207,12 @@ void bindAlias(int);
 
 // -------------------------------- Golbals Variable --------------------------------
 static bool* g_pbSendPacket;											// 数据包是否发送到服务器
+static int g_iSpeedMultiple = 5;										// 加速倍数
 static CUserCmd* g_pUserCommands;										// 本地玩家当前按键
 std::map<std::string, ConVar*> g_tConVar;								// 控制台变量
 static float g_fAimbotFieldOfView = 30.0f;								// 自动瞄准角度
 static CBaseEntity* g_pCurrentAiming;									// 当前的自动瞄准目标
-static DWORD g_iClientBase, g_iEngineBase, g_iMaterialModules;	// 有用的 DLL 文件地址
+static DWORD g_iClientBase, g_iEngineBase, g_iMaterialModules;			// 有用的 DLL 文件地址
 static bool g_bDrawBoxEsp = true, g_bTriggerBot = false, g_bAimBot = false, g_bAutoBunnyHop = true,
 	g_bRapidFire = true, g_bSilentAimbot = false, g_bAutoStrafe = false, g_bDrawCrosshairs = true;
 
@@ -236,6 +248,9 @@ DWORD WINAPI StartCheat(LPVOID params)
 	Utils::log("Input 0x%X", (DWORD)g_cInterfaces.Input);
 	Utils::log("UserMessages 0x%X", (DWORD)g_cInterfaces.UserMessage);
 	Utils::log("MoveHelper 0x%X", (DWORD)g_cInterfaces.MoveHelper);
+	
+	// 这个好像是不正确的...
+	g_cInterfaces.MoveHelper = nullptr;
 
 	if ((oCL_Move = (FnCL_Move)Utils::FindPattern("engine.dll",
 		XorStr("55 8B EC B8 ? ? ? ? E8 ? ? ? ? A1 ? ? ? ? 33 C5 89 45 FC 53 56 57 E8"))) != nullptr)
@@ -243,6 +258,12 @@ DWORD WINAPI StartCheat(LPVOID params)
 		g_pbSendPacket = (bool*)((DWORD)oCL_Move + 0x91);
 		Utils::log("CL_Move = engine.dll + 0x%X | bSendPacket = 0x%X",
 			(DWORD)oCL_Move - g_iEngineBase, (DWORD)g_pbSendPacket);
+
+		/*
+		g_pDetourCL_Move = std::make_unique<DetourXS>(oCL_Move, _CL_Move_Hooker);
+		oCL_Move = (FnCL_Move)g_pDetourCL_Move->GetTrampoline();
+		Utils::log("Trampoline oCL_Move = 0x%X", (DWORD)oCL_Move);
+		*/
 	}
 	else
 		Utils::log("CL_Move not found");
@@ -265,7 +286,7 @@ DWORD WINAPI StartCheat(LPVOID params)
 	else
 		Utils::log("WeaponIdToAlias not found");
 
-	if ((DispatchUserMessage = (FnDispatchUserMessage)Utils::FindPattern("client.dll",
+	if ((DispatchUserMessage = (FnUserMessagesDispatch)Utils::FindPattern("client.dll",
 		XorStr("55 8B EC 8B 45 08 83 EC 28 85 C0"))) != nullptr)
 		Utils::log("DispatchUserMessage = client.dll + 0x%X", (DWORD)DispatchUserMessage - g_iClientBase);
 	else
@@ -293,14 +314,12 @@ DWORD WINAPI StartCheat(LPVOID params)
 		Utils::log("oPaintTraverse = 0x%X", (DWORD)oPaintTraverse);
 	}
 
-	/*
 	if (g_cInterfaces.ClientModeHook && indexes::SharedCreateMove > -1)
 	{
-	oCreateMoveShared = (FnCreateMoveShared)g_cInterfaces.ClientModeHook->HookFunction(indexes::SharedCreateMove, Hooked_CreateMoveShared);
-	g_cInterfaces.ClientModeHook->HookTable(true);
-	Utils::log("oCreateMoveShared = 0x%X", (DWORD)oCreateMoveShared);
+		oCreateMoveShared = (FnCreateMoveShared)g_cInterfaces.ClientModeHook->HookFunction(indexes::SharedCreateMove, Hooked_CreateMoveShared);
+		// g_cInterfaces.ClientModeHook->HookTable(true);
+		Utils::log("oCreateMoveShared = 0x%X", (DWORD)oCreateMoveShared);
 	}
-	*/
 
 	if (g_cInterfaces.ClientHook && indexes::CreateMove > -1)
 	{
@@ -323,10 +342,17 @@ DWORD WINAPI StartCheat(LPVOID params)
 		Utils::log("oInKeyEvent = 0x%X", (DWORD)oInKeyEvent);
 	}
 
+	if (g_cInterfaces.ClientHook && indexes::DispatchUserMessage > -1)
+	{
+		oDispatchUserMessage = (FnDispatchUserMessage)g_cInterfaces.ClientHook->HookFunction(indexes::DispatchUserMessage, Hooked_DispatchUserMessage);
+		g_cInterfaces.ClientHook->HookTable(true);
+		Utils::log("oDispatchUserMessage = 0x%X", (DWORD)oDispatchUserMessage);
+	}
+
 	if (g_cInterfaces.PredictionHook && indexes::RunCommand > -1)
 	{
-		oRunCommand = (FnRunCommand)g_cInterfaces.ClientHook->HookFunction(indexes::RunCommand, Hooked_RunCommand);
-		g_cInterfaces.ClientHook->HookTable(true);
+		oRunCommand = (FnRunCommand)g_cInterfaces.PredictionHook->HookFunction(indexes::RunCommand, Hooked_RunCommand);
+		g_cInterfaces.PredictionHook->HookTable(true);
 		Utils::log("oRunCommand = 0x%X", (DWORD)oRunCommand);
 	}
 
@@ -342,8 +368,16 @@ DWORD WINAPI StartCheat(LPVOID params)
 	{
 		PrintToConsole = (FnConMsg)GetProcAddress(tier0, "?ConMsg@@YAXPBDZZ");
 		PrintToConsoleColor = (FnConColorMsg)GetProcAddress(tier0, "?ConColorMsg@@YAXABVColor@@PBDZZ");
+		oPlat_IsInDebugSession = (FnIsInDebugSession)GetProcAddress(tier0, "Plat_IsInDebugSession");
 		Utils::log("PrintToConsole = 0x%X", (DWORD)PrintToConsole);
 		Utils::log("PrintToConsoleColor = 0x%X", (DWORD)PrintToConsoleColor);
+		Utils::log("Plat_IsInDebugSession = 0x%X", (DWORD)oPlat_IsInDebugSession);
+
+		if (oPlat_IsInDebugSession)
+		{
+			// 屏蔽调试器检查，因为检查到调试器就会自动关闭游戏的
+			g_pDetourDebugger = std::make_unique<DetourXS>(oPlat_IsInDebugSession, Hooked_IsInDebugSession);
+		}
 	}
 
 	if (g_cInterfaces.Cvar)
@@ -1872,6 +1906,54 @@ HRESULT WINAPI Hooked_EndScene(IDirect3DDevice9* device)
 							}
 						}
 					}
+					// 显示特感技能冷却时间
+					/*
+					else if (classId == ET_BOOMER || classId == ET_HUNTER || classId == ET_SMOKER ||
+						classId == ET_JOCKEY || classId == ET_CHARGER || classId == ET_SPITTER ||
+						classId == ET_TANK)
+					{
+						CBaseEntity* weapon = (classId != ET_TANK ?
+							(CBaseEntity*)entity->GetNetProp<CBaseHandle*>("m_customAbility", "DT_TerrorPlayer") :
+							(CBaseEntity*)entity->GetActiveWeapon());
+
+						if (weapon != nullptr)
+							weapon = g_cInterfaces.ClientEntList->GetClientEntityFromHandle((CBaseHandle*)weapon);
+
+						if (weapon != nullptr)
+						{
+							float serverTime = GetServerTime();
+
+							if (classId == ET_TANK)
+							{
+								// 主要攻击（拍人）
+								float primary = weapon->GetNetProp<float>("m_flNextPrimaryAttack", "DT_BaseCombatWeapon");
+
+								// 次要攻击（掷饼）
+								float secondary = weapon->GetNetProp<float>("m_flNextSecondaryAttack", "DT_BaseCombatWeapon");
+
+								// 坦克的爪子
+								if (primary >= serverTime)
+									ss << " (ready / ";
+								else
+									ss << " (" << (int)(primary - serverTime) << " / ";
+
+								// 坦克的投石
+								if (secondary >= serverTime)
+									ss << "ready)";
+								else
+									ss << (int)(secondary - serverTime) << ")";
+							}
+							else
+							{
+								float ability = weapon->GetNetProp<float>("m_duration");
+								if (ability <= 0.0f)
+									ss << " (ready)";
+								else
+									ss << "(" << (int)ability << ")";
+							}
+						}
+					}
+					*/
 
 					// 检查是否可以看见
 					if (visible)
@@ -2328,18 +2410,67 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 								if (reloading != 0)
 								{
 									// 正在换子弹
-									ss << " (reloading)";
+									ss << L" (reloading)";
 								}
 								else
 								{
 									// 没有换子弹
-									ss << " (" << clip << " / " <<
+									ss << L" (" << clip << L" / " <<
 										entity->GetNetProp<int>("m_iAmmo", "DT_TerrorPlayer", (size_t)ammoType) <<
-										")";
+										L")";
 								}
 							}
 						}
 					}
+					// 显示特感技能冷却时间
+					/*
+					else if (classId == ET_BOOMER || classId == ET_HUNTER || classId == ET_SMOKER ||
+						classId == ET_JOCKEY || classId == ET_CHARGER || classId == ET_SPITTER ||
+						classId == ET_TANK)
+					{
+						CBaseHandle* handle = (classId != ET_TANK ?
+							entity->GetNetProp<CBaseHandle*>("m_customAbility", "DT_TerrorPlayer") :
+							entity->GetNetProp<CBaseHandle*>("m_hActiveWeapon", "DT_BaseCombatCharacter"));
+
+						CBaseEntity* weapon = (handle->IsValid() ?
+							g_cInterfaces.ClientEntList->GetClientEntityFromHandle(handle):
+							nullptr);
+
+						if (weapon != nullptr)
+						{
+							float serverTime = GetServerTime();
+							
+							if (classId == ET_TANK)
+							{
+								// 主要攻击（拍人）
+								float primary = weapon->GetNetProp<float>("m_flNextPrimaryAttack", "DT_BaseCombatWeapon");
+								
+								// 次要攻击（掷饼）
+								float secondary = weapon->GetNetProp<float>("m_flNextSecondaryAttack", "DT_BaseCombatWeapon");
+								
+								// 坦克的爪子
+								if (primary <= serverTime)
+									ss << L" (ready / ";
+								else
+									ss << L" (" << (int)(primary - serverTime) << L" / ";
+
+								// 坦克的投石
+								if (secondary <= serverTime)
+									ss << L"ready)";
+								else
+									ss << (int)(secondary - serverTime) << L")";
+							}
+							else
+							{
+								float ability = weapon->GetNetProp<float>("m_duration");
+								if (ability <= 0.0f)
+									ss << L" (ready)";
+								else
+									ss << L"(" << (int)ability << L")";
+							}
+						}
+					}
+					*/
 
 					// 检查是否可以看见
 					if (visible)
@@ -2491,8 +2622,18 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 
 	float nextAttack = (weapon != nullptr ?
 		weapon->GetNetProp<float>("m_flNextPrimaryAttack", "DT_BaseCombatWeapon") : FLT_MAX);
-	int weaponId = (weapon != nullptr ? weapon->GetWeaponID() : 0);
+	
 	int myTeam = client->GetTeam();
+	int weaponId = (weapon != nullptr ? weapon->GetWeaponID() : 0);
+	int flags = client->GetNetProp<int>("m_fFlags", "DT_BasePlayer");
+
+	// 无法移动/无法转动视角修复
+	if ((flags & FL_FREEZING) || (flags & FL_FROZEN))
+	{
+		// 删除无法移动和无法转动视角的标记
+		flags &= ~(FL_FREEZING | FL_FROZEN);
+		client->SetNetProp("m_fFlags", flags, "DT_BasePlayer");
+	}
 
 	// 自动连跳
 	if (g_bAutoBunnyHop && (GetAsyncKeyState(VK_SPACE) & 0x8000))
@@ -2507,7 +2648,7 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 		}
 		else if (pCmd->buttons & IN_JUMP)
 		{
-			if (client->GetFlags() & FL_ONGROUND)
+			if (flags & FL_ONGROUND)
 			{
 				lastJump = true;
 				shouldFake = true;
@@ -2525,7 +2666,7 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 		}
 
 		// 连跳自动旋转
-		if (g_bAutoStrafe && !(client->GetFlags() & FL_ONGROUND))
+		if (g_bAutoStrafe && !(flags & FL_ONGROUND))
 		{
 			if (pCmd->mousedx < 0)
 				pCmd->sidemove = -400.f;
@@ -2537,6 +2678,7 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 
 	// 启动声音修复
 	// StartEnginePrediction(client, pCmd);
+	// g_cInterfaces.Prediction->StartPrediction(pCmd);
 
 	// 自动瞄准
 	if (g_bAimBot && weapon != nullptr && (GetAsyncKeyState(VK_LBUTTON) & 0x8000))
@@ -2700,14 +2842,44 @@ end_trigger_bot:
 
 	// 完成声音修复
 	// EndEnginePrediction(client);
+	// g_cInterfaces.Prediction->EndPrediction(pCmd);
 
 	// 近战武器快速攻击
-	if ((pCmd->buttons & IN_ZOOM) && weaponId == Weapon_Melee && myTeam == 2)
+	if(myTeam == 2 && GetAsyncKeyState(VK_XBUTTON2) & 0x8000)
 	{
-		if (nextAttack <= serverTime)
+		static enum FastMeleeStatus
 		{
-			pCmd->buttons |= IN_ATTACK;
-			g_cInterfaces.Engine->ClientCmd("wait 5; slot1; wait 5; slot2");
+			FMS_None = 0,
+			FMS_Primary = 1,
+			FMS_Secondary = 2
+		} fms = FMS_None;
+
+		switch(fms)
+		{
+		case FMS_None:
+			if (weaponId == Weapon_Melee && nextAttack <= serverTime)
+			{
+				// 近战武器攻击
+				pCmd->buttons |= IN_ATTACK;
+				fms = FMS_Primary;
+			}
+			break;
+		case FMS_Primary:
+			if (weaponId == Weapon_Melee && nextAttack > serverTime)
+			{
+				// 在攻击之后切换到主武器
+				g_cInterfaces.Engine->ClientCmd("slot1");
+				fms = FMS_Secondary;
+			}
+			break;
+		case FMS_Secondary:
+			if (weaponId != Weapon_Melee)
+			{
+				// 在主武器时切换到近战武器
+				g_cInterfaces.Engine->ClientCmd("slot2");
+				fms = FMS_None;
+			}
+			break;
 		}
 	}
 
@@ -3097,12 +3269,16 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 	}
 }
 
-void __stdcall Hooked_RunCommand(CBaseEntity* pEntity, CUserCmd* pCmd, CMoveHelper* moveHelper)
+void __fastcall Hooked_RunCommand(void* ecx, void* edx, CBaseEntity* pEntity, CUserCmd* pCmd, CMoveHelper* moveHelper)
 {
-	oRunCommand(pEntity, pCmd, moveHelper);
+	oRunCommand(ecx, pEntity, pCmd, moveHelper);
 
-	if (g_cInterfaces.MoveHelper == nullptr)
+	static bool showHint = true;
+	if (showHint || g_cInterfaces.MoveHelper == nullptr)
+	{
+		showHint = false;
 		Utils::log("MoveHelperPointer = 0x%X", (DWORD)moveHelper);
+	}
 
 	g_cInterfaces.MoveHelper = moveHelper;
 }
@@ -3133,4 +3309,101 @@ int __stdcall Hooked_InKeyEvent(int eventcode, ButtonCode_t keynum, const char *
 void __stdcall Hooked_DrawModel(PVOID context, PVOID state, const ModelRenderInfo_t& pInfo, matrix3x4_t* pCustomBoneToWorld)
 {
 	oDrawModel(context, state, pInfo, pCustomBoneToWorld);
+}
+
+bool __stdcall Hooked_DispatchUserMessage(int msg_id, bf_read* msg_data)
+{
+	static bool showHint = true;
+	if (showHint)
+	{
+		showHint = false;
+		Utils::log("Hooked_DispatchUserMessage trigged.");
+	}
+	
+	return oDispatchUserMessage(msg_id, msg_data);
+}
+
+// __usercall
+__declspec(naked) void _CL_Move_Hooker()
+{
+	__asm
+	{
+		push	ebp
+		mov		ebp, esp
+		
+		// 参数传递...
+		push	word ptr [ebp + 0x0C]	// bFinalTick	push 不支持 byte
+		push	dword ptr [ebp + 0x08]	// accumulated_extra_samples
+		fld		st(0)	// double
+		push	edi		// int
+		push	bx		// byte			push 不支持 byte
+
+		// 调用自己的 Hook 函数
+		call	Hooked_CL_Move
+
+		// 清空堆栈，好像是 16 个字节吧
+		add		esp, 16
+
+		// __usercall 相当于 __cdecl
+		ret
+	}
+}
+
+void __cdecl Hooked_CL_Move(byte toBL, int toEDI, double toST0, float accumulated_extra_samples, bool bFinalTick)
+{
+	// 把全局的 oCL_Move 修改一下
+	auto CL_Move = [&]() -> int
+	{
+		WORD wFinalTick = bFinalTick;
+		
+		// 3 个字节
+		typedef struct _TBYTE
+		{
+			WORD b[3];
+		} PTBYTE, TBYTE;
+		
+		TBYTE* ToST0 = new TBYTE();
+		ZeroMemory(ToST0, sizeof(TBYTE));
+
+		float flTmp = (float)toST0;
+		byte* tmp = (byte*)(&flTmp);
+		memcpy_s(ToST0, sizeof(TBYTE), (&tmp) + sizeof(TBYTE) - 3, 3);
+
+		__asm
+		{
+			// 寄存器传参
+			mov		bl, toBL
+			mov		edi, toEDI
+			fbld	tbyte ptr ToST0
+
+			// 堆栈传参
+			push	wFinalTick		// 不支持 push byte
+			push	accumulated_extra_samples
+
+			// 调用原函数
+			call	oCL_Move
+
+			// 清理堆栈
+			add		esp, 6
+		}
+
+	};
+
+	// 默认的 1 次调用，如果不调用会导致游戏冻结
+	CL_Move();
+
+	if (g_pUserCommands != nullptr && g_pUserCommands->buttons & IN_SPEED)
+	{
+		for (int i = 1; i < g_iSpeedMultiple; ++i)
+		{
+			// 多次调用它会有加速效果
+			CL_Move();
+		}
+	}
+
+}
+
+bool __cdecl Hooked_IsInDebugSession()
+{
+	return false;
 }
