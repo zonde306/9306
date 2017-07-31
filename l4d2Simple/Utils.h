@@ -401,6 +401,7 @@ protected:
 private:
 	void ReleaseObjects();
 	void CreateObjects();
+	void DrawQueueObject();
 
 private:
 	IDirect3DDevice9*		m_pDevice;
@@ -548,6 +549,23 @@ void DrawManager::BeginRendering()
 
 void DrawManager::EndRendering()
 {
+	try
+	{
+		this->DrawQueueObject();
+	}
+	catch (std::exception e)
+	{
+		Utils::log("%s (%d): %s", __FILE__, __LINE__, e.what());
+		this->m_delayDraw.clear();
+		this->m_delayString.clear();
+		this->m_textDrawQueue.clear();
+	}
+
+	m_pStateBlock->Apply();
+}
+
+void DrawManager::DrawQueueObject()
+{
 	// 绘制文本列表
 	if (!this->m_textDrawQueue.empty())
 	{
@@ -562,6 +580,7 @@ void DrawManager::EndRendering()
 		for (i = this->m_textDrawQueue.begin(); i != this->m_textDrawQueue.end(); )
 		{
 			// 绘制文本
+
 #ifndef ORIGINAL_CD3DFONT
 			this->DrawString2(10.0f, m_iFontSize * ++drawQueue + 12.0f, i->color, i->text.c_str());
 #else
@@ -616,8 +635,6 @@ void DrawManager::EndRendering()
 
 		m_delayDraw.clear();
 	}
-
-	m_pStateBlock->Apply();
 }
 
 void DrawManager::RenderLine(D3DCOLOR color, int x1, int y1, int x2, int y2)

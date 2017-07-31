@@ -2243,13 +2243,30 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 		g_cInterfaces.Surface->SetFontGlyphSet(font, "arial", FontSize, FW_DONTCARE, 0, 0, 0x200);
 	}
 
-	// 每一帧调用 2 次
+	/*	Panel Tree
+		MatSystemTopPanel
+			staticPanel
+				GameUI Background Panel
+				FocusOverlayPanel
+	*/
+
+	// 每一帧调用 1 次
 	if (FocusOverlayPanel > 0 && panel == FocusOverlayPanel)
 	{
+		// 不建议在这里绘制，因为这个并不是全屏幕的
 #ifndef USE_D3D_DRAW
+		/*
+		static ULONGLONG nextDrawTick = GetTickCount64();
+		ULONGLONG currentTick = GetTickCount64();
+		if (nextDrawTick > currentTick)
+		goto finish_draw;
+
+		// 每秒 10 次
+		nextDrawTick = currentTick + 100;
+		*/
+
 		CBaseEntity* local = GetLocalClient();
-		static bool ignoreFrame = false;
-		if (ignoreFrame || local == nullptr || !g_cInterfaces.Engine->IsInGame())
+		if (local == nullptr || !g_cInterfaces.Engine->IsInGame())
 			goto finish_draw;
 
 		// 目前最小距离
@@ -2600,17 +2617,16 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 			else
 				g_cInterfaces.Surface->drawCrosshair(width / 2, height / 2, 0, 255, 0);
 		}
-
-	finish_draw:
-		ignoreFrame = !ignoreFrame;
 #endif
 	}
 
-	// 每一帧调 很多次 在这里绘制非常卡
+	// 每一帧调 很多次 在这里不能做消耗较大的事情
 	if (MatSystemTopPanel > 0 && panel == MatSystemTopPanel)
 	{
-
+		// 在这里绘制会导致游戏里 fps 非常低
 	}
+
+finish_draw:
 
 	// ((FnPaintTraverse)g_cInterfaces.PanelHook->GetOriginalFunction(indexes::PaintTraverse))(ecx, panel, forcePaint, allowForce);
 	oPaintTraverse(pPanel, panel, forcePaint, allowForce);
