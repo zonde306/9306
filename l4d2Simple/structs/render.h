@@ -106,18 +106,52 @@ public:
 	}
 };
 
+
+class IMaterialSystem
+{
+public:
+	CMaterial* FindMaterial(char const* pMaterialName, const char *pTextureGroupName,
+		bool complain = true, const char *pComplainPrefix = NULL)
+	{
+		typedef CMaterial*(__thiscall* Fn)(PVOID, char const*, const char*, bool, const char*);
+		return VMT.getvfunc<Fn>(this, indexes::FindMaterial)(this, pMaterialName, pTextureGroupName,
+			complain, pComplainPrefix);
+	}
+
+};
+
 class CModelRender
 {
 public:
 	void DrawModelExecute(void* context, DrawModelState_t &state, const ModelRenderInfo_t &pInfo, matrix3x4_t *pCustomBoneToWorld)
 	{
 		typedef void(__thiscall* OriginalFn)(PVOID, void* context, DrawModelState_t &state, const ModelRenderInfo_t &pInfo, matrix3x4_t *pCustomBoneToWorld);
-		VMT.getvfunc<OriginalFn>(this, 21)(this, context, state, pInfo, pCustomBoneToWorld);
+		VMT.getvfunc<OriginalFn>(this, indexes::DrawModel)(this, context, state, pInfo, pCustomBoneToWorld);
 	}
-	void ForcedMaterialOverride(CMaterial *newMaterial, OverrideType_t nOverrideType)
+
+	void ForcedMaterialOverride(CMaterial *newMaterial, OverrideType_t nOverrideType = OVERRIDE_NORMAL)
 	{
 		typedef void(__thiscall* OriginalFn)(PVOID, CMaterial *newMaterial, OverrideType_t nOverrideType);
-		VMT.getvfunc<OriginalFn>(this, 1)(this, newMaterial, nOverrideType);
+		VMT.getvfunc<OriginalFn>(this, indexes::ForcedMaterialOverride)(this, newMaterial, nOverrideType);
+	}
+
+	int DrawModel(int flags, IClientRenderable* pRenderable, ModelInstanceHandle_t instance,
+		int entity_index, const model_t *model, Vector const& origin, QAngle const& angles,
+		int skin, int body, int hitboxset, const matrix3x4_t *modelToWorld = NULL,
+		const matrix3x4_t *pLightingOffset = NULL)
+	{
+		typedef int(__thiscall* Fn)(PVOID, int, IClientRenderable*, ModelInstanceHandle_t,
+			int, const model_t*, Vector const&, QAngle const&, int, int, int, const matrix3x4_t*,
+			const matrix3x4_t*);
+
+		return VMT.getvfunc<Fn>(this, indexes::DrawModel)(this, flags, pRenderable, instance,
+			entity_index, model, origin, angles, skin, body, hitboxset, modelToWorld, pLightingOffset);
+	}
+
+	int DrawModelEx(ModelRenderInfo_t& pInfo)
+	{
+		typedef int(__thiscall* Fn)(PVOID, ModelRenderInfo_t&);
+		return VMT.getvfunc<Fn>(this, indexes::DrawModelEx)(this, pInfo);
 	}
 };
 
@@ -127,11 +161,11 @@ public:
 	void SetColorModulation(float  const* blend)
 	{
 		typedef void(__thiscall* OriginalFn)(PVOID, float  const* blend);
-		VMT.getvfunc<OriginalFn>(this, 6)(this, blend);
+		VMT.getvfunc<OriginalFn>(this, indexes::SetColorModulation)(this, blend);
 	}
 	void SetBlend(float blend)
 	{
 		typedef void(__thiscall* OriginalFn)(PVOID, float blend);
-		VMT.getvfunc<OriginalFn>(this, 4)(this, blend);
+		VMT.getvfunc<OriginalFn>(this, indexes::SetBlend)(this, blend);
 	}
 };

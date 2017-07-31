@@ -67,7 +67,11 @@ namespace indexes
 	const int GetModelName = 3;
 
 	// ModelRender
-	const int DrawModel = -1;
+	const int DrawModel = 0;
+	const int ForcedMaterialOverride = 1;
+	const int DrawModelEx = 16;
+	const int DrawModelSetup = 18;
+	const int DrawModelExecute = 19;
 
 	// Panel
 	const int GetName = 36;
@@ -108,4 +112,20 @@ namespace indexes
 	// CBaseHudChat
 	const int Printf = 22;
 	const int ChatPrintf = 23;
+
+	// IViewRender
+	const int VGui_Paint = 39;
+	const int VguiPaint = 24;
+	const int Draw3DDebugOverlays = 3;
+	const int SetBlend = 4;
+	const int GetBlend = 5;
+	const int SetColorModulation = 6;
+	const int GetColorModulation = 7;
+	const int SceneBegin = 8;
+	const int SceneEnd = 9;
+	
+	// CMaterialSystem
+	const int FindMaterial = 71;
+	const int IsMaterialLoaded = 72;
+	const int FindTexture = 77;
 }

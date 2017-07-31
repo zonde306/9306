@@ -2,7 +2,7 @@
 
 #define USE_PLAYER_INFO
 #define USE_CVAR_CHANGE
-// #define USE_D3D_DRAW
+#define USE_D3D_DRAW
 
 // D3D 的函数 jmp 挂钩
 static std::unique_ptr<DetourXS> g_pDetourReset, g_pDetourPresent, g_pDetourEndScene,
@@ -171,6 +171,15 @@ typedef bool(__stdcall* FnDispatchUserMessage)(int, bf_read*);
 bool __stdcall Hooked_DispatchUserMessage(int, bf_read*);
 FnDispatchUserMessage oDispatchUserMessage;
 
+typedef void(__cdecl* FnVGUIPaint)();
+void __cdecl Hooked_VGUIPaint();
+FnVGUIPaint oVGUIPaint;
+
+typedef void(__stdcall* FnDrawModelExecute)(const DrawModelState_t&, const ModelRenderInfo_t&, matrix3x4_t*);
+void _DrawModelExecute_Hooker();
+void __stdcall Hooked_DrawModelExecute(int, int, const DrawModelState_t&, const ModelRenderInfo_t&, matrix3x4_t*);
+FnDrawModelExecute oDrawModelExecute;
+
 // -------------------------------- General Function --------------------------------
 typedef void(__cdecl* FnConColorMsg)(class Color const&, char const*, ...);
 static FnConColorMsg PrintToConsoleColor;	// 打印信息到控制台（支持颜色）
@@ -180,7 +189,7 @@ static FnConMsg PrintToConsole;				// 打印信息到控制台
 
 typedef void(__cdecl* FnCL_Move)(float, bool);
 static void _CL_Move_Hooker();
-void __cdecl Hooked_CL_Move(byte, int, double, float, bool);
+void __stdcall Hooked_CL_Move(byte, int, double, float, bool);
 FnCL_Move oCL_Move;							// 玩家数据处理
 
 typedef void(__cdecl* FnSharedRandomFloat)(const char*, float, float, int);
@@ -245,6 +254,7 @@ DWORD WINAPI StartCheat(LPVOID params)
 	Utils::log("VEngineCvar 0x%X", (DWORD)g_cInterfaces.Engine);
 	Utils::log("GlobalsVariable 0x%X", (DWORD)g_cInterfaces.Globals);
 	Utils::log("InputSystem 0x%X", (DWORD)g_cInterfaces.InputSystem);
+	Utils::log("MaterialSystem 0x%X", (DWORD)g_cInterfaces.MaterialSystem);
 	Utils::log("Input 0x%X", (DWORD)g_cInterfaces.Input);
 	Utils::log("UserMessages 0x%X", (DWORD)g_cInterfaces.UserMessage);
 	Utils::log("MoveHelper 0x%X", (DWORD)g_cInterfaces.MoveHelper);
@@ -356,12 +366,23 @@ DWORD WINAPI StartCheat(LPVOID params)
 		Utils::log("oRunCommand = 0x%X", (DWORD)oRunCommand);
 	}
 
+	/*
 	if (g_cInterfaces.ModelRenderHook && indexes::DrawModel > -1)
 	{
-		oDrawModel = (FnDrawModel)g_cInterfaces.ClientHook->HookFunction(indexes::DrawModel, Hooked_DrawModel);
-		g_cInterfaces.ClientHook->HookTable(true);
+		oDrawModel = (FnDrawModel)g_cInterfaces.ModelRenderHook->HookFunction(indexes::DrawModel, Hooked_DrawModel);
+		g_cInterfaces.ModelRenderHook->HookTable(true);
 		Utils::log("oDrawModel = 0x%X", (DWORD)oDrawModel);
 	}
+	*/
+
+	/*
+	if (g_cInterfaces.ViewRenderHook && indexes::VGui_Paint > -1)
+	{
+		oVGUIPaint = (FnVGUIPaint)g_cInterfaces.ViewRenderHook->HookFunction(indexes::VGui_Paint, &Hooked_VGUIPaint);
+		g_cInterfaces.ViewRenderHook->HookTable(true);
+		Utils::log("oVgui_Paint = 0x%X", (DWORD)oVGUIPaint);
+	}
+	*/
 
 	HMODULE tier0 = Utils::GetModuleHandleSafe("tier0.dll");
 	if (tier0 != NULL)
@@ -780,18 +801,26 @@ DWORD WINAPI StartCheat(LPVOID params)
 							"tank %d killed by %d", victim, attacker);
 					}
 				}
+				else if (_strcmpi(eventName, "map_transition") == 0)
+				{
+					Utils::log("*** map change ***");
+					g_pCurrentAiming = nullptr;
+				}
+				else if (_strcmpi(eventName, "mission_lost") == 0)
+				{
+					Utils::log("*** round lost ***");
+					g_pCurrentAiming = nullptr;
+				}
 			}
 		};
 
+		// 注册事件监听器
 		EventListener* listener = new EventListener();
-		if (!g_cInterfaces.GameEvent->AddListener(listener, "player_death", false))
-			Utils::log("HookEvent player_death fail");
-
-		if (!g_cInterfaces.GameEvent->AddListener(listener, "infected_death", false))
-			Utils::log("HookEvent infected_death fail");
-
-		if (!g_cInterfaces.GameEvent->AddListener(listener, "player_spawn", false))
-			Utils::log("HookEvent player_spawn fail");
+		g_cInterfaces.GameEvent->AddListener(listener, "player_spawn", false);
+		g_cInterfaces.GameEvent->AddListener(listener, "player_death", false);
+		g_cInterfaces.GameEvent->AddListener(listener, "infected_death", false);
+		g_cInterfaces.GameEvent->AddListener(listener, "map_transition", false);
+		g_cInterfaces.GameEvent->AddListener(listener, "mission_lost", false);
 
 		/*
 		g_cInterfaces.GameEvent->AddListener(listener, "player_connect", false);
@@ -3341,15 +3370,12 @@ __declspec(naked) void _CL_Move_Hooker()
 		// 调用自己的 Hook 函数
 		call	Hooked_CL_Move
 
-		// 清空堆栈，好像是 16 个字节吧
-		add		esp, 16
-
 		// __usercall 相当于 __cdecl
 		ret
 	}
 }
 
-void __cdecl Hooked_CL_Move(byte toBL, int toEDI, double toST0, float accumulated_extra_samples, bool bFinalTick)
+void __stdcall Hooked_CL_Move(byte toBL, int toEDI, double toST0, float accumulated_extra_samples, bool bFinalTick)
 {
 	// 把全局的 oCL_Move 修改一下
 	auto CL_Move = [&]() -> int
@@ -3406,4 +3432,69 @@ void __cdecl Hooked_CL_Move(byte toBL, int toEDI, double toST0, float accumulate
 bool __cdecl Hooked_IsInDebugSession()
 {
 	return false;
+}
+
+void __cdecl Hooked_VGUIPaint()
+{
+	static bool showHint = false;
+	if (showHint)
+	{
+		showHint = false;
+		Utils::log("Hooked_VGUIPaint trigged");
+	}
+	
+	oVGUIPaint();
+
+	// 在这里绘制东西，这个比 PaintTraverse 更好
+	// 因为 PaintTraverse 会降低游戏的 fps 30~40 左右
+}
+
+__declspec(naked) void _DrawModelExecute_Hooker()
+{
+	__asm
+	{
+		push	ebp
+		mov		ebp, esp
+
+		// 普通参数传递
+		push	dword ptr [ebp + 0x10]
+		push	dword ptr [ebp + 0x0C]
+		push	dword ptr [ebp + 0x08]
+
+		// 寄存器参数传递
+		push	ebx
+		push	ecx
+
+		// 调用 Hook 函数
+		call	Hooked_DrawModelExecute
+
+		// 返回
+		ret
+	}
+}
+
+void __stdcall Hooked_DrawModelExecute(int ECX, int EBX, const DrawModelState_t &state,
+	const ModelRenderInfo_t &pInfo, matrix3x4_t *pBoneToWorld)
+{
+	auto DrawModelExecute = [&]() -> void
+	{
+		__asm
+		{
+			// 寄存器传递参数
+			mov		ebx, EBX
+			mov		ecx, ECX
+
+			// 堆栈传递参数
+			push	pBoneToWorld
+			push	dword ptr pInfo
+			push	dword ptr state
+
+			// 调用原函数
+			call	oDrawModelExecute;
+		}
+	};
+
+	DrawModelExecute();
+
+	g_cInterfaces.ModelRender->ForcedMaterialOverride(nullptr);
 }

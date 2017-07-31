@@ -18,6 +18,7 @@ void CInterfaces::GetInterfaces()
 	ModelRender = (CModelRender*)GetPointer("engine.dll", "VEngineModel");
 	RenderView = (CRenderView*)GetPointer("engine.dll", "VEngineRenderView");
 	InputSystem = (IInputInternal*)GetPointer("inputsystem.dll", "VGUI_InputInternal");
+	MaterialSystem = (IMaterialSystem*)GetPointer("materialsystem.dll", "VMaterialSystem");
 	Cvar = (ICvar*)GetPointer("vstdlib.dll", "VEngineCvar");
 
 	PDWORD pdwClient = *(PDWORD*)Client;
@@ -45,6 +46,7 @@ void CInterfaces::GetInterfaces()
 	PredictionHook = std::make_unique<CVMTHookManager>(Prediction);
 	ModelRenderHook = std::make_unique<CVMTHookManager>(ModelRender);
 	GameEventHook = std::make_unique<CVMTHookManager>(GameEvent);
+	ViewRenderHook = std::make_unique<CVMTHookManager>(RenderView);
 }
 
 void* CInterfaces::GetPointer(const char* Module, const char* InterfaceName)

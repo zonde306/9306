@@ -101,6 +101,7 @@ class CUserMessages;
 class ICvar;
 class ClientModeShared;
 class CVMTHookManager;
+class IMaterialSystem;
 
 class CInterfaces
 {
@@ -125,6 +126,7 @@ public:
 	CRenderView* RenderView;
 	CMoveHelper* MoveHelper;
 	CUserMessages* UserMessage;
+	IMaterialSystem* MaterialSystem;
 	ICvar* Cvar;
 
 	ClientModeShared* ClientMode;
@@ -134,6 +136,7 @@ public:
 	std::unique_ptr<CVMTHookManager> PredictionHook;
 	std::unique_ptr<CVMTHookManager> ModelRenderHook;
 	std::unique_ptr<CVMTHookManager> GameEventHook;
+	std::unique_ptr<CVMTHookManager> ViewRenderHook;
 
 	void GetInterfaces();
 	void* GetPointer(const char* Module, const char* InterfaceName);
