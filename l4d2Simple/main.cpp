@@ -2,7 +2,7 @@
 
 #define USE_PLAYER_INFO
 #define USE_CVAR_CHANGE
-// #define USE_D3D_DRAW
+#define USE_D3D_DRAW
 
 // D3D 的函数 jmp 挂钩
 static std::unique_ptr<DetourXS> g_pDetourReset, g_pDetourPresent, g_pDetourEndScene,
@@ -2247,7 +2247,13 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 		MatSystemTopPanel
 			staticPanel
 				GameUI Background Panel
+				staticClientDLLToolsPanel
 				FocusOverlayPanel
+				staticClientDLLPanel
+					Fullscene Root Panel
+						CBaseViewport
+							HudScriptedMode
+							HudCloseCaption
 	*/
 
 	// 每一帧调用 1 次
@@ -2311,6 +2317,9 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 		// 一般普感实体索引上限 512 就够了，太大会卡的
 		int maxEntity = g_cInterfaces.ClientEntList->GetHighestEntityIndex();
 
+		// 绘制颜色
+		D3DCOLOR color = 0;
+
 		for (int i = 1; i <= maxEntity; ++i)
 		{
 			CBaseEntity* entity = g_cInterfaces.ClientEntList->GetClientEntity(i);
@@ -2365,7 +2374,7 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 				if (classId != ET_INFECTED && classId != ET_WITCH)
 				{
 					// 用于格式化字符串
-					std::wstringstream ss;
+					std::stringstream ss;
 
 					// 去除 float 的小数位，因为没必要
 					ss << std::setprecision(0);
@@ -2376,19 +2385,19 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 						if (IsIncapacitated(entity))
 						{
 							// 倒地时只有普通血量
-							ss << L"[" << entity->GetHealth() << L" + incap] ";
+							ss << "[" << entity->GetHealth() << " + incap] ";
 						}
 						else if (IsControlled(entity))
 						{
 							// 玩家被控了
-							ss << L"[" << entity->GetHealth() +
+							ss << "[" << entity->GetHealth() +
 								(int)entity->GetNetProp<float>("m_healthBuffer", "DT_TerrorPlayer") <<
-								L" + grabbed] ";
+								" + grabbed] ";
 						}
 						else
 						{
 							// 生还者显示血量，临时血量
-							ss << L"[" << entity->GetHealth() << L" + " << std::setprecision(0) <<
+							ss << "[" << entity->GetHealth() << " + " << std::setprecision(0) <<
 								entity->GetNetProp<float>("m_healthBuffer", "DT_TerrorPlayer") << "] ";
 						}
 					}
@@ -2397,17 +2406,17 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 						if (entity->GetNetProp<byte>("m_isGhost", "DT_TerrorPlayer") != 0)
 						{
 							// 幽灵状态的特感
-							ss << L"[" << entity->GetHealth() << L" ghost] ";
+							ss << "[" << entity->GetHealth() << " ghost] ";
 						}
 						else
 						{
 							// 非生还者只显示血量就好了
-							ss << L"[" << entity->GetHealth() << L"] ";
+							ss << "[" << entity->GetHealth() << "] ";
 						}
 					}
 
 					// 玩家类型
-					ss << Utils::c2w(GetZombieClassName(entity));
+					ss << GetZombieClassName(entity);
 
 					float height = fabs(head.y - foot.y);
 					float width = height * 0.65f;
@@ -2417,22 +2426,28 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 						entity->GetNetProp<byte>("m_bIsOnThirdStrike", "DT_TerrorPlayer") != 0)
 					{
 						// 生还者黑白时使用白色
-						g_cInterfaces.Surface->drawString(foot.x - width / 2, head.y, 255, 255, 255, font, ss.str().c_str());
+						color = DrawManager::WHITE;
 					}
 					else if ((classId == ET_BOOMER || classId == ET_SMOKER || classId == ET_HUNTER ||
 						classId == ET_SPITTER || classId == ET_CHARGER || classId == ET_JOCKEY) &&
 						entity->GetNetProp<byte>("m_isGhost", "DT_TerrorPlayer") != 0)
 					{
 						// 幽灵状态的特感，紫色
-						g_cInterfaces.Surface->drawString(foot.x - width / 2, head.y, 128, 0, 128, font, ss.str().c_str());
+						color = DrawManager::PURPLE;
 					}
 					else
 					{
 						// 其他情况，橙色
-						g_cInterfaces.Surface->drawString(foot.x - width / 2, head.y, 255, 128, 0, font, ss.str().c_str());
+						color = DrawManager::ORANGE;
 					}
 
-					ss.str(L"");
+					g_cInterfaces.Surface->drawString(foot.x - width / 2, head.y,
+						(color & 0xFF0000) >> 16, (color & 0xFF00) >> 8, color & 0xFF,
+						font, Utils::c2w(ss.str()).c_str());
+
+					// g_pDrawRender->AddText(color, foot.x, head.y, true, ss.str().c_str());
+
+					ss.str("");
 
 					// 显示距离
 					ss << std::setprecision(0) << (int)dist;
@@ -2455,14 +2470,14 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 								if (reloading != 0)
 								{
 									// 正在换子弹
-									ss << L" (reloading)";
+									ss << " (reloading)";
 								}
 								else
 								{
 									// 没有换子弹
-									ss << L" (" << clip << L" / " <<
+									ss << " (" << clip << " / " <<
 										entity->GetNetProp<int>("m_iAmmo", "DT_TerrorPlayer", (size_t)ammoType) <<
-										L")";
+										")";
 								}
 							}
 						}
@@ -2495,23 +2510,23 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 
 					// 坦克的爪子
 					if (primary <= serverTime)
-					ss << L" (ready / ";
+					ss << " (ready / ";
 					else
-					ss << L" (" << (int)(primary - serverTime) << L" / ";
+					ss << " (" << (int)(primary - serverTime) << " / ";
 
 					// 坦克的投石
 					if (secondary <= serverTime)
-					ss << L"ready)";
+					ss << "ready)";
 					else
-					ss << (int)(secondary - serverTime) << L")";
+					ss << (int)(secondary - serverTime) << ")";
 					}
 					else
 					{
 					float ability = weapon->GetNetProp<float>("m_duration");
 					if (ability <= 0.0f)
-					ss << L" (ready)";
+					ss << " (ready)";
 					else
-					ss << L"(" << (int)ability << L")";
+					ss << "(" << (int)ability << ")";
 					}
 					}
 					}
@@ -2521,17 +2536,30 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 					if (visible)
 					{
 						// 看得见，显示蓝色
-						g_cInterfaces.Surface->drawString(foot.x - width / 2, head.y + FontSize, 0, 255, 255, font, ss.str().c_str());
+
+						color = DrawManager::BLUE;
 					}
 					else
 					{
 						// 看不见，显示黄色
-						g_cInterfaces.Surface->drawString(foot.x - width / 2, head.y + FontSize, 255, 255, 0, font, ss.str().c_str());
+						color = DrawManager::YELLOW;
 					}
 
+					g_cInterfaces.Surface->drawString(foot.x - width / 2, head.y + FontSize,
+						(color & 0xFF0000) >> 16, (color & 0xFF00) >> 8, color & 0xFF,
+						font, Utils::c2w(ss.str()).c_str());
+					
+					/*
+					g_pDrawRender->AddText(color, foot.x, head.y + g_pDrawRender->GetFontSize(),
+						true, ss.str().c_str());
+					*/
+
 					// 绘制一个框（虽然这个框只有上下两条线）
-					g_cInterfaces.Surface->drawBox(foot.x - width / 2, foot.y, width, -height,
-						1, 255, 0, 0, 255);
+					g_cInterfaces.Surface->drawBox(foot.x - width / 2, foot.y, width, -height, 1,
+						(color & 0xFF0000) >> 16, (color & 0xFF00) >> 8, color & 0xFF,
+						(color & 0xFF000000) >> 24);
+
+					// g_pDrawRender->AddRect(DrawManager::RED, foot.x - width / 2, foot.y, width, -height);
 				}
 				else
 				{
@@ -2539,21 +2567,24 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 					if (dist > 2500.0f)
 						continue;
 
-					// 画一个小方形，以标记为头部
-					if (classId == ET_WITCH)
-					{
-						if (visible)
-							g_cInterfaces.Surface->FillRGBA(head.x, head.y, 4, 4, 128, 0, 255, 255);
-						else
-							g_cInterfaces.Surface->FillRGBA(head.x, head.y, 2, 2, 128, 0, 255, 255);
-					}
+					int size = 0;
+
+					if (visible)
+						size = 4;
 					else
-					{
-						if (visible)
-							g_cInterfaces.Surface->FillRGBA(head.x, head.y, 4, 4, 255, 128, 0, 255);
-						else
-							g_cInterfaces.Surface->FillRGBA(head.x, head.y, 2, 2, 255, 128, 0, 255);
-					}
+						size = 2;
+
+					if (classId == ET_WITCH)
+						color = DrawManager::PINK;
+					else
+						color = DrawManager::GREEN;
+
+					// 画一个小方形，以标记为头部
+					g_cInterfaces.Surface->FillRGBA(head.x, head.y, size, size,
+						(color & 0xFF0000) >> 16, (color & 0xFF00) >> 8, color & 0xFF,
+						(color & 0xFF000000) >> 24);
+
+					// g_pDrawRender->AddFillRect(color, head.x, head.y, size, size);
 				}
 			}
 
@@ -2601,21 +2632,27 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 				target = nullptr;
 			}
 #endif
-
-			if (target != nullptr)
-			{
-				int classId = target->GetClientClass()->m_ClassID;
-				if (target->GetTeam() == local->GetTeam())
-					g_cInterfaces.Surface->drawCrosshair(width / 2, height / 2, 0, 0, 255);
-				else if (classId == ET_INFECTED)
-					g_cInterfaces.Surface->drawCrosshair(width / 2, height / 2, 255, 128, 0);
-				else if (classId == ET_WITCH)
-					g_cInterfaces.Surface->drawCrosshair(width / 2, height / 2, 128, 0, 255);
-				else
-					g_cInterfaces.Surface->drawCrosshair(width / 2, height / 2, 255, 0, 0);
-			}
+			int classId = (target == nullptr ? ET_INVALID : target->GetClientClass()->m_ClassID);
+			if (classId == ET_INVALID)
+				color = DrawManager::LAWNGREEN;
+			else if (target->GetTeam() == local->GetTeam())
+				color = DrawManager::BLUE;
+			else if (classId == ET_INFECTED)
+				color = DrawManager::ORANGE;
+			else if (classId == ET_WITCH)
+				color = DrawManager::PINK;
 			else
-				g_cInterfaces.Surface->drawCrosshair(width / 2, height / 2, 0, 255, 0);
+				color = DrawManager::RED;
+
+			g_cInterfaces.Surface->drawCrosshair(width / 2, height / 2, 
+				(color & 0xFF0000) >> 16, (color & 0xFF00) >> 8, color & 0xFF);
+			
+			/*
+			width /= 2;
+			height /= 2;
+			g_pDrawRender->AddLine(color, width - 10, height, width + 10, height);
+			g_pDrawRender->AddLine(color, width, height - 10, width, height + 10);
+			*/
 		}
 #endif
 	}
@@ -2626,7 +2663,9 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 		// 在这里绘制会导致游戏里 fps 非常低
 	}
 
+#ifndef USE_D3D_DRAW
 finish_draw:
+#endif
 
 	// ((FnPaintTraverse)g_cInterfaces.PanelHook->GetOriginalFunction(indexes::PaintTraverse))(ecx, panel, forcePaint, allowForce);
 	oPaintTraverse(pPanel, panel, forcePaint, allowForce);

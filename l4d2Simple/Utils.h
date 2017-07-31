@@ -414,6 +414,9 @@ private:
 	// 字体大小
 	int						m_iFontSize;
 
+	// 当前是否正在绘制
+	bool					m_bRenderRunning;
+
 	// 文本绘制队列
 	std::vector<TextQueue> m_textDrawQueue;
 	
@@ -426,6 +429,7 @@ DrawManager::DrawManager(IDirect3DDevice9* pDevice, int fontSize)
 {
 	m_pDevice = pDevice;
 	m_iFontSize = fontSize;
+	m_bRenderRunning = false;
 	CreateObjects();
 }
 
@@ -513,6 +517,10 @@ void DrawManager::CreateObjects()
 
 void DrawManager::BeginRendering()
 {
+	if (m_bRenderRunning)
+		return;
+
+	m_bRenderRunning = true;
 	m_pStateBlock->Capture();
 
 	m_pDevice->SetTexture(0, nullptr);
@@ -549,6 +557,11 @@ void DrawManager::BeginRendering()
 
 void DrawManager::EndRendering()
 {
+	if (!m_bRenderRunning)
+		return;
+
+	m_bRenderRunning = false;
+
 	try
 	{
 		this->DrawQueueObject();
