@@ -2,7 +2,7 @@
 
 #define USE_PLAYER_INFO
 #define USE_CVAR_CHANGE
-#define USE_D3D_DRAW
+// #define USE_D3D_DRAW
 
 // D3D 的函数 jmp 挂钩
 static std::unique_ptr<DetourXS> g_pDetourReset, g_pDetourPresent, g_pDetourEndScene,
@@ -1771,8 +1771,8 @@ HRESULT WINAPI Hooked_EndScene(IDirect3DDevice9* device)
 		Vector myEyeOrigin = local->GetEyePosition();
 		Vector myOrigin = local->GetAbsOrigin();
 
-		// int maxEntity = g_cInterfaces.ClientEntList->GetHighestEntityIndex();
-		int maxEntity = 512;	// GetHighestEntityIndex 一般得到的是 2048，但每帧遍历 2048 次会严重降低 fps
+		int maxEntity = g_cInterfaces.ClientEntList->GetHighestEntityIndex();
+		// int maxEntity = 512;	// GetHighestEntityIndex 一般得到的是 2048，但每帧遍历 2048 次会严重降低 fps
 		for (int i = 1; i <= maxEntity; ++i)
 		{
 			CBaseEntity* entity = g_cInterfaces.ClientEntList->GetClientEntity(i);
@@ -2243,16 +2243,13 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 		g_cInterfaces.Surface->SetFontGlyphSet(font, "arial", FontSize, FW_DONTCARE, 0, 0, 0x200);
 	}
 
+	// 每一帧调用 2 次
 	if (FocusOverlayPanel > 0 && panel == FocusOverlayPanel)
-	{
-
-	}
-
-	if (MatSystemTopPanel > 0 && panel == MatSystemTopPanel)
 	{
 #ifndef USE_D3D_DRAW
 		CBaseEntity* local = GetLocalClient();
-		if (local == nullptr || !g_cInterfaces.Engine->IsInGame())
+		static bool ignoreFrame = false;
+		if (ignoreFrame || local == nullptr || !g_cInterfaces.Engine->IsInGame())
 			goto finish_draw;
 
 		// 目前最小距离
@@ -2295,7 +2292,9 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 		Vector myOrigin = local->GetAbsOrigin();
 
 		// 一般普感实体索引上限 512 就够了，太大会卡的
-		for (int i = 1; i <= 512; ++i)
+		int maxEntity = g_cInterfaces.ClientEntList->GetHighestEntityIndex();
+
+		for (int i = 1; i <= maxEntity; ++i)
 		{
 			CBaseEntity* entity = g_cInterfaces.ClientEntList->GetClientEntity(i);
 			if ((DWORD)entity == (DWORD)local)
@@ -2454,50 +2453,50 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 					// 显示特感技能冷却时间
 					/*
 					else if (classId == ET_BOOMER || classId == ET_HUNTER || classId == ET_SMOKER ||
-						classId == ET_JOCKEY || classId == ET_CHARGER || classId == ET_SPITTER ||
-						classId == ET_TANK)
+					classId == ET_JOCKEY || classId == ET_CHARGER || classId == ET_SPITTER ||
+					classId == ET_TANK)
 					{
-						CBaseHandle* handle = (classId != ET_TANK ?
-							entity->GetNetProp<CBaseHandle*>("m_customAbility", "DT_TerrorPlayer") :
-							entity->GetNetProp<CBaseHandle*>("m_hActiveWeapon", "DT_BaseCombatCharacter"));
+					CBaseHandle* handle = (classId != ET_TANK ?
+					entity->GetNetProp<CBaseHandle*>("m_customAbility", "DT_TerrorPlayer") :
+					entity->GetNetProp<CBaseHandle*>("m_hActiveWeapon", "DT_BaseCombatCharacter"));
 
-						CBaseEntity* weapon = (handle->IsValid() ?
-							g_cInterfaces.ClientEntList->GetClientEntityFromHandle(handle):
-							nullptr);
+					CBaseEntity* weapon = (handle->IsValid() ?
+					g_cInterfaces.ClientEntList->GetClientEntityFromHandle(handle):
+					nullptr);
 
-						if (weapon != nullptr)
-						{
-							float serverTime = GetServerTime();
-							
-							if (classId == ET_TANK)
-							{
-								// 主要攻击（拍人）
-								float primary = weapon->GetNetProp<float>("m_flNextPrimaryAttack", "DT_BaseCombatWeapon");
-								
-								// 次要攻击（掷饼）
-								float secondary = weapon->GetNetProp<float>("m_flNextSecondaryAttack", "DT_BaseCombatWeapon");
-								
-								// 坦克的爪子
-								if (primary <= serverTime)
-									ss << L" (ready / ";
-								else
-									ss << L" (" << (int)(primary - serverTime) << L" / ";
+					if (weapon != nullptr)
+					{
+					float serverTime = GetServerTime();
 
-								// 坦克的投石
-								if (secondary <= serverTime)
-									ss << L"ready)";
-								else
-									ss << (int)(secondary - serverTime) << L")";
-							}
-							else
-							{
-								float ability = weapon->GetNetProp<float>("m_duration");
-								if (ability <= 0.0f)
-									ss << L" (ready)";
-								else
-									ss << L"(" << (int)ability << L")";
-							}
-						}
+					if (classId == ET_TANK)
+					{
+					// 主要攻击（拍人）
+					float primary = weapon->GetNetProp<float>("m_flNextPrimaryAttack", "DT_BaseCombatWeapon");
+
+					// 次要攻击（掷饼）
+					float secondary = weapon->GetNetProp<float>("m_flNextSecondaryAttack", "DT_BaseCombatWeapon");
+
+					// 坦克的爪子
+					if (primary <= serverTime)
+					ss << L" (ready / ";
+					else
+					ss << L" (" << (int)(primary - serverTime) << L" / ";
+
+					// 坦克的投石
+					if (secondary <= serverTime)
+					ss << L"ready)";
+					else
+					ss << (int)(secondary - serverTime) << L")";
+					}
+					else
+					{
+					float ability = weapon->GetNetProp<float>("m_duration");
+					if (ability <= 0.0f)
+					ss << L" (ready)";
+					else
+					ss << L"(" << (int)ability << L")";
+					}
+					}
 					}
 					*/
 
@@ -2601,12 +2600,17 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 			else
 				g_cInterfaces.Surface->drawCrosshair(width / 2, height / 2, 0, 255, 0);
 		}
+
+	finish_draw:
+		ignoreFrame = !ignoreFrame;
 #endif
 	}
 
-#ifndef USE_D3D_DRAW
-finish_draw:
-#endif
+	// 每一帧调 很多次 在这里绘制非常卡
+	if (MatSystemTopPanel > 0 && panel == MatSystemTopPanel)
+	{
+
+	}
 
 	// ((FnPaintTraverse)g_cInterfaces.PanelHook->GetOriginalFunction(indexes::PaintTraverse))(ecx, panel, forcePaint, allowForce);
 	oPaintTraverse(pPanel, panel, forcePaint, allowForce);
