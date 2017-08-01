@@ -290,7 +290,7 @@ public:
 	void AddRect(D3DCOLOR color, int x, int y, int w, int h);
 
 	// 延迟绘制一个圆形
-	void AddCircle(D3DCOLOR color, int x, int y, int r, int resolution = 64);
+	void AddCircle(D3DCOLOR color, int x, int y, int r, size_t resolution = 64);
 
 	// 延迟绘制文本（只支持 ASCII 格式字符）
 	void AddText(D3DCOLOR color, int x, int y, bool centered, const char* fmt, ...);
@@ -347,6 +347,9 @@ protected:
 	struct D3DVertex
 	{
 		D3DVertex(float _x, float _y, float _z, D3DCOLOR _color) : x(_x), y(_y), z(_z), color(_color)
+		{}
+
+		D3DVertex() : x(0), y(0), z(0), color(0)
 		{}
 
 		float x;
@@ -719,8 +722,14 @@ void DrawManager::RenderCircle(D3DCOLOR color, int x, int y, int r, int resoluti
 	}
 }
 
-void DrawManager::AddCircle(D3DCOLOR color, int x, int y, int r, int resolution)
+#ifndef M_PI_F
+#define M_PI		3.14159265358979323846
+#define M_PI_F		((float)(M_PI))
+#endif
+
+void DrawManager::AddCircle(D3DCOLOR color, int x, int y, int r, size_t resolution)
 {
+	/*
 	float curPointX;
 	float curPointY;
 	float oldPointX;
@@ -737,6 +746,23 @@ void DrawManager::AddCircle(D3DCOLOR color, int x, int y, int r, int resolution)
 		oldPointX = curPointX;
 		oldPointY = curPointY;
 	}
+	*/
+
+	float curAngle;
+	float angle = (float)((2.0f * M_PI_F) / resolution);
+	D3DVertex* vertices = new D3DVertex[resolution + 1];
+	for (size_t i = 0; i <= resolution; ++i)
+	{
+		curAngle = i * angle;
+		
+		vertices[i].z = 0.0f;
+		vertices[i].rhw = 0.0f;
+		vertices[i].color = color;
+		vertices[i].x = (x + r * cos(curAngle));
+		vertices[i].y = (y - r * sin(curAngle));
+	}
+
+	this->m_delayDraw.push_back(DelayDraw(std::move(vertices), resolution, D3DPT_LINESTRIP));
 }
 
 void DrawManager::RenderText(D3DCOLOR color, int x, int y, bool centered, const char* fmt, ...)

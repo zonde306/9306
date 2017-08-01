@@ -2,7 +2,7 @@
 
 #define USE_PLAYER_INFO
 #define USE_CVAR_CHANGE
-#define USE_D3D_DRAW
+// #define USE_D3D_DRAW
 
 // D3D 的函数 jmp 挂钩
 static std::unique_ptr<DetourXS> g_pDetourReset, g_pDetourPresent, g_pDetourEndScene,
@@ -215,6 +215,7 @@ void showSpectator();
 void bindAlias(int);
 
 // -------------------------------- Golbals Variable --------------------------------
+static bool g_bNewFrame = false;										// 现在是否运行在新的一帧
 static bool* g_pbSendPacket;											// 数据包是否发送到服务器
 static int g_iSpeedMultiple = 5;										// 加速倍数
 static CUserCmd* g_pUserCommands;										// 本地玩家当前按键
@@ -1730,411 +1731,375 @@ HRESULT WINAPI Hooked_EndScene(IDirect3DDevice9* device)
 
 #ifdef USE_D3D_DRAW
 	CBaseEntity* local = GetLocalClient();
-	if (local != nullptr && g_cInterfaces.Engine->IsInGame())
+	if (local == nullptr || !g_cInterfaces.Engine->IsInGame())
+		goto finish_draw;
+
+	// 目前最小距离
+	float distmin = 65535.0f;
+
+	// 当前队伍
+	int team = local->GetTeam();
+
+	// 当前是否有自动瞄准的目标
+	bool targetSelected = false;
+
+#ifdef _DEBUG
+	try
 	{
-		// 目前最小距离
-		float distmin = 65535.0f;
+#endif
+		targetSelected = IsValidEntity(g_pCurrentAiming);
+#ifdef _DEBUG
+	}
+	catch (std::exception e)
+	{
+		Utils::log("%s (%d): %s | 0x%X", __FILE__, __LINE__, e.what(), (DWORD)g_pCurrentAiming);
+		targetSelected = false;
+		g_pCurrentAiming = nullptr;
+	}
+	catch (...)
+	{
+		Utils::log("%s (%d): 未知异常 | 0x%X", __FILE__, __LINE__, (DWORD)g_pCurrentAiming);
+		targetSelected = false;
+		g_pCurrentAiming = nullptr;
+	}
+#endif
 
-		// 当前队伍
-		int team = local->GetTeam();
+	if (!targetSelected || !(GetAsyncKeyState(VK_LBUTTON) & 0x8000))
+		g_pCurrentAiming = nullptr;
 
-		// 当前是否有自动瞄准的目标
-		bool targetSelected = false;
+	Vector myViewAngles;
+	g_cInterfaces.Engine->GetViewAngles(myViewAngles);
+
+	Vector myEyeOrigin = local->GetEyePosition();
+	Vector myOrigin = local->GetAbsOrigin();
+
+	// 一般普感实体索引上限 512 就够了，太大会卡的
+	int maxEntity = g_cInterfaces.ClientEntList->GetHighestEntityIndex();
+
+	// 绘制颜色
+	D3DCOLOR color = 0;
+
+	for (int i = 1; i <= maxEntity; ++i)
+	{
+		CBaseEntity* entity = g_cInterfaces.ClientEntList->GetClientEntity(i);
+		if ((DWORD)entity == (DWORD)local)
+			continue;
 
 #ifdef _DEBUG
 		try
 		{
 #endif
-			targetSelected = IsValidEntity(g_pCurrentAiming);
+			if (!IsValidEntity(entity))
+				continue;
+#ifdef _DEBUG
+}
+		catch (std::exception e)
+		{
+			Utils::log("%s (%d): %s | 0x%X", __FILE__, __LINE__, e.what(), (DWORD)entity);
+			continue;
+		}
+		catch (...)
+		{
+			Utils::log("%s (%d): 未知异常 | 0x%X", __FILE__, __LINE__, (DWORD)entity);
+			continue;
+		}
+#endif
+
+		Vector head, foot, headbox, origin;
+		int classId = entity->GetClientClass()->m_ClassID;
+
+		// 目标的头部的位置
+		headbox = GetHeadHitboxPosition(entity);
+
+		// 目标脚下的位置
+		origin = (classId == ET_INFECTED || classId == ET_WITCH ?
+			entity->GetNetProp<Vector>("m_vecOrigin", "DT_BaseCombatCharacter") : entity->GetAbsOrigin());
+
+		// 检查目标是否在屏幕内
+		if (!headbox.IsValid() || !WorldToScreen(headbox, head) ||
+			!WorldToScreen(origin, foot))
+			continue;
+
+		// 目标是否可见
+		bool visible = IsTargetVisible(entity, headbox, myEyeOrigin);
+
+		// 目标与自己的距离
+		float dist = myOrigin.DistTo(origin);
+
+		// 给玩家绘制一个框
+		if (g_bDrawBoxEsp)
+		{
+			// 根据类型决定绘制的内容
+			if (classId != ET_INFECTED && classId != ET_WITCH)
+			{
+				// 用于格式化字符串
+				std::stringstream ss;
+
+				// 去除 float 的小数位，因为没必要
+				ss << std::setprecision(0);
+
+				// 检查是否为生还者
+				if (classId == ET_SURVIVORBOT || classId == ET_CTERRORPLAYER)
+				{
+					if (IsIncapacitated(entity))
+					{
+						// 倒地时只有普通血量
+						ss << "[" << entity->GetHealth() << " + incap] ";
+					}
+					else if (IsControlled(entity))
+					{
+						// 玩家被控了
+						ss << "[" << entity->GetHealth() +
+							(int)entity->GetNetProp<float>("m_healthBuffer", "DT_TerrorPlayer") <<
+							" + grabbed] ";
+					}
+					else
+					{
+						// 生还者显示血量，临时血量
+						ss << "[" << entity->GetHealth() << " + " << std::setprecision(0) <<
+							entity->GetNetProp<float>("m_healthBuffer", "DT_TerrorPlayer") << "] ";
+					}
+				}
+				else
+				{
+					if (entity->GetNetProp<byte>("m_isGhost", "DT_TerrorPlayer") != 0)
+					{
+						// 幽灵状态的特感
+						ss << "[" << entity->GetHealth() << " ghost] ";
+					}
+					else
+					{
+						// 非生还者只显示血量就好了
+						ss << "[" << entity->GetHealth() << "] ";
+					}
+				}
+
+				// 玩家类型
+				ss << GetZombieClassName(entity);
+				g_pDrawRender->DrawString2Begin();
+
+				float height = fabs(head.y - foot.y);
+				float width = height * 0.65f;
+
+				// 根据情况决定颜色
+				if ((classId == ET_SURVIVORBOT || classId == ET_CTERRORPLAYER) &&
+					entity->GetNetProp<byte>("m_bIsOnThirdStrike", "DT_TerrorPlayer") != 0)
+				{
+					// 生还者黑白时使用白色
+					color = DrawManager::WHITE;
+				}
+				else if ((classId == ET_BOOMER || classId == ET_SMOKER || classId == ET_HUNTER ||
+					classId == ET_SPITTER || classId == ET_CHARGER || classId == ET_JOCKEY) &&
+					entity->GetNetProp<byte>("m_isGhost", "DT_TerrorPlayer") != 0)
+				{
+					// 幽灵状态的特感，紫色
+					color = DrawManager::PURPLE;
+				}
+				else
+				{
+					// 其他情况，橙色
+					color = DrawManager::ORANGE;
+				}
+
+				g_pDrawRender->DrawString2(foot.x - width / 2, head.y, color, ss.str().c_str());
+
+				ss.str("");
+
+				// 显示距离
+				ss << std::setprecision(0) << (int)dist;
+
+				// 给生还者显示弹药
+				if (classId == ET_SURVIVORBOT || classId == ET_CTERRORPLAYER)
+				{
+					CBaseEntity* weapon = (CBaseEntity*)entity->GetActiveWeapon();
+					if (weapon != nullptr)
+						weapon = g_cInterfaces.ClientEntList->GetClientEntityFromHandle((CBaseHandle*)weapon);
+					if (weapon != nullptr)
+					{
+						int ammoType = weapon->GetNetProp<int>("m_iPrimaryAmmoType", "DT_BaseCombatWeapon");
+						int clip = weapon->GetNetProp<int>("m_iClip1", "DT_BaseCombatWeapon");
+						byte reloading = weapon->GetNetProp<byte>("m_bInReload", "DT_BaseCombatWeapon");
+
+						// 显示弹药和弹夹
+						if (ammoType > 0 && clip > -1)
+						{
+							if (reloading != 0)
+							{
+								// 正在换子弹
+								ss << " (reloading)";
+							}
+							else
+							{
+								// 没有换子弹
+								ss << " (" << clip << " / " <<
+									entity->GetNetProp<int>("m_iAmmo", "DT_TerrorPlayer", (size_t)ammoType) <<
+									")";
+							}
+						}
+					}
+				}
+				// 显示特感技能冷却时间
+				/*
+				else if (classId == ET_BOOMER || classId == ET_HUNTER || classId == ET_SMOKER ||
+				classId == ET_JOCKEY || classId == ET_CHARGER || classId == ET_SPITTER ||
+				classId == ET_TANK)
+				{
+				CBaseHandle* handle = (classId != ET_TANK ?
+				entity->GetNetProp<CBaseHandle*>("m_customAbility", "DT_TerrorPlayer") :
+				entity->GetNetProp<CBaseHandle*>("m_hActiveWeapon", "DT_BaseCombatCharacter"));
+
+				CBaseEntity* weapon = (handle->IsValid() ?
+				g_cInterfaces.ClientEntList->GetClientEntityFromHandle(handle):
+				nullptr);
+
+				if (weapon != nullptr)
+				{
+				float serverTime = GetServerTime();
+
+				if (classId == ET_TANK)
+				{
+				// 主要攻击（拍人）
+				float primary = weapon->GetNetProp<float>("m_flNextPrimaryAttack", "DT_BaseCombatWeapon");
+
+				// 次要攻击（掷饼）
+				float secondary = weapon->GetNetProp<float>("m_flNextSecondaryAttack", "DT_BaseCombatWeapon");
+
+				// 坦克的爪子
+				if (primary <= serverTime)
+				ss << " (ready / ";
+				else
+				ss << " (" << (int)(primary - serverTime) << " / ";
+
+				// 坦克的投石
+				if (secondary <= serverTime)
+				ss << "ready)";
+				else
+				ss << (int)(secondary - serverTime) << ")";
+				}
+				else
+				{
+				float ability = weapon->GetNetProp<float>("m_duration");
+				if (ability <= 0.0f)
+				ss << " (ready)";
+				else
+				ss << "(" << (int)ability << ")";
+				}
+				}
+				}
+				*/
+
+				// 检查是否可以看见
+				if (visible)
+				{
+					// 看得见，显示蓝色
+
+					color = DrawManager::BLUE;
+				}
+				else
+				{
+					// 看不见，显示黄色
+					color = DrawManager::YELLOW;
+				}
+
+				g_pDrawRender->DrawString2(foot.x - width / 2, head.y + g_pDrawRender->GetFontSize(),
+					color, ss.str().c_str());
+
+				g_pDrawRender->DrawString2Finish();
+
+				// 绘制一个框（虽然这个框只有上下两条线）
+				g_pDrawRender->RenderRect(DrawManager::RED, foot.x - width / 2, foot.y, width, -height);
+			}
+			else
+			{
+				// 这只是普感而已，太远了没必要显示出来
+				if (dist > 2500.0f)
+					continue;
+
+				int size = 0;
+
+				if (visible)
+					size = 4;
+				else
+					size = 2;
+
+				if (classId == ET_WITCH)
+					color = DrawManager::PINK;
+				else
+					color = DrawManager::GREEN;
+
+				// 画一个小方形，以标记为头部
+				g_pDrawRender->RenderFillRect(color, head.x, head.y, size, size);
+			}
+		}
+
+		// 自动瞄准寻找目标
+		if (g_bAimBot && (!targetSelected || !(g_pUserCommands->buttons & IN_ATTACK)) &&
+			classId != ET_WITCH && (classId != ET_INFECTED || team == 2))
+		{
+			// 已经选择过目标了，并且这是一个不重要的敌人
+			if (classId == ET_INFECTED && distmin < 65535.0f)
+				continue;
+
+			// 选择一个最接近的特感，因为特感越近对玩家来说越危险
+			if (entity->GetTeam() != team && dist < distmin && visible &&
+				GetAnglesFieldOfView(myViewAngles, CalculateAim(myEyeOrigin, headbox)) <= g_fAimbotFieldOfView)
+			{
+				g_pCurrentAiming = entity;
+				distmin = dist;
+			}
+		}
+	}
+
+	// 绘制准星
+	if (g_bDrawCrosshairs)
+	{
+		int width, height;
+		g_cInterfaces.Engine->GetScreenSize(width, height);
+
+		int aiming = *(int*)(local + m_iCrosshairsId);
+		CBaseEntity* target = (aiming > 0 ? g_cInterfaces.ClientEntList->GetClientEntity(aiming) : GetAimingTarget(-1));
+
+#ifdef _DEBUG
+		try
+		{
+#endif
+			if (!IsValidEntity(target))
+				target = nullptr;
 #ifdef _DEBUG
 		}
 		catch (std::exception e)
 		{
-			Utils::log("%s (%d): %s | 0x%X", __FILE__, __LINE__, e.what(), (DWORD)g_pCurrentAiming);
-			targetSelected = false;
-			g_pCurrentAiming = nullptr;
+			Utils::log("%s (%d): %s | 0x%X", __FILE__, __LINE__, e.what(), (DWORD)target);
+			target = nullptr;
 		}
 		catch (...)
 		{
-			Utils::log("%s (%d): 未知异常 | 0x%X", __FILE__, __LINE__, (DWORD)g_pCurrentAiming);
-			targetSelected = false;
-			g_pCurrentAiming = nullptr;
+			Utils::log("%s (%d): 未知异常 | 0x%X", __FILE__, __LINE__, (DWORD)target);
+			target = nullptr;
 		}
 #endif
+		int classId = (target == nullptr ? ET_INVALID : target->GetClientClass()->m_ClassID);
+		if (classId == ET_INVALID)
+			color = DrawManager::LAWNGREEN;
+		else if (target->GetTeam() == local->GetTeam())
+			color = DrawManager::BLUE;
+		else if (classId == ET_INFECTED)
+			color = DrawManager::ORANGE;
+		else if (classId == ET_WITCH)
+			color = DrawManager::PINK;
+		else
+			color = DrawManager::RED;
 
-		if (!targetSelected || !(GetAsyncKeyState(VK_LBUTTON) & 0x8000))
-			g_pCurrentAiming = nullptr;
-
-		Vector myViewAngles;
-		g_cInterfaces.Engine->GetViewAngles(myViewAngles);
-
-		Vector myEyeOrigin = local->GetEyePosition();
-		Vector myOrigin = local->GetAbsOrigin();
-
-		int maxEntity = g_cInterfaces.ClientEntList->GetHighestEntityIndex();
-		// int maxEntity = 512;	// GetHighestEntityIndex 一般得到的是 2048，但每帧遍历 2048 次会严重降低 fps
-		for (int i = 1; i <= maxEntity; ++i)
-		{
-			CBaseEntity* entity = g_cInterfaces.ClientEntList->GetClientEntity(i);
-			if (entity == nullptr || (DWORD)entity == (DWORD)local)
-				continue;
-
-#ifdef _DEBUG
-			try
-			{
-#endif
-				if (!IsValidEntity(entity))
-					continue;
-#ifdef _DEBUG
-			}
-			catch (std::exception e)
-			{
-				Utils::log("%s (%d): %s | 0x%X", __FILE__, __LINE__, e.what(), (DWORD)entity);
-				continue;
-			}
-			catch (...)
-			{
-				Utils::log("%s (%d): 未知异常 | 0x%X", __FILE__, __LINE__, (DWORD)entity);
-				continue;
-			}
-#endif
-
-			Vector head, foot, headbox, origin;
-			int classId = entity->GetClientClass()->m_ClassID;
-
-			// 目标的头部的位置
-			headbox = GetHeadHitboxPosition(entity);
-
-			// 目标脚下的位置
-			origin = (classId == ET_INFECTED || classId == ET_WITCH ?
-				entity->GetNetProp<Vector>("m_vecOrigin", "DT_BaseCombatCharacter") : entity->GetAbsOrigin());
-
-			// 检查目标是否在屏幕内
-			if (!headbox.IsValid() || !WorldToScreen(headbox, head) ||
-				!WorldToScreen(origin, foot))
-				continue;
-
-			// 目标是否可见
-			bool visible = IsTargetVisible(entity, headbox, myEyeOrigin);
-
-			// 目标与自己的距离
-			float dist = myOrigin.DistTo(origin);
-
-			// 给玩家绘制一个框
-			if (g_bDrawBoxEsp)
-			{
-				// 根据类型决定绘制的内容
-				if (classId != ET_INFECTED && classId != ET_WITCH)
-				{
-					// 用于格式化字符串
-					std::stringstream ss;
-
-					// 去除 float 的小数位，因为没必要
-					ss << std::setprecision(0);
-					ss.precision(0);
-
-					// 检查是否为生还者
-					if (classId == ET_SURVIVORBOT || classId == ET_CTERRORPLAYER)
-					{
-						if (IsIncapacitated(entity))
-						{
-							// 倒地时只有普通血量
-							ss << "[" << entity->GetHealth() << " + incap] ";
-						}
-						else if (IsControlled(entity))
-						{
-							// 玩家被控了
-							ss << "[" << entity->GetHealth() +
-								(int)entity->GetNetProp<float>("m_healthBuffer", "DT_TerrorPlayer") <<
-								" + grabbed] ";
-						}
-						else
-						{
-							// 生还者显示血量，临时血量
-							ss << "[" << entity->GetHealth() << " + " << std::setprecision(0) <<
-								entity->GetNetProp<float>("m_healthBuffer", "DT_TerrorPlayer") << "] ";
-						}
-					}
-					else
-					{
-						if (entity->GetNetProp<byte>("m_isGhost", "DT_TerrorPlayer") != 0)
-						{
-							// 幽灵状态的特感
-							ss << "[" << entity->GetHealth() << " ghost] ";
-						}
-						else
-						{
-							// 非生还者只显示血量就好了
-							ss << "[" << entity->GetHealth() << "] ";
-						}
-					}
-
-					// 玩家类型
-					ss << GetZombieClassName(entity);
-
-					float height = fabs(head.y - foot.y);
-					float width = height * 0.65f;
-
-					g_pDrawRender->DrawString2Begin();
-
-					// 根据情况决定颜色
-					if ((classId == ET_SURVIVORBOT || classId == ET_CTERRORPLAYER) &&
-						entity->GetNetProp<byte>("m_bIsOnThirdStrike", "DT_TerrorPlayer") != 0)
-					{
-						// 生还者黑白时使用白色
-						g_pDrawRender->DrawString2(foot.x - width / 2, head.y, DrawManager::WHITE, ss.str().c_str());
-					}
-					else if ((classId == ET_BOOMER || classId == ET_SMOKER || classId == ET_HUNTER ||
-						classId == ET_SPITTER || classId == ET_CHARGER || classId == ET_JOCKEY) &&
-						entity->GetNetProp<byte>("m_isGhost", "DT_TerrorPlayer") != 0)
-					{
-						// 幽灵状态的特感，紫色
-						g_pDrawRender->DrawString2(foot.x - width / 2, head.y,
-							DrawManager::PURPLE, ss.str().c_str());
-					}
-					else
-					{
-						// 其他情况，橙色
-						g_pDrawRender->DrawString2(foot.x - width / 2, head.y,
-							DrawManager::ORANGE, ss.str().c_str());
-					}
-
-					// 清空内容
-					ss.str("");
-
-					// 显示距离
-					ss << std::setprecision(0) << (int)dist;
-
-					// 给生还者显示弹药
-					if (classId == ET_SURVIVORBOT || classId == ET_CTERRORPLAYER)
-					{
-						CBaseEntity* weapon = (CBaseEntity*)entity->GetActiveWeapon();
-						if (weapon != nullptr)
-							weapon = g_cInterfaces.ClientEntList->GetClientEntityFromHandle((CBaseHandle*)weapon);
-						if (weapon != nullptr)
-						{
-							int ammoType = weapon->GetNetProp<int>("m_iPrimaryAmmoType", "DT_BaseCombatWeapon");
-							int clip = weapon->GetNetProp<int>("m_iClip1", "DT_BaseCombatWeapon");
-							byte reloading = weapon->GetNetProp<byte>("m_bInReload", "DT_BaseCombatWeapon");
-
-							// 显示弹药和弹夹
-							if (ammoType > 0 && clip > -1)
-							{
-								if (reloading != 0)
-								{
-									// 正在换子弹
-									ss << " (reloading)";
-								}
-								else
-								{
-									// 没有换子弹
-									ss << " (" << clip << " / " <<
-										entity->GetNetProp<int>("m_iAmmo", "DT_TerrorPlayer", (size_t)ammoType) <<
-										")";
-								}
-							}
-						}
-					}
-					// 显示特感技能冷却时间
-					/*
-					else if (classId == ET_BOOMER || classId == ET_HUNTER || classId == ET_SMOKER ||
-						classId == ET_JOCKEY || classId == ET_CHARGER || classId == ET_SPITTER ||
-						classId == ET_TANK)
-					{
-						CBaseEntity* weapon = (classId != ET_TANK ?
-							(CBaseEntity*)entity->GetNetProp<CBaseHandle*>("m_customAbility", "DT_TerrorPlayer") :
-							(CBaseEntity*)entity->GetActiveWeapon());
-
-						if (weapon != nullptr)
-							weapon = g_cInterfaces.ClientEntList->GetClientEntityFromHandle((CBaseHandle*)weapon);
-
-						if (weapon != nullptr)
-						{
-							float serverTime = GetServerTime();
-
-							if (classId == ET_TANK)
-							{
-								// 主要攻击（拍人）
-								float primary = weapon->GetNetProp<float>("m_flNextPrimaryAttack", "DT_BaseCombatWeapon");
-
-								// 次要攻击（掷饼）
-								float secondary = weapon->GetNetProp<float>("m_flNextSecondaryAttack", "DT_BaseCombatWeapon");
-
-								// 坦克的爪子
-								if (primary >= serverTime)
-									ss << " (ready / ";
-								else
-									ss << " (" << (int)(primary - serverTime) << " / ";
-
-								// 坦克的投石
-								if (secondary >= serverTime)
-									ss << "ready)";
-								else
-									ss << (int)(secondary - serverTime) << ")";
-							}
-							else
-							{
-								float ability = weapon->GetNetProp<float>("m_duration");
-								if (ability <= 0.0f)
-									ss << " (ready)";
-								else
-									ss << "(" << (int)ability << ")";
-							}
-						}
-					}
-					*/
-
-					// 检查是否可以看见
-					if (visible)
-					{
-						// 看得见，显示蓝色
-						g_pDrawRender->DrawString2(foot.x - width / 2,
-							head.y + g_pDrawRender->GetFontSize(),
-							DrawManager::SKYBLUE, ss.str().c_str());
-					}
-					else
-					{
-						// 看不见，显示黄色
-						g_pDrawRender->DrawString2(foot.x - width / 2,
-							head.y + g_pDrawRender->GetFontSize(),
-							DrawManager::YELLOW, ss.str().c_str());
-					}
-
-					g_pDrawRender->DrawString2Finish();
-
-					// 绘制一个框
-					if(entity->GetTeam() == team)
-					{
-						// 队友蓝色
-						g_pDrawRender->RenderRect(DrawManager::DEEPSKYBLUE, foot.x - width / 2, foot.y,
-							width, -height);
-					}
-					else
-					{
-						// 敌人红色
-						g_pDrawRender->RenderRect(DrawManager::RED, foot.x - width / 2, foot.y,
-							width, -height);
-					}
-				}
-				else
-				{
-					// 这只是普感而已，太远了没必要显示出来
-					if (dist > 2500.0f)
-						continue;
-
-					// 画一个小方形，以标记为头部
-					if (classId == ET_WITCH)
-					{
-						if (visible)
-						{
-							// 粉色 - 大
-							g_pDrawRender->RenderFillRect(DrawManager::PINK, head.x, head.y, 4, 4);
-						}
-						else
-						{
-							// 粉色 - 小
-							g_pDrawRender->RenderFillRect(DrawManager::PINK, head.x, head.y, 2, 2);
-						}
-					}
-					else
-					{
-						if (visible)
-						{
-							// 青色 - 大
-							g_pDrawRender->RenderFillRect(DrawManager::ORANGE, head.x, head.y, 4, 4);
-						}
-						else
-						{
-							// 青色 - 小
-							g_pDrawRender->RenderFillRect(DrawManager::ORANGE, head.x, head.y, 2, 2);
-						}
-					}
-				}
-			}
-
-			if (g_bAimBot && (!targetSelected || !(g_pUserCommands->buttons & IN_ATTACK)) &&
-				classId != ET_WITCH && (classId != ET_INFECTED || team == 2))
-			{
-				// 已经选择过目标了，并且这是一个不重要的敌人
-				if (classId == ET_INFECTED && distmin < 65535.0f)
-					continue;
-
-				// 选择一个最接近的特感，因为特感越近对玩家来说越危险
-				if (entity->GetTeam() != team && dist < distmin && visible &&
-					GetAnglesFieldOfView(myViewAngles, CalculateAim(myEyeOrigin, headbox)) <= g_fAimbotFieldOfView)
-				{
-					g_pCurrentAiming = entity;
-					distmin = dist;
-				}
-			}
-		}
-
-		if (g_bDrawCrosshairs)
-		{
-			int width, height;
-			g_cInterfaces.Engine->GetScreenSize(width, height);
-			width /= 2;
-			height /= 2;
-
-			int aiming = *(int*)(local + m_iCrosshairsId);
-			CBaseEntity* target = (aiming > 0 ? g_cInterfaces.ClientEntList->GetClientEntity(aiming) :
-				GetAimingTarget(-1));
-
-#ifdef _DEBUG
-			try
-			{
-#endif
-				if (!IsValidEntity(target))
-					target = nullptr;
-#ifdef _DEBUG
-			}
-			catch (std::exception e)
-			{
-				Utils::log("%s (%d): %s | 0x%X", __FILE__, __LINE__, e.what(), (DWORD)target);
-				target = nullptr;
-			}
-			catch (...)
-			{
-				Utils::log("%s (%d): 未知异常 | 0x%X", __FILE__, __LINE__, (DWORD)target);
-				target = nullptr;
-			}
-#endif
-
-			// 默认绿色准星，根据瞄准的东西会有不同的颜色
-			D3DCOLOR color = DrawManager::LAWNGREEN;
-
-			if (target != nullptr)
-			{
-				int classId = target->GetClientClass()->m_ClassID;
-				if (target->GetTeam() == local->GetTeam())
-				{
-					// 队友 - 蓝色
-					color = DrawManager::BLUE;
-				}
-				else if (classId == ET_INFECTED)
-				{
-					// 普感 - 橙色
-					color = DrawManager::ORANGE;
-				}
-				else if (classId == ET_WITCH)
-				{
-					// Witch - 粉色
-					color = DrawManager::PINK;
-				}
-				else
-				{
-					// 敌人 - 红色
-					color = DrawManager::RED;
-				}
-			}
-			
-			// 绘制十字准星
-			g_pDrawRender->RenderLine(color, width - 9, height, width + 9, height);
-			g_pDrawRender->RenderLine(color, width, height - 9, width, height + 9);
-		}
+		width /= 2;
+		height /= 2;
+		g_pDrawRender->RenderLine(color, width - 10, height, width + 10, height);
+		g_pDrawRender->RenderLine(color, width, height - 10, width, height + 10);
 	}
 
+finish_draw:
 #endif
+
+	g_bNewFrame = true;
 
 	// 还原备份的设置
 	g_pDrawRender->EndRendering();
@@ -2260,16 +2225,17 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 	if (FocusOverlayPanel > 0 && panel == FocusOverlayPanel)
 	{
 		// 不建议在这里绘制，因为这个并不是全屏幕的
-#ifndef USE_D3D_DRAW
-		/*
-		static ULONGLONG nextDrawTick = GetTickCount64();
-		ULONGLONG currentTick = GetTickCount64();
-		if (nextDrawTick > currentTick)
-		goto finish_draw;
+	}
 
-		// 每秒 10 次
-		nextDrawTick = currentTick + 100;
-		*/
+	// 每一帧调 很多次 在这里不能做消耗较大的事情
+	if (MatSystemTopPanel > 0 && panel == MatSystemTopPanel)
+	{
+		// 在这里绘制会导致游戏里 fps 非常低，因此必须要做出限制
+#ifndef USE_D3D_DRAW
+		if (!g_bNewFrame)
+			goto finish_draw;
+
+		g_bNewFrame = false;
 
 		CBaseEntity* local = GetLocalClient();
 		if (local == nullptr || !g_cInterfaces.Engine->IsInGame())
@@ -2548,10 +2514,10 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 					g_cInterfaces.Surface->drawString(foot.x - width / 2, head.y + FontSize,
 						(color & 0xFF0000) >> 16, (color & 0xFF00) >> 8, color & 0xFF,
 						font, Utils::c2w(ss.str()).c_str());
-					
+
 					/*
 					g_pDrawRender->AddText(color, foot.x, head.y + g_pDrawRender->GetFontSize(),
-						true, ss.str().c_str());
+					true, ss.str().c_str());
 					*/
 
 					// 绘制一个框（虽然这个框只有上下两条线）
@@ -2644,9 +2610,9 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 			else
 				color = DrawManager::RED;
 
-			g_cInterfaces.Surface->drawCrosshair(width / 2, height / 2, 
+			g_cInterfaces.Surface->drawCrosshair(width / 2, height / 2,
 				(color & 0xFF0000) >> 16, (color & 0xFF00) >> 8, color & 0xFF);
-			
+
 			/*
 			width /= 2;
 			height /= 2;
@@ -2655,12 +2621,6 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 			*/
 		}
 #endif
-	}
-
-	// 每一帧调 很多次 在这里不能做消耗较大的事情
-	if (MatSystemTopPanel > 0 && panel == MatSystemTopPanel)
-	{
-		// 在这里绘制会导致游戏里 fps 非常低
 	}
 
 #ifndef USE_D3D_DRAW
