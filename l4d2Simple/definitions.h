@@ -481,6 +481,9 @@ enum EntityType_t
 	ET_INVALID = -1,
 	ET_TANKROCK = 13,
 	ET_WORLD = 260,
+	ET_TerrorGameRulesProxy = 228,
+	ET_CSGameRulesProxy = 47,
+	ET_GameRulesProxy = 93,
 
 	// Éú»¹Õß
 	ET_CTERRORPLAYER = 231,

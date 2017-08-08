@@ -222,6 +222,7 @@ static CUserCmd* g_pUserCommands;										// 本地玩家当前按键
 std::map<std::string, ConVar*> g_tConVar;								// 控制台变量
 static float g_fAimbotFieldOfView = 30.0f;								// 自动瞄准角度
 static CBaseEntity* g_pCurrentAiming;									// 当前的自动瞄准目标
+static CBaseEntity* g_pGameRulesProxy;									// 游戏规则实体，在这里会有一些有用的东西
 static DWORD g_iClientBase, g_iEngineBase, g_iMaterialModules;			// 有用的 DLL 文件地址
 static bool g_bDrawBoxEsp = true, g_bTriggerBot = false, g_bAimBot = false, g_bAutoBunnyHop = true,
 	g_bRapidFire = true, g_bSilentAimbot = false, g_bAutoStrafe = false, g_bDrawCrosshairs = true;
@@ -1785,6 +1786,13 @@ HRESULT WINAPI Hooked_EndScene(IDirect3DDevice9* device)
 		if ((DWORD)entity == (DWORD)local)
 			continue;
 
+		if (g_pGameRulesProxy == nullptr && entity != nullptr && !entity->IsDormant() &&
+			entity->GetClientClass()->m_ClassID == ET_TerrorGameRulesProxy)
+		{
+			g_pGameRulesProxy = entity;
+			Utils::log("TerrorGameRulesProxy Entity found 0x%X", (DWORD)g_pGameRulesProxy);
+		}
+
 #ifdef _DEBUG
 		try
 		{
@@ -1849,15 +1857,15 @@ HRESULT WINAPI Hooked_EndScene(IDirect3DDevice9* device)
 					else if (IsControlled(entity))
 					{
 						// 玩家被控了
-						ss << "[" << entity->GetHealth() +
-							(int)entity->GetNetProp<float>("m_healthBuffer", "DT_TerrorPlayer") <<
+						ss << "[" << (int)(entity->GetHealth() +
+							entity->GetNetProp<float>("m_healthBuffer", "DT_TerrorPlayer")) <<
 							" + grabbed] ";
 					}
 					else
 					{
 						// 生还者显示血量，临时血量
 						ss << "[" << entity->GetHealth() << " + " << std::setprecision(0) <<
-							entity->GetNetProp<float>("m_healthBuffer", "DT_TerrorPlayer") << "] ";
+							(int)(entity->GetNetProp<float>("m_healthBuffer", "DT_TerrorPlayer")) << "] ";
 					}
 				}
 				else
@@ -2281,7 +2289,7 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 		Vector myOrigin = local->GetAbsOrigin();
 
 		// 一般普感实体索引上限 512 就够了，太大会卡的
-		int maxEntity = g_cInterfaces.ClientEntList->GetHighestEntityIndex();
+		int maxEntity = /*g_cInterfaces.ClientEntList->GetHighestEntityIndex()*/512;
 
 		// 绘制颜色
 		D3DCOLOR color = 0;
@@ -2291,6 +2299,13 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 			CBaseEntity* entity = g_cInterfaces.ClientEntList->GetClientEntity(i);
 			if ((DWORD)entity == (DWORD)local)
 				continue;
+
+			if (g_pGameRulesProxy == nullptr && entity != nullptr && !entity->IsDormant() &&
+				entity->GetClientClass()->m_ClassID == ET_TerrorGameRulesProxy)
+			{
+				g_pGameRulesProxy = entity;
+				Utils::log("TerrorGameRulesProxy Entity found 0x%X", (DWORD)g_pGameRulesProxy);
+			}
 
 #ifdef _DEBUG
 			try
@@ -2356,15 +2371,15 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 						else if (IsControlled(entity))
 						{
 							// 玩家被控了
-							ss << "[" << entity->GetHealth() +
-								(int)entity->GetNetProp<float>("m_healthBuffer", "DT_TerrorPlayer") <<
+							ss << "[" << (int)(entity->GetHealth() +
+								entity->GetNetProp<float>("m_healthBuffer", "DT_TerrorPlayer")) <<
 								" + grabbed] ";
 						}
 						else
 						{
 							// 生还者显示血量，临时血量
 							ss << "[" << entity->GetHealth() << " + " << std::setprecision(0) <<
-								entity->GetNetProp<float>("m_healthBuffer", "DT_TerrorPlayer") << "] ";
+								(int)(entity->GetNetProp<float>("m_healthBuffer", "DT_TerrorPlayer")) << "] ";
 						}
 					}
 					else
@@ -3245,8 +3260,8 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 
 			if (!connected)
 			{
+				g_pGameRulesProxy = nullptr;
 				g_cInterfaces.Engine->ClientCmd("echo \"********* connected *********\"");
-
 				Utils::log("*** connected ***");
 			}
 
@@ -3255,6 +3270,7 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 		else if (connected && !g_cInterfaces.Engine->IsInGame())
 		{
 			connected = false;
+			g_pGameRulesProxy = nullptr;
 			Utils::log("*** disconnected ***");
 		}
 

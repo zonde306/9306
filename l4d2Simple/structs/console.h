@@ -253,6 +253,10 @@ public:
 	// Set flag
 	virtual void					AddFlags(int flags);
 
+	virtual void					RemoveFlags(int flags);
+
+	virtual int						GetFlags() const;
+
 	// Return name of cvar
 	virtual const char*				GetName(void) const;
 
@@ -265,9 +269,6 @@ public:
 
 	virtual void					Create(const char *pName, const char *pHelpString = 0, int flags = 0);
 	virtual void					Init();
-
-	void							RemoveFlags(int flags);
-	int								GetFlags() const;
 
 public:
 	ConCommandBase*					m_pNext;
@@ -350,34 +351,47 @@ public:
 	ConVar(const char *pName, const char *pDefaultValue, int flags, const char *pHelpString, bool bMin, float fMin, bool bMax, float fMax, FnChangeCallback_t callback);
 
 	virtual							~ConVar(void);
-
-	virtual bool					IsFlagSet(int flag) const;
-	virtual const char*				GetHelpText(void) const;
-	virtual bool					IsRegistered(void) const;
-	virtual const char*				GetName(void) const;
-	// virtual const char*			GetBaseName(void) const;
-	// virtual int					GetSplitScreenPlayerSlot() const;
-	virtual void					AddFlags(int flags);
-	// virtual int					GetFlags() const;
 	virtual	bool					IsCommand(void) const;
 
-	virtual void					SetValue(const char *value);
-	virtual void					SetValue(float value);
-	virtual void					SetValue(int value);
-	// virtual void					SetValue(DWORD value);
+	virtual bool					IsFlagSet(int flag) const;
+	virtual void					AddFlags(int flags);
+	virtual void					RemoveFlags(int flags) { m_nFlags &= ~flags; };
+	virtual int						GetFlags() const;
+	virtual const char*				GetName(void) const;
+	virtual const char*				GetHelpText(void) const;
+	virtual bool					IsRegistered(void) const;
+	virtual int						GetDLLIdentifier() const { return ConCommandBase::GetDLLIdentifier(); };
+
+	virtual void					Create(const char *pName, const char *pDefaultValue, int flags = 0)
+	{
+		Create(pName, pDefaultValue, flags, "");
+	}
+
+	// virtual const char*			GetBaseName(void) const;
+	// virtual int					GetSplitScreenPlayerSlot() const;
+	
+	// virtual int					GetFlags() const;
+	
+
+	// Used internally by OneTimeInit to initialize.
+	virtual void					Init();
+
+	// 在 Linux 是虚函数，但在 Windows 不是
+	void							SetValue(const char *value);
+	void							SetValue(float value);
+	void							SetValue(int value);
+	void							SetValue(Color value);
 
 	virtual void					InternalSetValue(const char *value);
 	virtual void					InternalSetFloatValue(float fNewValue);
 	virtual void					InternalSetIntValue(int nValue);
-	// virtual void					InternalSetColorValue(DWORD value);
+	 virtual void					InternalSetColorValue(Color value);
 	virtual bool					ClampValue(float& value);
 	virtual void					ChangeStringValue(const char *tempVal, float flOldValue = 0.0f);
+	
 	virtual void					Create(const char *pName, const char *pDefaultValue, int flags = 0,
 		const char *pHelpString = 0, bool bMin = false, float fMin = 0.0,
 		bool bMax = false, float fMax = false, FnChangeCallback_t callback = 0);
-
-	// Used internally by OneTimeInit to initialize.
-	virtual void					Init();
 
 	//----------------------------
 	// Non-virtual helper methods
@@ -387,7 +401,7 @@ public:
 	DWORD					GetColor(void) const;
 	const char*				GetString(void) const;
 	const char*				GetDefault(void) const;
-	int						GetFlags(void) const;
+	// int					GetFlags(void) const;
 
 	// This either points to "this" or it points to the original declaration of a ConVar.
 	// This allows ConVars to exist in separate modules, and they all use the first one to be declared.
@@ -510,7 +524,7 @@ void ConVar_Register(int nCVarFlag, IConCommandBaseAccessor *pAccessor)
 //-------------------------------------------------------------
 ConVar::ConVar(const char *pName, const char *pDefaultValue, int flags)
 {
-	Create(pName, pDefaultValue, flags);
+	Create(pName, pDefaultValue, flags, "");
 }
 
 ConVar::ConVar(const char *pName, const char *pDefaultValue, int flags, const char *pHelpString)
@@ -703,13 +717,11 @@ void ConVar::InternalSetIntValue(int nValue)
 	}
 }
 
-/*
-void ConVar::InternalSetColorValue(DWORD cValue)
+void ConVar::InternalSetColorValue(Color cValue)
 {
-	int color = (int)cValue;
+	int color = (cValue.a() << 24 | cValue.r() << 16 | cValue.g() << 8 | cValue.b());
 	InternalSetIntValue(color);
 }
-*/
 
 void ConVar::Create(const char *pName, const char *pDefaultValue,
 	int flags, const char *pHelpString, bool bMin, float fMin,
@@ -750,12 +762,10 @@ void ConVar::SetValue(int value)
 	m_pParent->InternalSetIntValue(value);
 }
 
-/*
-void ConVar::SetValue(DWORD value)
+void ConVar::SetValue(Color value)
 {
 	m_pParent->InternalSetColorValue(value);
 }
-*/
 
 const char* ConVar::GetDefault(void) const
 {

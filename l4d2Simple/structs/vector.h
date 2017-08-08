@@ -115,6 +115,18 @@ public:
 	}
 };
 
+class Vector2D
+{
+public:
+	float x, y;
+};
+
+class Vector4D
+{
+public:
+	float x, y, z, w;
+};
+
 typedef Vector QAngle;
 
 inline unsigned long & FloatBits(float & f)
