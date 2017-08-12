@@ -1,6 +1,7 @@
 #pragma once
 #include <TlHelp32.h>
 #include "./d3dfont/D3DFont.h"
+#include <mutex>
 // #include "ntdll.h"
 
 #define INRANGE( x, a, b ) ( x >= a && x <= b )
@@ -346,16 +347,21 @@ public:
 protected:
 	struct D3DVertex
 	{
-		D3DVertex(float _x, float _y, float _z, D3DCOLOR _color) : x(_x), y(_y), z(_z), color(_color)
+		D3DVertex(float _x, float _y, float _z, D3DCOLOR _color) :
+			x(_x), y(_y), z(_z), rhw(0.0f), color(_color)
 		{}
 
-		D3DVertex() : x(0), y(0), z(0), color(0)
+		D3DVertex(float _x, float _y, float _z, float _w, D3DCOLOR _color) :
+			x(_x), y(_y), z(_z), rhw(_w), color(_color)
+		{}
+
+		D3DVertex() : x(0.0f), y(0.0f), z(0.0f), rhw(0.0f), color(0.0f)
 		{}
 
 		float x;
 		float y;
 		float z;
-		float rhw = 0;
+		float rhw;
 		D3DCOLOR color;
 	};
 
@@ -374,29 +380,34 @@ protected:
 
 	struct DelayDraw
 	{
+		DelayDraw(D3DPRIMITIVETYPE type, size_t count, const std::vector<D3DVertex>& vertex) : type(type)
+		{
+			this->vertex = std::move(vertex);
+			vertexCount = count;
+			if (vertexCount > this->vertex.size())
+				throw std::exception("请提供一个有内容的数组");
+		}
+		
 		DelayDraw(D3DVertex* vertex, size_t len, D3DPRIMITIVETYPE type) :
-			vertex(vertex), type(type), vertexCount(len)
-		{}
+			type(type), vertexCount(len)
+		{
+			for (size_t i = 0; i < len; ++i)
+				this->vertex.push_back(vertex[i]);
+		}
 		
-		template<size_t len>
-		DelayDraw(const D3DVertex (&vertex)[len], D3DPRIMITIVETYPE type) :
-			vertex(vertex), type(type), vertexCount(len)
-		{}
-		
-		D3DVertex* vertex;
+		std::vector<D3DVertex> vertex;
 		D3DPRIMITIVETYPE type;
 		size_t vertexCount;
 	};
 
 	struct DelayString
 	{
-		DelayString(float x, float y, const std::string& text, D3DCOLOR = DrawManager::WHITE,
-			DWORD flags = 0, D3DCOLOR background = 0) : x(x), y(y), color(color),
-			background(background), text(text)
+		DelayString(float _x, float _y, const std::string& _text, D3DCOLOR _color, DWORD _flags,
+			D3DCOLOR bgcolor) : x(_x), y(_y), text(_text), color(_color), flags(_flags), background(bgcolor)
 		{}
 
 		float x, y;
-		unsigned int flags;
+		DWORD flags;
 		D3DCOLOR color, background;
 		std::string text;
 	};
@@ -419,6 +430,7 @@ private:
 
 	// 当前是否正在绘制
 	bool					m_bRenderRunning;
+	std::mutex				m_hasDelayDrawing;
 
 	// 文本绘制队列
 	std::vector<TextQueue> m_textDrawQueue;
@@ -444,11 +456,13 @@ DrawManager::~DrawManager()
 void DrawManager::OnLostDevice()
 {
 	ReleaseObjects();
+	m_bRenderRunning = false;
 }
 
 void DrawManager::OnResetDevice()
 {
 	CreateObjects();
+	m_bRenderRunning = false;
 }
 
 void DrawManager::ReleaseObjects()
@@ -569,7 +583,8 @@ void DrawManager::EndRendering()
 		return;
 
 	m_bRenderRunning = false;
-
+	
+	m_hasDelayDrawing.lock();
 	try
 	{
 		this->DrawQueueObject();
@@ -581,6 +596,7 @@ void DrawManager::EndRendering()
 		this->m_delayString.clear();
 		this->m_textDrawQueue.clear();
 	}
+	m_hasDelayDrawing.unlock();
 
 	// 将设备状态重置，防止原来的绘制出现问题
 	m_pStateBlock->Apply();
@@ -604,9 +620,9 @@ void DrawManager::DrawQueueObject()
 			// 绘制文本
 
 #ifndef ORIGINAL_CD3DFONT
-			this->DrawString2(10.0f, m_iFontSize * ++drawQueue + 12.0f, i->color, i->text.c_str());
+			m_pFont->DrawText(10.0f, m_iFontSize * ++drawQueue + 12.0f, i->color, i->text.c_str());
 #else
-			this->DrawString2(25.0f, 15.0f * drawQueue++, i->color, Utils::c2w(i->text).c_str());
+			m_pFont->DrawText(25.0f, 15.0f * drawQueue++, i->color, Utils::c2w(i->text).c_str());
 #endif
 
 			if (i->destoryTime <= currentTime)
@@ -629,7 +645,7 @@ void DrawManager::DrawQueueObject()
 		this->DrawString2Begin();
 #endif
 
-		for (DelayString& each : m_delayString)
+		for (auto each : m_delayString)
 		{
 			if (each.text.empty())
 				continue;
@@ -647,12 +663,12 @@ void DrawManager::DrawQueueObject()
 	// 延迟绘制图形
 	if (!m_delayDraw.empty())
 	{
-		for (DelayDraw& each : m_delayDraw)
+		for (auto each : m_delayDraw)
 		{
-			if (each.vertex == nullptr || each.vertexCount <= 0)
+			if (each.vertex.empty() || each.vertexCount <= 0)
 				continue;
 
-			m_pDevice->DrawPrimitiveUP(each.type, each.vertexCount, each.vertex, sizeof(D3DVertex));
+			m_pDevice->DrawPrimitiveUP(each.type, each.vertexCount, &(each.vertex[0]), sizeof(D3DVertex));
 		}
 
 		m_delayDraw.clear();
@@ -672,13 +688,15 @@ void DrawManager::RenderLine(D3DCOLOR color, int x1, int y1, int x2, int y2)
 
 void DrawManager::AddLine(D3DCOLOR color, int x1, int y1, int x2, int y2)
 {
-	D3DVertex vertices[2] =
-	{
+	if (!m_hasDelayDrawing.try_lock())
+		return;
+
+	this->m_delayDraw.emplace_back(D3DPT_LINELIST, 1, std::vector<D3DVertex>{
 		D3DVertex((float)x1, (float)y1, 1.0f, color),
 		D3DVertex((float)x2, (float)y2, 1.0f, color)
-	};
+	});
 
-	this->m_delayDraw.push_back(DelayDraw(std::move(vertices), 1, D3DPT_LINELIST));
+	m_hasDelayDrawing.unlock();
 }
 
 void DrawManager::RenderRect(D3DCOLOR color, int x, int y, int w, int h)
@@ -696,16 +714,18 @@ void DrawManager::RenderRect(D3DCOLOR color, int x, int y, int w, int h)
 
 void DrawManager::AddRect(D3DCOLOR color, int x, int y, int w, int h)
 {
-	D3DVertex vertices[5] =
-	{
+	if (!m_hasDelayDrawing.try_lock())
+		return;
+	
+	this->m_delayDraw.emplace_back(D3DPT_LINESTRIP, 4, std::vector<D3DVertex>{
 		D3DVertex((float)x, (float)y, 1.0f, color),
 		D3DVertex((float)(x + w), (float)y, 1.0f, color),
 		D3DVertex((float)(x + w), (float)(y + h), 1.0f, color),
 		D3DVertex((float)x, (float)(y + h), 1.0f, color),
 		D3DVertex((float)x, (float)y, 1.0f, color)
-	};
+	});
 
-	this->m_delayDraw.push_back(DelayDraw(std::move(vertices), 4, D3DPT_LINESTRIP));
+	m_hasDelayDrawing.unlock();
 }
 
 void DrawManager::RenderCircle(D3DCOLOR color, int x, int y, int r, int resolution)
@@ -735,40 +755,20 @@ void DrawManager::RenderCircle(D3DCOLOR color, int x, int y, int r, int resoluti
 
 void DrawManager::AddCircle(D3DCOLOR color, int x, int y, int r, size_t resolution)
 {
-	/*
-	float curPointX;
-	float curPointY;
-	float oldPointX;
-	float oldPointY;
-
-	for (int i = 0; i <= resolution; ++i)
-	{
-		curPointX = (float)(x + r * cos(2 * M_PI * i / resolution));
-		curPointY = (float)(y - r * sin(2 * M_PI * i / resolution));
-		if (i > 0)
-		{
-			this->AddLine(color, (int)curPointX, (int)curPointY, (int)oldPointX, (int)oldPointY);
-		}
-		oldPointX = curPointX;
-		oldPointY = curPointY;
-	}
-	*/
+	if (!m_hasDelayDrawing.try_lock())
+		return;
 
 	float curAngle;
 	float angle = (float)((2.0f * M_PI_F) / resolution);
-	D3DVertex* vertices = new D3DVertex[resolution + 1];
+	std::vector<D3DVertex> vertices;
 	for (size_t i = 0; i <= resolution; ++i)
 	{
 		curAngle = i * angle;
-		
-		vertices[i].z = 0.0f;
-		vertices[i].rhw = 0.0f;
-		vertices[i].color = color;
-		vertices[i].x = (x + r * cos(curAngle));
-		vertices[i].y = (y - r * sin(curAngle));
+		vertices.emplace_back(x + r * cos(curAngle), y - r * sin(curAngle), 0.0f, color);
 	}
 
-	this->m_delayDraw.push_back(DelayDraw(std::move(vertices), resolution, D3DPT_LINESTRIP));
+	this->m_delayDraw.emplace_back(D3DPT_LINESTRIP, resolution, std::move(vertices));
+	m_hasDelayDrawing.unlock();
 }
 
 void DrawManager::RenderText(D3DCOLOR color, int x, int y, bool centered, const char* fmt, ...)
@@ -863,15 +863,17 @@ void DrawManager::RenderFillRect(D3DCOLOR color, int x, int y, int w, int h)
 
 void DrawManager::AddFillRect(D3DCOLOR color, int x, int y, int w, int h)
 {
-	D3DVertex vertices[4] =
-	{
+	if (!m_hasDelayDrawing.try_lock())
+		return;
+	
+	this->m_delayDraw.emplace_back(D3DPT_TRIANGLESTRIP, 2, std::vector<D3DVertex>{
 		D3DVertex((float)x, (float)y, 1.0f, color),
 		D3DVertex((float)(x + w), (float)y, 1.0f, color),
 		D3DVertex((float)x, (float)(y + h), 1.0f, color),
 		D3DVertex((float)(x + w), (float)(y + h), 1.0f, color)
-	};
+	});
 
-	this->m_delayDraw.push_back(DelayDraw(std::move(vertices), 2, D3DPT_TRIANGLESTRIP));
+	m_hasDelayDrawing.unlock();
 }
 
 #ifndef ORIGINAL_CD3DFONT
@@ -891,6 +893,9 @@ HRESULT DrawManager::DrawString2(float x, float y, D3DCOLOR color, const char * 
 
 void DrawManager::AddText(D3DCOLOR color, int x, int y, bool centered, const char * fmt, ...)
 {
+	if (!m_hasDelayDrawing.try_lock())
+		return;
+	
 	va_list ap;
 	va_start(ap, fmt);
 
@@ -899,7 +904,8 @@ void DrawManager::AddText(D3DCOLOR color, int x, int y, bool centered, const cha
 
 	va_end(ap);
 
-	this->m_delayString.push_back(DelayString(x, y, std::move(buffer), color, centered));
+	this->m_delayString.emplace_back(x, y, std::move(buffer), color, (centered ? D3DFONT_CENTERED : 0), 0);
+	m_hasDelayDrawing.unlock();
 }
 
 inline HRESULT DrawManager::DrawString2Begin()
@@ -1053,7 +1059,7 @@ void DrawManager::PushRenderText(D3DCOLOR color, const char* text, ...)
 
 	va_end(ap);
 
-	this->m_textDrawQueue.push_back(DrawManager::TextQueue(color, std::move(buffer), 5));
+	this->m_textDrawQueue.emplace_back(color, std::move(buffer), 5);
 }
 
 inline int DrawManager::GetFontSize()

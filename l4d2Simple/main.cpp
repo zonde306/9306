@@ -2289,7 +2289,7 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 		Vector myOrigin = local->GetAbsOrigin();
 
 		// 一般普感实体索引上限 512 就够了，太大会卡的
-		int maxEntity = /*g_cInterfaces.ClientEntList->GetHighestEntityIndex()*/512;
+		int maxEntity = g_cInterfaces.ClientEntList->GetHighestEntityIndex();
 
 		// 绘制颜色
 		D3DCOLOR color = 0;
@@ -2422,11 +2422,13 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 						color = DrawManager::ORANGE;
 					}
 
+					/*
 					g_cInterfaces.Surface->drawString(foot.x - width / 2, head.y,
 						(color & 0xFF0000) >> 16, (color & 0xFF00) >> 8, color & 0xFF,
 						font, Utils::c2w(ss.str()).c_str());
+					*/
 
-					// g_pDrawRender->AddText(color, foot.x, head.y, true, ss.str().c_str());
+					g_pDrawRender->AddText(color, foot.x, head.y, true, ss.str().c_str());
 
 					ss.str("");
 
@@ -2463,84 +2465,27 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 							}
 						}
 					}
-					// 显示特感技能冷却时间
+
+					color = (visible ? DrawManager::BLUE : DrawManager::YELLOW);
+
 					/*
-					else if (classId == ET_BOOMER || classId == ET_HUNTER || classId == ET_SMOKER ||
-					classId == ET_JOCKEY || classId == ET_CHARGER || classId == ET_SPITTER ||
-					classId == ET_TANK)
-					{
-					CBaseHandle* handle = (classId != ET_TANK ?
-					entity->GetNetProp<CBaseHandle*>("m_customAbility", "DT_TerrorPlayer") :
-					entity->GetNetProp<CBaseHandle*>("m_hActiveWeapon", "DT_BaseCombatCharacter"));
-
-					CBaseEntity* weapon = (handle->IsValid() ?
-					g_cInterfaces.ClientEntList->GetClientEntityFromHandle(handle):
-					nullptr);
-
-					if (weapon != nullptr)
-					{
-					float serverTime = GetServerTime();
-
-					if (classId == ET_TANK)
-					{
-					// 主要攻击（拍人）
-					float primary = weapon->GetNetProp<float>("m_flNextPrimaryAttack", "DT_BaseCombatWeapon");
-
-					// 次要攻击（掷饼）
-					float secondary = weapon->GetNetProp<float>("m_flNextSecondaryAttack", "DT_BaseCombatWeapon");
-
-					// 坦克的爪子
-					if (primary <= serverTime)
-					ss << " (ready / ";
-					else
-					ss << " (" << (int)(primary - serverTime) << " / ";
-
-					// 坦克的投石
-					if (secondary <= serverTime)
-					ss << "ready)";
-					else
-					ss << (int)(secondary - serverTime) << ")";
-					}
-					else
-					{
-					float ability = weapon->GetNetProp<float>("m_duration");
-					if (ability <= 0.0f)
-					ss << " (ready)";
-					else
-					ss << "(" << (int)ability << ")";
-					}
-					}
-					}
-					*/
-
-					// 检查是否可以看见
-					if (visible)
-					{
-						// 看得见，显示蓝色
-
-						color = DrawManager::BLUE;
-					}
-					else
-					{
-						// 看不见，显示黄色
-						color = DrawManager::YELLOW;
-					}
-
 					g_cInterfaces.Surface->drawString(foot.x - width / 2, head.y + FontSize,
 						(color & 0xFF0000) >> 16, (color & 0xFF00) >> 8, color & 0xFF,
 						font, Utils::c2w(ss.str()).c_str());
-
-					/*
-					g_pDrawRender->AddText(color, foot.x, head.y + g_pDrawRender->GetFontSize(),
-					true, ss.str().c_str());
 					*/
 
+					g_pDrawRender->AddText(color, foot.x, head.y +
+						g_pDrawRender->GetFontSize(), true, ss.str().c_str());
+
 					// 绘制一个框（虽然这个框只有上下两条线）
+					/*
 					g_cInterfaces.Surface->drawBox(foot.x - width / 2, foot.y, width, -height, 1,
 						(color & 0xFF0000) >> 16, (color & 0xFF00) >> 8, color & 0xFF,
 						(color & 0xFF000000) >> 24);
+					*/
 
-					// g_pDrawRender->AddRect(DrawManager::RED, foot.x - width / 2, foot.y, width, -height);
+					color = (entity->GetTeam() == team ? DrawManager::BLUE : DrawManager::RED);
+					g_pDrawRender->AddRect(color, foot.x - width / 2, foot.y, width, -height);
 				}
 				else
 				{
@@ -2561,11 +2506,12 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 						color = DrawManager::GREEN;
 
 					// 画一个小方形，以标记为头部
+					/*
 					g_cInterfaces.Surface->FillRGBA(head.x, head.y, size, size,
 						(color & 0xFF0000) >> 16, (color & 0xFF00) >> 8, color & 0xFF,
 						(color & 0xFF000000) >> 24);
-
-					// g_pDrawRender->AddFillRect(color, head.x, head.y, size, size);
+					*/
+					g_pDrawRender->AddFillRect(color, head.x, head.y, size, size);
 				}
 			}
 
@@ -2625,15 +2571,15 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 			else
 				color = DrawManager::RED;
 
+			/*
 			g_cInterfaces.Surface->drawCrosshair(width / 2, height / 2,
 				(color & 0xFF0000) >> 16, (color & 0xFF00) >> 8, color & 0xFF);
-
-			/*
+			*/
+			
 			width /= 2;
 			height /= 2;
 			g_pDrawRender->AddLine(color, width - 10, height, width + 10, height);
 			g_pDrawRender->AddLine(color, width, height - 10, width, height + 10);
-			*/
 		}
 #endif
 	}
