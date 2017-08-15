@@ -1172,6 +1172,12 @@ void bindAlias(int wait)
 	g_cInterfaces.Engine->ClientCmd("voice_forcemicrecord 1");
 	g_cInterfaces.Engine->ClientCmd("mat_monitorgamma 1.6");
 	g_cInterfaces.Engine->ClientCmd("mat_monitorgamma_tv_enabled 1");
+	g_cInterfaces.Engine->ClientCmd("cl_ignore_vpk_assocation 1");
+	g_cInterfaces.Engine->ClientCmd("cl_observercrosshair 1");
+	g_cInterfaces.Engine->ClientCmd("cl_showpluginmessages 0");
+	g_cInterfaces.Engine->ClientCmd("cl_viewmodelfovsurvivor 67");
+	g_cInterfaces.Engine->ClientCmd("cl_restrict_server_commands 1");
+	g_cInterfaces.Engine->ClientCmd("con_enable 1");
 	g_cInterfaces.Engine->ClientCmd("z_nightvision_r 255");
 	g_cInterfaces.Engine->ClientCmd("z_nightvision_g 255");
 	g_cInterfaces.Engine->ClientCmd("z_nightvision_b 255");
@@ -1657,6 +1663,12 @@ bool IsTargetVisible(CBaseEntity* entity, Vector end, Vector start)
 		return false;
 
 	return true;
+}
+
+// 速度预测
+inline Vector VelocityExtrapolate(CBaseEntity* player, Vector aimpos)
+{
+	return aimpos + (player->GetVelocity() * g_cInterfaces.Globals->interval_per_tick);
 }
 
 // -------------------------------- D3D9 Device Hooked Function --------------------------------
@@ -2728,9 +2740,6 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 					position.z -= 12.0f;
 			}
 
-			// 速度预测，这个没做好
-			// position += (g_pCurrentAiming->GetVelocity() * g_cInterfaces.Globals->interval_per_tick);
-
 			if (position.IsValid())
 			{
 				// 备份原数据
@@ -2739,7 +2748,13 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 				oldForwardmove = pCmd->fowardmove;
 				oldUpmove = pCmd->upmove;
 
+				// 隐藏自动瞄准
 				runAimbot = true;
+
+				// 速度预测
+				myOrigin = VelocityExtrapolate(client, myOrigin);
+				position = VelocityExtrapolate(g_pCurrentAiming, position);
+
 				pCmd->viewangles = CalculateAim(myOrigin, position);
 			}
 		}
@@ -2757,7 +2772,7 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 		{
 			if (!runAimbot)
 			{
-				// 还原数据
+				// 还原角度
 				*bSendPacket = true;
 
 				if (oldViewAngles.IsValid())
@@ -2769,7 +2784,10 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 				}
 			}
 			else
+			{
+				// 修改角度
 				*bSendPacket = false;
+			}
 		}
 	}
 

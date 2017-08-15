@@ -313,6 +313,11 @@ public:
 	// 获取当前字体的大小
 	inline int GetFontSize();
 
+	// 将游戏世界坐标转为屏幕上的位置
+	// 如果提供的位置在屏幕可见范围内，输出屏幕坐标并返回 true。否则返回 false
+	bool WorldToScreen(const Vector& origin, Vector& output);
+	std::string DisassembleShader();
+
 	/*
 	* Below are some functions that you can implement yourself as an exercise
 	*
@@ -439,6 +444,58 @@ private:
 	std::vector<DelayDraw> m_delayDraw;
 	std::vector<DelayString> m_delayString;
 };
+
+bool DrawManager::WorldToScreen(const Vector& origin, Vector& output)
+{
+	D3DVIEWPORT9 viewport;
+	m_pDevice->GetViewport(&viewport);
+
+	D3DXMATRIX viewMatrix, projectionMatrix, worldMatrix;
+	m_pDevice->GetTransform(D3DTS_VIEW, &viewMatrix);
+	m_pDevice->GetTransform(D3DTS_PROJECTION, &projectionMatrix);
+
+	// m_pDevice->GetTransform(D3DTS_WORLD, &worldMatrix);
+	D3DXMatrixIdentity(&worldMatrix);
+	/*
+	D3DXMATRIX wm0, wm1, wm2, wm3;
+	m_pDevice->GetTransform(D3DTS_WORLD, &wm0);
+	m_pDevice->GetTransform(D3DTS_WORLD1, &wm1);
+	m_pDevice->GetTransform(D3DTS_WORLD2, &wm2);
+	m_pDevice->GetTransform(D3DTS_WORLD3, &wm3);
+	worldMatrix = (wm0 * 0.2f) + (wm1 * 0.2f) + (wm2 * 0.2f) + (wm3 * 0.2f) + (wm0 * 0.2f);
+	*/
+
+	D3DXVECTOR3 worldPosition(origin.x, origin.y, origin.z), screenPosition;
+	D3DXVec3Project(&screenPosition, &worldPosition, &viewport,
+		&projectionMatrix, &viewMatrix, &worldMatrix);
+	
+	output.x = screenPosition.x;
+	output.y = screenPosition.y;
+	output.z = screenPosition.z;
+
+	return (screenPosition.z < 1.0f);
+}
+
+std::string DrawManager::DisassembleShader()
+{
+	IDirect3DVertexShader9* shader;
+	m_pDevice->GetVertexShader(&shader);
+
+	UINT sizeOfData;
+	shader->GetFunction(nullptr, &sizeOfData);
+
+	BYTE* data = new BYTE[sizeOfData];
+	shader->GetFunction(data, &sizeOfData);
+
+	ID3DXBuffer* out;
+	D3DXDisassembleShader(reinterpret_cast<DWORD*>(data), false, nullptr, &out);
+	
+	std::string result(static_cast<char*>(out->GetBufferPointer()));
+	delete[] data;
+	shader->Release();
+
+	return result;
+}
 
 DrawManager::DrawManager(IDirect3DDevice9* pDevice, int fontSize)
 {
