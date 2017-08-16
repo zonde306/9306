@@ -138,7 +138,7 @@ class CMoveData
 public:
 	bool			m_bFirstRunOfFunctions : 1;
 	bool			m_bGameCodeMovedPlayer : 1;
-	// bool			m_bNoAirControl : 1;
+	bool			m_bNoAirControl : 1;
 
 	CBaseHandle		m_nPlayerHandle;	// edict index on server, client entity handle on client
 
@@ -157,8 +157,8 @@ public:
 	// Variables from the player edict (sv_player) or entvars on the client.
 	// These are copied in here before calling and copied out after calling.
 	Vector			m_vecVelocity;		// edict::velocity		// Current movement direction.
-	// Vector			m_vecOldVelocity;
-	// float			somefloat;
+	Vector			m_vecOldVelocity;
+	float			somefloat;
 	QAngle			m_vecAngles;		// edict::angles
 	QAngle			m_vecOldAngles;
 
@@ -172,7 +172,7 @@ public:
 	float			m_flConstraintRadius;
 	float			m_flConstraintWidth;
 	float			m_flConstraintSpeedFactor;
-	// bool			m_bConstraintPastRadius;
+	bool			m_bConstraintPastRadius;
 
 	void			SetAbsOrigin(const Vector &vec);
 	const Vector	&GetAbsOrigin() const;
@@ -188,6 +188,7 @@ public:
 
 	// Process the current movement command
 	virtual void	ProcessMovement(CBaseEntity *pPlayer, CMoveData *pMove) = 0;
+	virtual void	Reset(void) = 0;
 	virtual void	StartTrackPredictionErrors(CBaseEntity *pPlayer) = 0;
 	virtual void	FinishTrackPredictionErrors(CBaseEntity *pPlayer) = 0;
 	virtual void	DiffPrint(char const *fmt, ...) = 0;
@@ -207,15 +208,15 @@ public:
 class CPrediction
 {
 public:
-	void SetupMove(CBaseEntity *player, CUserCmd *ucmd, PVOID movehelper, PVOID moveData)
+	void SetupMove(CBaseEntity *player, CUserCmd *ucmd, CMoveHelper* movehelper, CMoveData* moveData)
 	{
-		typedef void(__thiscall* OriginalFn)(PVOID, CBaseEntity*, CUserCmd*, PVOID, PVOID);
+		typedef void(__thiscall* OriginalFn)(PVOID, CBaseEntity*, CUserCmd*, CMoveHelper*, CMoveData*);
 		VMT.getvfunc<OriginalFn>(this, indexes::SetupMove)(this, player, ucmd, movehelper, moveData);
 	}
 
-	void FinishMove(CBaseEntity *player, CUserCmd *ucmd, PVOID moveData)
+	void FinishMove(CBaseEntity *player, CUserCmd *ucmd, CMoveData* moveData)
 	{
-		typedef void(__thiscall* OriginalFn)(PVOID, CBaseEntity*, CUserCmd*, PVOID);
+		typedef void(__thiscall* OriginalFn)(PVOID, CBaseEntity*, CUserCmd*, CMoveData*);
 		VMT.getvfunc<OriginalFn>(this, indexes::FinishMove)(this, player, ucmd, moveData);
 	}
 

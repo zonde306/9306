@@ -2659,14 +2659,6 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 	int weaponId = (weapon != nullptr ? weapon->GetWeaponID() : 0);
 	int flags = client->GetNetProp<int>("m_fFlags", "DT_BasePlayer");
 
-	// 无法移动/无法转动视角修复
-	if ((flags & FL_FREEZING) || (flags & FL_FROZEN))
-	{
-		// 删除无法移动和无法转动视角的标记
-		flags &= ~(FL_FREEZING | FL_FROZEN);
-		client->SetNetProp("m_fFlags", flags, "DT_BasePlayer");
-	}
-
 	// 自动连跳
 	if (g_bAutoBunnyHop && (GetAsyncKeyState(VK_SPACE) & 0x8000))
 	{
@@ -2708,11 +2700,31 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 		}
 	}
 
-	// 启动声音修复
-	// StartEnginePrediction(client, pCmd);
-	// g_cInterfaces.Prediction->StartPrediction(pCmd);
+	// 引擎预测备份
+	float oldCurtime = g_cInterfaces.Globals->curtime;
+	float oldFrametime = g_cInterfaces.Globals->frametime;
 
+	// 引擎预测
+	if(g_cInterfaces.MoveHelper)
+	{
+		// 设置需要预测的时间（帧）
+		g_cInterfaces.Globals->curtime = serverTime;
+		g_cInterfaces.Globals->frametime = g_cInterfaces.Globals->interval_per_tick;
+		
+		// 开始检查错误
+		g_cInterfaces.GameMovement->StartTrackPredictionErrors(client);
 
+		// 清空预测结果的数据
+		ZeroMemory(&g_bMoveData, sizeof(CMoveData));
+
+		// 设置需要预测的玩家
+		g_cInterfaces.MoveHelper->SetHost(client);
+
+		// 开始预测
+		g_cInterfaces.Prediction->SetupMove(client, pCmd, g_cInterfaces.MoveHelper, &g_bMoveData);
+		g_cInterfaces.GameMovement->ProcessMovement(client, &g_bMoveData);
+		g_cInterfaces.Prediction->FinishMove(client, pCmd, &g_bMoveData);
+	}
 
 	// 自动瞄准
 	if (g_bAimBot && weapon != nullptr && (GetAsyncKeyState(VK_LBUTTON) & 0x8000))
@@ -2850,6 +2862,29 @@ end_aimbot:
 	}
 
 end_trigger_bot:
+
+	// 引擎预测
+	if (g_cInterfaces.MoveHelper)
+	{
+		// 结束预测
+		// g_cInterfaces.Prediction->FinishMove(client, pCmd, &g_bMoveData);
+		g_cInterfaces.GameMovement->FinishTrackPredictionErrors(client);
+		g_cInterfaces.MoveHelper->SetHost(nullptr);
+
+		// 还原备份
+		g_cInterfaces.Globals->curtime = oldCurtime;
+		g_cInterfaces.Globals->frametime = oldFrametime;
+
+		// 修复一些错误
+		client->SetNetProp("m_fFlags", flags, "DT_BasePlayer");
+
+		static bool showPred = true;
+		if (showPred)
+		{
+			showPred = false;
+			Utils::log("engine prediction success.");
+		}
+	}
 
 	// 手枪连射
 	if (g_bRapidFire && weapon != nullptr && (pCmd->buttons & IN_ATTACK))
