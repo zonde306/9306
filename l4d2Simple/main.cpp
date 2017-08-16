@@ -189,7 +189,7 @@ static FnConMsg PrintToConsole;				// 打印信息到控制台
 
 typedef void(__cdecl* FnCL_Move)(float, bool);
 static void _CL_Move_Hooker();
-void __stdcall Hooked_CL_Move(byte, int, double, float, bool);
+void __stdcall Hooked_CL_Move(float, bool);
 FnCL_Move oCL_Move;							// 玩家数据处理
 
 typedef void(__cdecl* FnSharedRandomFloat)(const char*, float, float, int);
@@ -228,7 +228,7 @@ static bool g_bDrawBoxEsp = true, g_bTriggerBot = false, g_bAimBot = false, g_bA
 	g_bRapidFire = true, g_bSilentAimbot = false, g_bAutoStrafe = false, g_bDrawCrosshairs = true;
 
 std::string GetZombieClassName(CBaseEntity* player);
-bool IsValidEntity(CBaseEntity* entity);
+bool IsValidVictim(CBaseEntity* entity);
 
 DWORD WINAPI StartCheat(LPVOID params)
 {
@@ -271,11 +271,9 @@ DWORD WINAPI StartCheat(LPVOID params)
 		Utils::log("CL_Move = engine.dll + 0x%X | bSendPacket = 0x%X",
 			(DWORD)oCL_Move - g_iEngineBase, (DWORD)g_pbSendPacket);
 
-		/*
-		g_pDetourCL_Move = std::make_unique<DetourXS>(oCL_Move, _CL_Move_Hooker);
+		g_pDetourCL_Move = std::make_unique<DetourXS>(oCL_Move, Hooked_CL_Move);
 		oCL_Move = (FnCL_Move)g_pDetourCL_Move->GetTrampoline();
 		Utils::log("Trampoline oCL_Move = 0x%X", (DWORD)oCL_Move);
-		*/
 	}
 	else
 		Utils::log("CL_Move not found");
@@ -490,7 +488,7 @@ DWORD WINAPI StartCheat(LPVOID params)
 						return;
 
 					CBaseEntity* entity = g_cInterfaces.ClientEntList->GetClientEntity(victim);
-					if (!IsValidEntity(entity))
+					if (!IsValidVictim(entity))
 						return;
 
 					if ((DWORD)entity == (DWORD)g_pCurrentAiming)
@@ -517,7 +515,7 @@ DWORD WINAPI StartCheat(LPVOID params)
 					int attacker = g_cInterfaces.Engine->GetPlayerForUserID(event->GetInt("attacker"));
 
 					CBaseEntity* entity = g_cInterfaces.ClientEntList->GetClientEntity(victim);
-					if (!IsValidEntity(entity))
+					if (!IsValidVictim(entity))
 						return;
 
 					if ((DWORD)entity == (DWORD)g_pCurrentAiming)
@@ -542,7 +540,7 @@ DWORD WINAPI StartCheat(LPVOID params)
 						return;
 
 					CBaseEntity* entity = g_cInterfaces.ClientEntList->GetClientEntity(client);
-					if (!IsValidEntity(entity))
+					if (!IsValidVictim(entity))
 						return;
 
 					if (g_pDrawRender)
@@ -596,7 +594,7 @@ DWORD WINAPI StartCheat(LPVOID params)
 						return;
 
 					CBaseEntity* entity = g_cInterfaces.ClientEntList->GetClientEntity(client);
-					if (!IsValidEntity(entity))
+					if (!IsValidVictim(entity))
 						return;
 
 					if (g_pDrawRender)
@@ -631,7 +629,7 @@ DWORD WINAPI StartCheat(LPVOID params)
 						return;
 
 					CBaseEntity* entity = g_cInterfaces.ClientEntList->GetClientEntity(client);
-					if (!IsValidEntity(entity))
+					if (!IsValidVictim(entity))
 						return;
 
 					/*
@@ -665,7 +663,7 @@ DWORD WINAPI StartCheat(LPVOID params)
 						return;
 
 					CBaseEntity* entity = g_cInterfaces.ClientEntList->GetClientEntity(voter);
-					if (!IsValidEntity(entity))
+					if (!IsValidVictim(entity))
 						return;
 
 					if (g_pDrawRender)
@@ -697,7 +695,7 @@ DWORD WINAPI StartCheat(LPVOID params)
 						return;
 
 					CBaseEntity* entity = g_cInterfaces.ClientEntList->GetClientEntity(client);
-					if (!IsValidEntity(entity))
+					if (!IsValidVictim(entity))
 						return;
 
 					if (g_pDrawRender)
@@ -715,7 +713,7 @@ DWORD WINAPI StartCheat(LPVOID params)
 						return;
 
 					CBaseEntity* entity = g_cInterfaces.ClientEntList->GetClientEntity(client);
-					if (!IsValidEntity(entity))
+					if (!IsValidVictim(entity))
 						return;
 
 					if (g_pDrawRender)
@@ -754,7 +752,7 @@ DWORD WINAPI StartCheat(LPVOID params)
 
 					CBaseEntity* entityAttacker = g_cInterfaces.ClientEntList->GetClientEntity(attacker);
 					CBaseEntity* entityVictim = g_cInterfaces.ClientEntList->GetClientEntity(victim);
-					if (!IsValidEntity(entityAttacker) || !IsValidEntity(entityVictim))
+					if (!IsValidVictim(entityAttacker) || !IsValidVictim(entityVictim))
 						return;
 
 					if (g_pDrawRender)
@@ -867,12 +865,13 @@ void ResetDeviceHook(IDirect3DDevice9* device)
 	// 初始化绘图
 	g_pDrawRender = std::make_unique<DrawManager>(device);
 
+	DWORD d3d9 = Utils::GetModuleBase("d3d9.dll");
 	Utils::log("pD3DDevice = 0x%X", (DWORD)device);
-	Utils::log("oReset = 0x%X", (DWORD)oReset);
-	Utils::log("oPresent = 0x%X", (DWORD)oPresent);
-	Utils::log("oEndScene = 0x%X", (DWORD)oEndScene);
-	Utils::log("oDrawIndexedPrimitive = 0x%X", (DWORD)oDrawIndexedPrimitive);
-	Utils::log("oCreateQuery = 0x%X", (DWORD)oCreateQuery);
+	Utils::log("oReset = d3d9.dll + 0x%X", (DWORD)oReset - d3d9);
+	Utils::log("oPresent = d3d9.dll + 0x%X", (DWORD)oPresent - d3d9);
+	Utils::log("oEndScene = d3d9.dll + 0x%X", (DWORD)oEndScene - d3d9);
+	Utils::log("oDrawIndexedPrimitive = d3d9.dll + 0x%X", (DWORD)oDrawIndexedPrimitive - d3d9);
+	Utils::log("oCreateQuery = d3d9.dll + 0x%X", (DWORD)oCreateQuery - d3d9);
 }
 
 void thirdPerson()
@@ -1249,7 +1248,7 @@ void RunEnginePrediction(CUserCmd* cmd)
 }
 
 // 检查该实体是否为生还者/特感/普感/Witch
-bool IsValidEntity(CBaseEntity* entity)
+bool IsValidVictim(CBaseEntity* entity)
 {
 	int id = 0, solid = 0, sequence = 0;
 	ClientClass* cc = nullptr;
@@ -1261,13 +1260,13 @@ bool IsValidEntity(CBaseEntity* entity)
 			return false;
 
 		solid = entity->GetNetProp<int>("m_usSolidFlags", "DT_BaseCombatCharacter");
-		sequence = entity->GetNetProp<int>("m_nSequence", "DT_BaseCombatCharacter");
+		sequence = entity->GetNetProp<int>("m_nSequence", "DT_BaseAnimating");
 	}
 	catch (...)
 	{
 #ifdef _DEBUG
 		Utils::log("%s (%d) 警告：指针 0x%X 并不是实体！", __FILE__, __LINE__, (DWORD)entity);
-		throw std::exception("IsValidEntity 发生了错误");
+		throw std::exception("IsValidVictim 发生了错误");
 #endif
 		return false;
 	}
@@ -1283,10 +1282,18 @@ bool IsValidEntity(CBaseEntity* entity)
 #endif
 			return false;
 		}
+
+		if (id == ET_TANK && sequence > 70)
+		{
+#ifdef _DEBUG_OUTPUT
+			g_cInterfaces.Engine->ClientCmd("echo \"tank 0x%X is dead\"", (DWORD)entity);
+#endif
+			return false;
+		}
 	}
 	else if (id == ET_INFECTED || id == ET_WITCH)
 	{
-		if ((solid & SF_NOT_SOLID))
+		if ((solid & SF_NOT_SOLID) || sequence > 305)
 		{
 #ifdef _DEBUG_OUTPUT
 			g_cInterfaces.Engine->ClientCmd("echo \"Common 0x%X is dead\"", (DWORD)entity);
@@ -1495,7 +1502,7 @@ Vector GetHeadHitboxPosition(CBaseEntity* entity)
 	try
 	{
 #endif
-		if (!IsValidEntity(entity))
+		if (!IsValidVictim(entity))
 			return position;
 #ifdef _DEBUG
 	}
@@ -1543,18 +1550,28 @@ Vector GetHeadHitboxPosition(CBaseEntity* entity)
 	return position;
 }
 
+// 速度预测
+inline Vector VelocityExtrapolate(CBaseEntity* player, const Vector& aimpos)
+{
+	return aimpos + (player->GetVelocity() * g_cInterfaces.Globals->interval_per_tick);
+}
+
 // 获取当前正在瞄准的敌人
 CBaseEntity* GetAimingTarget(int hitbox = 0)
 {
 	CBaseEntity* client = GetLocalClient();
 	if (client == nullptr || !client->IsAlive())
 		return nullptr;
-
-	trace_t trace;
-	Vector src = client->GetEyePosition(), dst;
+	
 	Ray_t ray;
-
+	trace_t trace;
 	CTraceFilter filter;
+
+	Vector src = client->GetEyePosition(), dst;
+	
+	// 速度预测，防止移动时不精准
+	src = VelocityExtrapolate(client, src);
+	
 	filter.pSkip1 = client;
 	g_cInterfaces.Engine->GetViewAngles(dst);
 
@@ -1624,7 +1641,7 @@ bool IsTargetVisible(CBaseEntity* entity, Vector end, Vector start)
 	try
 	{
 #endif
-		if (!IsValidEntity(entity))
+		if (!IsValidVictim(entity))
 			return false;
 #ifdef _DEBUG
 	}
@@ -1663,12 +1680,6 @@ bool IsTargetVisible(CBaseEntity* entity, Vector end, Vector start)
 		return false;
 
 	return true;
-}
-
-// 速度预测
-inline Vector VelocityExtrapolate(CBaseEntity* player, Vector aimpos)
-{
-	return aimpos + (player->GetVelocity() * g_cInterfaces.Globals->interval_per_tick);
 }
 
 // -------------------------------- D3D9 Device Hooked Function --------------------------------
@@ -1760,7 +1771,7 @@ HRESULT WINAPI Hooked_EndScene(IDirect3DDevice9* device)
 	try
 	{
 #endif
-		targetSelected = IsValidEntity(g_pCurrentAiming);
+		targetSelected = IsValidVictim(g_pCurrentAiming);
 #ifdef _DEBUG
 	}
 	catch (std::exception e)
@@ -1809,7 +1820,7 @@ HRESULT WINAPI Hooked_EndScene(IDirect3DDevice9* device)
 		try
 		{
 #endif
-			if (!IsValidEntity(entity))
+			if (!IsValidVictim(entity))
 				continue;
 #ifdef _DEBUG
 }
@@ -2083,7 +2094,7 @@ HRESULT WINAPI Hooked_EndScene(IDirect3DDevice9* device)
 		try
 		{
 #endif
-			if (!IsValidEntity(target))
+			if (!IsValidVictim(target))
 				target = nullptr;
 #ifdef _DEBUG
 		}
@@ -2274,7 +2285,7 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 		try
 		{
 #endif
-			targetSelected = IsValidEntity(g_pCurrentAiming);
+			targetSelected = IsValidVictim(g_pCurrentAiming);
 #ifdef _DEBUG
 		}
 		catch (std::exception e)
@@ -2323,7 +2334,7 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 			try
 			{
 #endif
-				if (!IsValidEntity(entity))
+				if (!IsValidVictim(entity))
 					continue;
 #ifdef _DEBUG
 			}
@@ -2556,7 +2567,7 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 			try
 			{
 #endif
-				if (!IsValidEntity(target))
+				if (!IsValidVictim(target))
 					target = nullptr;
 #ifdef _DEBUG
 			}
@@ -2701,6 +2712,8 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 	// StartEnginePrediction(client, pCmd);
 	// g_cInterfaces.Prediction->StartPrediction(pCmd);
 
+
+
 	// 自动瞄准
 	if (g_bAimBot && weapon != nullptr && (GetAsyncKeyState(VK_LBUTTON) & 0x8000))
 	{
@@ -2755,6 +2768,7 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 				myOrigin = VelocityExtrapolate(client, myOrigin);
 				position = VelocityExtrapolate(g_pCurrentAiming, position);
 
+				// 将准星转到敌人头部
 				pCmd->viewangles = CalculateAim(myOrigin, position);
 			}
 		}
@@ -2801,7 +2815,7 @@ end_aimbot:
 #ifdef _DEBUG_OUTPUT
 		if (target != nullptr)
 		{
-			if (!IsValidEntity(target))
+			if (!IsValidVictim(target))
 				g_cInterfaces.Engine->ClientCmd("echo \"aiming dead 0x%X\"", (DWORD)target);
 			if (target->GetTeam() == client->GetTeam())
 				g_cInterfaces.Engine->ClientCmd("echo \"aiming team 0x%X\"", (DWORD)target);
@@ -2814,7 +2828,7 @@ end_aimbot:
 		try
 		{
 #endif
-			if (!IsValidEntity(target))
+			if (!IsValidVictim(target))
 				goto end_trigger_bot;
 #ifdef _DEBUG
 		}
@@ -2910,6 +2924,17 @@ end_trigger_bot:
 		}
 	}
 
+	// 无后坐力，并没有任何效果
+	{
+		Vector punch = client->GetLocalNetProp<Vector>("m_vecPunchAngle");
+		/*
+		float modifiler = VectorNormalize(punch);
+		modifiler -= (10.0f + modifiler * 0.5f) * g_cInterfaces.Globals->interval_per_tick;
+		punch *= modifiler;
+		*/
+		pCmd->viewangles -= punch * 2.0f;
+	}
+
 	// 修复角度不正确
 	ClampAngles(pCmd->viewangles);
 	AngleNormalize(pCmd->viewangles);
@@ -2938,8 +2963,8 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 	{
 		if (client != nullptr && client->IsAlive())
 		{
-			punch = client->GetNetProp<Vector>("m_vecPunchAngle", "DT_BasePlayer");
-			velocity = client->GetNetProp<Vector>("m_vecPunchAngleVel", "DT_BasePlayer");
+			punch = client->GetLocalNetProp<Vector>("m_vecPunchAngle");
+			velocity = client->GetLocalNetProp<Vector>("m_vecPunchAngleVel");
 		}
 
 		// 在这里可以使用 DebugOverlay 来进行 3D 绘制
@@ -2950,8 +2975,8 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 	if (client != nullptr && client->IsAlive() && punch.IsValid() && velocity.IsValid())
 	{
 		// 去除屏幕晃动
-		client->SetNetProp<Vector>("m_vecPunchAngle", punch, "DT_BasePlayer");
-		client->SetNetProp<Vector>("m_vecPunchAngleVel", velocity, "DT_BasePlayer");
+		client->SetLocalNetProp("m_vecPunchAngle", punch);
+		client->SetLocalNetProp("m_vecPunchAngleVel", velocity);
 	}
 
 	static time_t nextUpdate = 0;
@@ -3374,58 +3399,59 @@ __declspec(naked) void _CL_Move_Hooker()
 	}
 }
 
-void __stdcall Hooked_CL_Move(byte toBL, int toEDI, double toST0, float accumulated_extra_samples, bool bFinalTick)
+void __stdcall Hooked_CL_Move(float accumulated_extra_samples, bool bFinalTick)
 {
-	// 把全局的 oCL_Move 修改一下
-	auto CL_Move = [&]() -> int
+	DWORD _edi;
+	BYTE _bl;
+	
+	__asm
 	{
-		WORD wFinalTick = bFinalTick;
-		
-		// 3 个字节
-		typedef struct _TBYTE
-		{
-			WORD b[3];
-		} PTBYTE, TBYTE;
-		
-		TBYTE* ToST0 = new TBYTE();
-		ZeroMemory(ToST0, sizeof(TBYTE));
+		mov		_edi, edi
+		mov		_bl, bl
+	};
 
-		float flTmp = (float)toST0;
-		byte* tmp = (byte*)(&flTmp);
-		memcpy_s(ToST0, sizeof(TBYTE), (&tmp) + sizeof(TBYTE) - 3, 3);
+	static bool showHint = true;
+	if (showHint)
+	{
+		showHint = false;
+		Utils::log("Hooked_CL_Move trigged.");
+	}
+
+	auto CL_Move = [&_bl, &_edi](float accumulated_extra_samples, bool bFinalTick) -> void
+	{
+		// 不支持 push byte. 所以只能 push word
+		WORD wFinalTick = bFinalTick;
 
 		__asm
 		{
 			// 寄存器传参
-			mov		bl, toBL
-			mov		edi, toEDI
-			fbld	tbyte ptr ToST0
+			mov		bl, _bl
+			mov		edi, _edi
 
 			// 堆栈传参
-			push	wFinalTick		// 不支持 push byte
+			push	wFinalTick
 			push	accumulated_extra_samples
 
-			// 调用原函数
+			// 调用原函数(其实是个蹦床)
 			call	oCL_Move
 
 			// 清理堆栈
 			add		esp, 6
-		}
-
+		};
 	};
 
 	// 默认的 1 次调用，如果不调用会导致游戏冻结
-	CL_Move();
+	// 参数 bFinalTick 相当于 bSendPacket
+	CL_Move(accumulated_extra_samples, bFinalTick);
 
 	if (g_pUserCommands != nullptr && g_pUserCommands->buttons & IN_SPEED)
 	{
 		for (int i = 1; i < g_iSpeedMultiple; ++i)
 		{
 			// 多次调用它会有加速效果
-			CL_Move();
+			CL_Move(accumulated_extra_samples, bFinalTick);
 		}
 	}
-
 }
 
 bool __cdecl Hooked_IsInDebugSession()

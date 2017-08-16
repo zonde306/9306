@@ -29,7 +29,7 @@ void inline SinCos(float radians, float *sine, float *cosine)
 	*cosine = cos(radians);
 }
 
-void VectorNormalize(Vector& v)
+float VectorNormalize(Vector& v)
 {
 	int		i;
 	float	length;
@@ -41,6 +41,8 @@ void VectorNormalize(Vector& v)
 
 	for (i = 0; i< 3; i++)
 		v[i] /= length;
+
+	return length;
 }
 
 void AngleNormalize(Vector& angles)

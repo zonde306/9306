@@ -123,47 +123,50 @@ public:
 	}
 	*/
 
-	template<typename T>
-	T& GetNetProp(const std::string& prop, const std::string& table = "DT_BaseEntity", size_t element = 0) const
+	static int GetNetPropOffset(const std::string& table, const std::string& prop)
 	{
 		if (g_offsetList.find(prop) == g_offsetList.end())
 		{
 			int offset = g_pNetVars->GetOffset(table.c_str(), prop.c_str());
 			if (offset > -1)
 			{
-				Utils::log("%s %s offset is 0x%X", table.c_str(), prop.c_str(), offset);
-				g_offsetList[prop] = (int)offset;
+				Utils::log("%s::%s = 0x%X", table.c_str(), prop.c_str(), offset);
+				g_offsetList[prop] = offset;
 			}
 			else
 			{
-				Utils::log("%s %s not found!", table.c_str(), prop.c_str());
+				Utils::log("%s::%s not found", table.c_str(), prop.c_str());
 			}
 		}
-		
-		// VirtualProtect((T*)(this + m_offset[prop]), sizeof(T), PAGE_EXECUTE_READWRITE, NULL);
-		return *(T*)(this + g_offsetList[prop] + element * sizeof(T));
+
+		// 如果找不到的话就抛出错误
+		return g_offsetList[prop];
 	}
 
 	template<typename T>
-	T& SetNetProp(const std::string& prop, const T& value, const std::string& table = "DT_BaseEntity", size_t element = 0) const
+	inline T& GetNetProp(const std::string& prop, const std::string& table = "DT_BaseEntity", size_t element = 0) const
 	{
-		if (g_offsetList.find(prop) == g_offsetList.end())
-		{
-			int offset = g_pNetVars->GetOffset(table.c_str(), prop.c_str());
-			if (offset > -1)
-			{
-				Utils::log("%s %s offset is 0x%X", table.c_str(), prop.c_str(), offset);
-				g_offsetList[prop] = (int)offset;
-			}
-			else
-			{
-				Utils::log("%s %s not found!", table.c_str(), prop.c_str());
-			}
-		}
+		return *(T*)(this + this->GetNetPropOffset(table, prop) + element * sizeof(T));
+	}
 
-		// 一般来说，变量都是可读可写的
-		// VirtualProtect((T*)(this + m_offset[prop]), sizeof(T), PAGE_EXECUTE_READWRITE, NULL);
-		return (*(T*)(this + g_offsetList[prop] + element * sizeof(T)) = value);
+	template<typename T>
+	inline T& SetNetProp(const std::string& prop, const T& value, const std::string& table = "DT_BaseEntity", size_t element = 0) const
+	{
+		return (*(T*)(this + this->GetNetPropOffset(table, prop) + element * sizeof(T)) = value);
+	}
+
+	template<typename T>
+	inline T& GetLocalNetProp(const std::string& prop, size_t element = 0)
+	{
+		return (*(T*)(this + this->GetNetPropOffset("DT_BasePlayer", "m_Local") +
+			this->GetNetPropOffset("DT_BasePlayer", prop) + element * sizeof(T)));
+	}
+
+	template<typename T>
+	inline T& SetLocalNetProp(const std::string& prop, const T& value, size_t element = 0)
+	{
+		return (*(T*)(this + this->GetNetPropOffset("DT_BasePlayer", "m_Local") +
+			this->GetNetPropOffset("DT_BasePlayer", prop) + element * sizeof(T)) = value);
 	}
 
 	Vector& GetAbsOrigin()
