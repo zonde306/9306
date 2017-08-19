@@ -487,3 +487,44 @@ bool WorldToScreen(const Vector &point, Vector &out)
 	}
 	return false;
 }
+
+Vector CrossProduct(const Vector& a, const Vector& b)
+{
+	if (!a.IsValid() || !b.IsValid())
+		throw std::exception("提供的 Vector 无效");
+
+	return Vector(a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x);
+}
+
+Vector2D DoEnemyCircle(CBaseEntity* pLocalPlayer, const Vector &vecDelta, float *flRotation)
+{
+	float flRadius = 360.0f;
+	int iScreenWidth, iScreenHeight;
+	g_cInterfaces.Engine->GetScreenSize(iScreenWidth, iScreenHeight);
+
+	Vector vRealAngles;
+	g_cInterfaces.Engine->GetViewAngles(vRealAngles);
+
+	Vector vForward, vRight, vUp(0.0f, 0.0f, 1.0f);
+
+	AngleVectors(vRealAngles, &vForward);
+
+	vForward.z = 0.0f;
+	VectorNormalize(vForward);
+	CrossProduct(vUp, vForward, vRight);
+
+	float flFront = DotProduct(vecDelta, vForward);
+	float flSide = DotProduct(vecDelta, vRight);
+	float flXPosition = flRadius * -flSide;
+	float flYPosition = flRadius * -flFront;
+
+	*flRotation = atan2(flXPosition, flYPosition) + M_PI_F;
+	*flRotation *= 180.0f / M_PI_F;
+
+	float flYawRadians = -(*flRotation) * M_PI_F / 180.0f;
+	float flCosYaw = cos(flYawRadians);
+	float flSinYaw = sin(flYawRadians);
+
+	return Vector2D((iScreenWidth / 2.0f) + (flRadius * flSinYaw),
+		(iScreenHeight / 2.0f) - (flRadius * flCosYaw));
+}

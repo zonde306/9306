@@ -391,6 +391,9 @@ enum SolidFlags_t
 // 是否需要队友救援
 #define IsNeedRescue(_e)			(IsIncapacitated(_e) || IsControlled(_e))
 
+// 是否为幽灵状态
+#define IsGhostInfected(_e)			(_e->GetNetProp<byte>("m_isGhost", "DT_TerrorPlayer") != 0 || (_e->GetNetProp<int>("m_fEffects", "DT_BaseCombatCharacter") & EF_NODRAW))
+
 // 获取当前服务器时间
 #define GetServerTime()				(g_cInterfaces.ClientEntList->GetClientEntity(g_cInterfaces.Engine->GetLocalPlayer())->GetTickBase() * g_cInterfaces.Globals->interval_per_tick)
 
@@ -415,6 +418,15 @@ enum SolidFlags_t
 #define IsMedkitWeapon(_id)			(_id == Weapon_FirstAidKit || _id == Weapon_Defibrillator || _id == Weapon_FireAmmo || _id == Weapon_ExplodeAmmo)
 #define IsPillsWeapon(_id)			(_id == Weapon_PainPills || _id == Weapon_Adrenaline)
 #define IsCarryWeapon(_id)			(_id == Weapon_Gascan || _id == Weapon_Fireworkcrate || _id == Weapon_Propanetank || _id == Weapon_Oxygentank || _id == Weapon_Gnome || _id == Weapon_Cola)
+
+// 是否为特感
+#define IsSpecialInfected(_id)		(_id == ET_BOOMER || _id == ET_HUNTER || _id == ET_SMOKER || _id == ET_SPITTER || _id == ET_JOCKEY || _id == ET_CHARGER || _id == ET_TANK)
+
+// 是否为普感
+#define IsCommonInfected(_id)		(_id == ET_INFECTED || _id == ET_WITCH)
+
+// 是否为生还者
+#define IsSurvivor(_id)				(_id == ET_SURVIVORBOT || _id == ET_CTERRORPLAYER)
 
 // 检查是否为有用的实体
 #define IsValidEntityId(_id)		(_id == ET_INFECTED || _id == ET_WITCH || _id == ET_BOOMER || _id == ET_HUNTER || _id == ET_SMOKER || _id == ET_SPITTER || _id == ET_JOCKEY || _id == ET_CHARGER || _id == ET_TANK || _id == ET_SURVIVORBOT || _id == ET_CTERRORPLAYER)
@@ -479,7 +491,6 @@ enum WeaponID_t
 enum EntityType_t
 {
 	ET_INVALID = -1,
-	ET_TANKROCK = 13,
 	ET_WORLD = 260,
 	ET_TerrorGameRulesProxy = 228,
 	ET_CSGameRulesProxy = 47,
@@ -502,6 +513,22 @@ enum EntityType_t
 	ET_HUNTER = 262,
 	ET_SMOKER = 269,
 	
+	// 飞行物
+	ET_TankRock = 13,				// 克的石头
+	ET_VomitJarProjectile = 251,	// 胆汁
+	ET_SpitterProjectile = 175,		// 口水的酸液球
+	ET_PipeBombProjectile = 130,	// 土雷
+	ET_MolotovProjectile = 119,		// 火瓶
+	ET_GrenadeProjectile = 97,		// 榴弹发射器的榴弹
+
+	// 杂物
+	ET_DoorCheckpoint = 143,		// 安全门
+	ET_SurvivorRescue = 185,		// 复活点
+
+	// 武器 - 其他
+	ET_WeaponMountedGun = 146,
+	ET_WeaponMinigun = 145,
+
 	// 武器 - 冲锋枪
 	ET_WeaponMP5 = 164,
 	ET_WeaponSilenced = 165,
@@ -543,6 +570,8 @@ enum EntityType_t
 	ET_WeaponExplosive = 110,
 	ET_WeaponDefibrillator = 109,
 	ET_WeaponFirstAidKit = 73,
+	ET_WeaponAmmoPack = 107,
+	ET_WeaponAmmoSpawn = 255,
 	
 	// 武器 - 药物
 	ET_WeaponPainPills = 121,

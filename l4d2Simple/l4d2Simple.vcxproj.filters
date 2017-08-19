@@ -168,6 +168,12 @@
     <ClInclude Include="d3dfont\D3DFont.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="structs\sound.h">
+      <Filter>头文件\structs</Filter>
+    </ClInclude>
+    <ClInclude Include="structs\clientstate.h">
+      <Filter>头文件\structs</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="structs\checksum_md5.cpp">

@@ -177,7 +177,7 @@ FnVGUIPaint oVGUIPaint;
 
 typedef void(__stdcall* FnDrawModelExecute)(const DrawModelState_t&, const ModelRenderInfo_t&, matrix3x4_t*);
 void _DrawModelExecute_Hooker();
-void __stdcall Hooked_DrawModelExecute(int, int, const DrawModelState_t&, const ModelRenderInfo_t&, matrix3x4_t*);
+void __stdcall Hooked_DrawModelExecute(const DrawModelState_t&, const ModelRenderInfo_t&, matrix3x4_t*);
 FnDrawModelExecute oDrawModelExecute;
 
 // -------------------------------- General Function --------------------------------
@@ -811,6 +811,28 @@ DWORD WINAPI StartCheat(LPVOID params)
 					Utils::log("*** round lost ***");
 					g_pCurrentAiming = nullptr;
 				}
+				else if (_strcmpi(eventName, "weapon_fire") == 0)
+				{
+					if (g_tConVar["c_thirdpersonshoulder"] == nullptr ||
+						g_tConVar["c_thirdpersonshoulder"]->GetInt() <= 0)
+						return;
+					
+					int client = g_cInterfaces.Engine->GetPlayerForUserID(event->GetInt("userid"));
+					const char* weapon = event->GetString("weapon");
+					if (client != g_cInterfaces.Engine->GetLocalPlayer() ||
+						weapon == nullptr || weapon[0] == '\0')
+						return;
+
+					if (_strcmpi(weapon, "autoshotgun") == 0)
+						g_cInterfaces.Engine->ClientCmd("play \"weapons/auto_shotgun/gunfire/auto_shotgun_fire_1.wav\"");
+					else if(_strcmpi(weapon, "shotgun_spas") == 0)
+						g_cInterfaces.Engine->ClientCmd("play \"weapons/auto_shotgun_spas/gunfire/shotgun_fire_1.wav\"");
+					else if (_strcmpi(weapon, "pumpshotgun") == 0)
+						g_cInterfaces.Engine->ClientCmd("play \"weapons/shotgun/gunfire/shotgun_fire_1.wav\"");
+					else if (_strcmpi(weapon, "shotgun_chrome") == 0)
+						g_cInterfaces.Engine->ClientCmd("play \"weapons/shotgun_chrome/gunfire/shotgun_fire_1.wav\"");
+
+				}
 			}
 		};
 
@@ -821,6 +843,7 @@ DWORD WINAPI StartCheat(LPVOID params)
 		g_cInterfaces.GameEvent->AddListener(listener, "infected_death", false);
 		g_cInterfaces.GameEvent->AddListener(listener, "map_transition", false);
 		g_cInterfaces.GameEvent->AddListener(listener, "mission_lost", false);
+		g_cInterfaces.GameEvent->AddListener(listener, "weapon_fire", false);
 
 		/*
 		g_cInterfaces.GameEvent->AddListener(listener, "player_connect", false);
@@ -1300,6 +1323,10 @@ bool IsValidVictim(CBaseEntity* entity)
 #endif
 			return false;
 		}
+
+		// 普感正在燃烧
+		if(id == ET_INFECTED && entity->GetNetProp<byte>("m_bIsBurning", "DT_Infected") != 0)
+			return false;
 	}
 	else if (id == ET_CTERRORPLAYER || id == ET_SURVIVORBOT)
 	{
@@ -2280,6 +2307,7 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 
 		// 当前是否有自动瞄准的目标
 		bool targetSelected = false;
+		bool specialSelected = false;
 
 #ifdef _DEBUG
 		try
@@ -2317,14 +2345,31 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 		// 绘制颜色
 		D3DCOLOR color = 0;
 
+		// 0 为 worldspawn，没有意义
 		for (int i = 1; i <= maxEntity; ++i)
 		{
 			CBaseEntity* entity = g_cInterfaces.ClientEntList->GetClientEntity(i);
-			if ((DWORD)entity == (DWORD)local)
-				continue;
+			int classId = ET_INVALID;
 
-			if (g_pGameRulesProxy == nullptr && entity != nullptr && !entity->IsDormant() &&
-				entity->GetClientClass()->m_ClassID == ET_TerrorGameRulesProxy)
+			try
+			{
+				if (entity == nullptr || entity->IsDormant() || (DWORD)entity == (DWORD)local)
+					continue;
+
+				classId = entity->GetClientClass()->m_ClassID;
+			}
+			catch (std::exception e)
+			{
+				Utils::log("%s (%d): %s", __FILE__, __LINE__, e.what());
+				continue;
+			}
+			catch (...)
+			{
+				Utils::log("%s (%d): 未知异常 -> 0x%X", __FILE__, __LINE__, (DWORD)entity);
+				continue;
+			}
+
+			if (g_pGameRulesProxy == nullptr && classId == ET_TerrorGameRulesProxy)
 			{
 				g_pGameRulesProxy = entity;
 				Utils::log("TerrorGameRulesProxy Entity found 0x%X", (DWORD)g_pGameRulesProxy);
@@ -2334,7 +2379,8 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 			try
 			{
 #endif
-				if (!IsValidVictim(entity))
+				if (/*(IsSurvivor(classId) || IsSpecialInfected(classId) || IsCommonInfected(classId)) &&*/
+					!IsValidVictim(entity))
 					continue;
 #ifdef _DEBUG
 			}
@@ -2351,14 +2397,15 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 #endif
 
 			Vector head, foot, headbox, origin;
-			int classId = entity->GetClientClass()->m_ClassID;
+			
+			// 目标脚下的位置
+			origin = (IsSurvivor(classId) || IsSpecialInfected(classId) ?
+				entity->GetAbsOrigin() :		// 玩家专用，其他实体是没有的
+				entity->GetNetProp<Vector>("m_vecOrigin", "DT_BaseCombatCharacter"));
 
 			// 目标的头部的位置
-			headbox = GetHeadHitboxPosition(entity);
-
-			// 目标脚下的位置
-			origin = (classId == ET_INFECTED || classId == ET_WITCH ?
-				entity->GetNetProp<Vector>("m_vecOrigin", "DT_BaseCombatCharacter") : entity->GetAbsOrigin());
+			headbox = (IsSurvivor(classId) || IsSpecialInfected(classId) || IsCommonInfected(classId) ?
+				GetHeadHitboxPosition(entity) : origin);
 
 			// 检查目标是否在屏幕内
 			if (!headbox.IsValid() || !WorldToScreen(headbox, head) ||
@@ -2375,7 +2422,7 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 			if (g_bDrawBoxEsp)
 			{
 				// 根据类型决定绘制的内容
-				if (classId != ET_INFECTED && classId != ET_WITCH)
+				if (IsSurvivor(classId) || IsSpecialInfected(classId))
 				{
 					// 用于格式化字符串
 					std::stringstream ss;
@@ -2384,7 +2431,7 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 					ss << std::setprecision(0);
 
 					// 检查是否为生还者
-					if (classId == ET_SURVIVORBOT || classId == ET_CTERRORPLAYER)
+					if (IsSurvivor(classId))
 					{
 						if (IsIncapacitated(entity))
 						{
@@ -2407,7 +2454,7 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 					}
 					else
 					{
-						if (entity->GetNetProp<byte>("m_isGhost", "DT_TerrorPlayer") != 0)
+						if (IsGhostInfected(entity))
 						{
 							// 幽灵状态的特感
 							ss << "[" << entity->GetHealth() << " ghost] ";
@@ -2426,15 +2473,13 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 					float width = height * 0.65f;
 
 					// 根据情况决定颜色
-					if ((classId == ET_SURVIVORBOT || classId == ET_CTERRORPLAYER) &&
+					if (IsSurvivor(classId) &&
 						entity->GetNetProp<byte>("m_bIsOnThirdStrike", "DT_TerrorPlayer") != 0)
 					{
 						// 生还者黑白时使用白色
 						color = DrawManager::WHITE;
 					}
-					else if ((classId == ET_BOOMER || classId == ET_SMOKER || classId == ET_HUNTER ||
-						classId == ET_SPITTER || classId == ET_CHARGER || classId == ET_JOCKEY) &&
-						entity->GetNetProp<byte>("m_isGhost", "DT_TerrorPlayer") != 0)
+					else if (IsSpecialInfected(classId) && IsGhostInfected(entity))
 					{
 						// 幽灵状态的特感，紫色
 						color = DrawManager::PURPLE;
@@ -2451,6 +2496,7 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 						font, Utils::c2w(ss.str()).c_str());
 					*/
 
+					// 显示血量和类型
 					g_pDrawRender->AddText(color, foot.x, head.y, true, ss.str().c_str());
 
 					ss.str("");
@@ -2459,7 +2505,7 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 					ss << std::setprecision(0) << (int)dist;
 
 					// 给生还者显示弹药
-					if (classId == ET_SURVIVORBOT || classId == ET_CTERRORPLAYER)
+					if (IsSurvivor(classId))
 					{
 						CBaseEntity* weapon = (CBaseEntity*)entity->GetActiveWeapon();
 						if (weapon != nullptr)
@@ -2510,23 +2556,20 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 					color = (entity->GetTeam() == team ? DrawManager::BLUE : DrawManager::RED);
 					g_pDrawRender->AddRect(color, foot.x - width / 2, foot.y, width, -height);
 				}
-				else
+				else if(IsCommonInfected(classId))
 				{
 					// 这只是普感而已，太远了没必要显示出来
-					if (dist > 2500.0f)
+					if (dist > 3000.0f)
 						continue;
 
-					int size = 0;
-
+					// 正方形的边长
+					int boxSize = 2;
 					if (visible)
-						size = 4;
-					else
-						size = 2;
+						boxSize = 4;
 
+					color = DrawManager::GREEN;
 					if (classId == ET_WITCH)
 						color = DrawManager::PINK;
-					else
-						color = DrawManager::GREEN;
 
 					// 画一个小方形，以标记为头部
 					/*
@@ -2534,23 +2577,87 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 						(color & 0xFF0000) >> 16, (color & 0xFF00) >> 8, color & 0xFF,
 						(color & 0xFF000000) >> 24);
 					*/
-					g_pDrawRender->AddFillRect(color, head.x, head.y, size, size);
+					g_pDrawRender->AddFillRect(color, head.x, head.y, boxSize, boxSize);
+				}
+				else
+				{
+					// 其他东西
+					if (dist > 1000.0f)
+						continue;
+
+					if (classId == ET_TankRock)
+					{
+						// Tank 的石头
+						g_pDrawRender->AddText(DrawManager::PURPLE, foot.x, foot.y, true, "rock (%.0f)", dist);
+					}
+					else if (classId == ET_WeaponFirstAidKit)
+					{
+						// 包
+						g_pDrawRender->AddText(DrawManager::DARKORANGE, foot.x, foot.y, true, "medkit (%.0f)", dist);
+					}
+					else if (classId == ET_WeaponDefibrillator)
+					{
+						// 电
+						g_pDrawRender->AddText(DrawManager::DARKORANGE, foot.x, foot.y, true, "defib (%.0f)", dist);
+					}
+
+					else if (classId == ET_WeaponPainPills)
+					{
+						// 药
+						g_pDrawRender->AddText(DrawManager::DARKORANGE, foot.x, foot.y, true, "pills (%.0f)", dist);
+					}
+					else if (classId == ET_WeaponAdrenaline)
+					{
+						// 针
+						g_pDrawRender->AddText(DrawManager::DARKORANGE, foot.x, foot.y, true, "adren (%.0f)", dist);
+					}
+					else if (classId == ET_WeaponGnome)
+					{
+						// 侏儒
+						g_pDrawRender->AddText(DrawManager::DARKORANGE, foot.x, foot.y, true, "gnome (%.0f)", dist);
+					}
+					else if (classId == ET_WeaponCola)
+					{
+						// 可乐
+						g_pDrawRender->AddText(DrawManager::DARKORANGE, foot.x, foot.y, true, "cola (%.0f)", dist);
+					}
+					else if (classId == ET_WeaponPipeBomb)
+					{
+						// 土雷
+						g_pDrawRender->AddText(DrawManager::DARKORANGE, foot.x, foot.y, true, "pipe (%.0f)", dist);
+					}
+					else if (classId == ET_WeaponMolotov)
+					{
+						// 火瓶
+						g_pDrawRender->AddText(DrawManager::DARKORANGE, foot.x, foot.y, true, "molotov (%.0f)", dist);
+					}
+					else if (classId == ET_WeaponVomitjar)
+					{
+						// 胆汁
+						g_pDrawRender->AddText(DrawManager::DARKORANGE, foot.x, foot.y, true, "vomitjar (%.0f)", dist);
+					}
 				}
 			}
 
+			// 自动瞄准寻找目标
 			if (g_bAimBot && (!targetSelected || !(g_pUserCommands->buttons & IN_ATTACK)) &&
-				classId != ET_WITCH && (classId != ET_INFECTED || team == 2))
+				((team == 2 && (IsSpecialInfected(classId) || classId == ET_INFECTED)) ||
+					(team == 3 && IsSurvivor(classId))))
 			{
 				// 已经选择过目标了，并且这是一个不重要的敌人
-				if (classId == ET_INFECTED && distmin < 65535.0f)
+				if (classId == ET_INFECTED && specialSelected)
 					continue;
 
 				// 选择一个最接近的特感，因为特感越近对玩家来说越危险
 				if (entity->GetTeam() != team && dist < distmin && visible &&
-					GetAnglesFieldOfView(myViewAngles, CalculateAim(myEyeOrigin, headbox)) <= g_fAimbotFieldOfView)
+					GetAnglesFieldOfView(myViewAngles, CalculateAim(myEyeOrigin, headbox)) <=
+					g_fAimbotFieldOfView)
 				{
 					g_pCurrentAiming = entity;
 					distmin = dist;
+
+					if (IsSpecialInfected(classId))
+						specialSelected = true;
 				}
 			}
 		}
@@ -2855,9 +2962,10 @@ end_aimbot:
 			goto end_trigger_bot;
 		}
 #endif
-
-		if (target->GetTeam() != myTeam && target->GetClientClass()->m_ClassID != ET_WITCH &&
-			(myTeam == 2 || target->GetClientClass()->m_ClassID != ET_INFECTED))
+		int classId = target->GetClientClass()->m_ClassID;
+		if (target->GetTeam() != myTeam && classId != ET_WITCH &&			// 不主动攻击队友和 Witch
+			(!IsSpecialInfected(classId) || !IsGhostInfected(target)) &&	// 不攻击幽灵状态的特感
+			(myTeam == 2 || classId != ET_INFECTED))						// 特感阵营不攻击普感
 			pCmd->buttons |= IN_ATTACK;
 	}
 
@@ -3479,8 +3587,15 @@ void __stdcall Hooked_CL_Move(float accumulated_extra_samples, bool bFinalTick)
 	// 参数 bFinalTick 相当于 bSendPacket
 	CL_Move(accumulated_extra_samples, bFinalTick);
 
-	if (g_pUserCommands != nullptr && g_pUserCommands->buttons & IN_SPEED)
+	if (GetAsyncKeyState(VK_CAPITAL) & 0x8000)
 	{
+		static bool showSpeed = true;
+		if (showSpeed)
+		{
+			showSpeed = false;
+			Utils::log("SpeedHack speed = %d", g_iSpeedMultiple);
+		}
+		
 		for (int i = 1; i < g_iSpeedMultiple; ++i)
 		{
 			// 多次调用它会有加速效果
@@ -3533,28 +3648,32 @@ __declspec(naked) void _DrawModelExecute_Hooker()
 	}
 }
 
-void __stdcall Hooked_DrawModelExecute(int ECX, int EBX, const DrawModelState_t &state,
+void __stdcall Hooked_DrawModelExecute(const DrawModelState_t &state,
 	const ModelRenderInfo_t &pInfo, matrix3x4_t *pBoneToWorld)
 {
-	auto DrawModelExecute = [&]() -> void
+	DWORD _ecx, _ebx;
+	__asm
+	{
+		mov		_ecx, ecx
+		mov		_ebx, ebx
+	};
+
+	auto DrawModelExecute = [&_ebx, &_ecx](const DrawModelState_t &state,
+		const ModelRenderInfo_t &pInfo, matrix3x4_t *pBoneToWorld)
 	{
 		__asm
 		{
-			// 寄存器传递参数
-			mov		ebx, EBX
-			mov		ecx, ECX
+			mov		ebx, _ebx
+			mov		ecx, _ecx
 
-			// 堆栈传递参数
 			push	pBoneToWorld
-			push	dword ptr pInfo
-			push	dword ptr state
+			push	pInfo
+			push	state
 
-			// 调用原函数
-			call	oDrawModelExecute;
-		}
+			call oDrawModelExecute
+		};
 	};
 
-	DrawModelExecute();
-
+	DrawModelExecute(state, pInfo, pBoneToWorld);
 	g_cInterfaces.ModelRender->ForcedMaterialOverride(nullptr);
 }

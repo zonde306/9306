@@ -175,6 +175,7 @@
     <ClInclude Include="structs\checksum_md5.h" />
     <ClInclude Include="structs\client.h" />
     <ClInclude Include="structs\cliententlist.h" />
+    <ClInclude Include="structs\clientstate.h" />
     <ClInclude Include="structs\console.h" />
     <ClInclude Include="structs\crc32.h" />
     <ClInclude Include="structs\debugoverlay.h" />
@@ -190,6 +191,7 @@
     <ClInclude Include="structs\playerinfo.h" />
     <ClInclude Include="structs\quaternion.h" />
     <ClInclude Include="structs\render.h" />
+    <ClInclude Include="structs\sound.h" />
     <ClInclude Include="structs\surface.h" />
     <ClInclude Include="structs\trace.h" />
     <ClInclude Include="structs\usercmd.h" />
