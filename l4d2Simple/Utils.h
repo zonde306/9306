@@ -15,7 +15,7 @@ CNetVars::CNetVars()
 {
 	_tables.clear();
 
-	ClientClass* clientClass = g_cInterfaces.Client->GetAllClasses();
+	ClientClass* clientClass = g_interface.Client->GetAllClasses();
 	if (clientClass == nullptr)
 	{
 		Utils::log("ERROR: ClientClass was not found");
@@ -292,6 +292,9 @@ public:
 
 	// 延迟绘制一个圆形
 	void AddCircle(D3DCOLOR color, int x, int y, int r, size_t resolution = 64);
+
+	// 延迟绘制一个填充圆形
+	void AddFillCircle(D3DCOLOR color, int x, int y, int r, size_t resolution = 64);
 
 	// 延迟绘制文本（只支持 ASCII 格式字符）
 	void AddText(D3DCOLOR color, int x, int y, bool centered, const char* fmt, ...);
@@ -579,11 +582,11 @@ void DrawManager::CreateObjects()
 	}
 
 #ifndef ORIGINAL_CD3DFONT
-	m_pFont = new CD3DFont("Arial", m_iFontSize);
+	m_pFont = new CD3DFont("Tahoma", m_iFontSize);
 	m_pFont->InitializeDeviceObjects(m_pDevice);
 	m_pFont->RestoreDeviceObjects();
 #else
-	m_pFont = new CD3DFont(L"Arial", m_iFontSize);
+	m_pFont = new CD3DFont(L"Tahoma", m_iFontSize);
 	m_pFont->InitDeviceObjects(m_pDevice);
 	m_pFont->RestoreDeviceObjects();
 #endif
@@ -825,6 +828,24 @@ void DrawManager::AddCircle(D3DCOLOR color, int x, int y, int r, size_t resoluti
 	}
 
 	this->m_delayDraw.emplace_back(D3DPT_LINESTRIP, resolution, std::move(vertices));
+	m_hasDelayDrawing.unlock();
+}
+
+void DrawManager::AddFillCircle(D3DCOLOR color, int x, int y, int r, size_t resolution)
+{
+	if (!m_hasDelayDrawing.try_lock())
+		return;
+
+	float curAngle;
+	float angle = (float)((2.0f * M_PI_F) / resolution);
+	std::vector<D3DVertex> vertices;
+	for (size_t i = 0; i <= resolution; ++i)
+	{
+		curAngle = i * angle;
+		vertices.emplace_back(x + r * cos(curAngle), y - r * sin(curAngle), 0.0f, color);
+	}
+
+	this->m_delayDraw.emplace_back(D3DPT_TRIANGLEFAN, resolution, std::move(vertices));
 	m_hasDelayDrawing.unlock();
 }
 
@@ -1619,7 +1640,7 @@ void Utils::log(const char* text, ...)
 #endif
 
 	// 输出到控制台
-	g_cInterfaces.Engine->ClientCmd("echo \"%s\"", buffer);
+	g_interface.Engine->ClientCmd("echo \"%s\"", buffer);
 	std::cout << buffer << std::endl;
 }
 
@@ -1665,6 +1686,6 @@ void Utils::log(const wchar_t* text, ...)
 #endif
 
 	// 输出到控制台
-	g_cInterfaces.Engine->ClientCmd("echo \"%s\"", w2c(buffer));
+	g_interface.Engine->ClientCmd("echo \"%s\"", w2c(buffer));
 	std::wcout << buffer << std::endl;
 }

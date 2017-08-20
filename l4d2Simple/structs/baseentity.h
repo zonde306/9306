@@ -265,7 +265,7 @@ public:
 				return Vector();
 			}
 
-			if ((hdr = g_cInterfaces.ModelInfo->GetStudioModel(mod)) == nullptr)
+			if ((hdr = g_interface.ModelInfo->GetStudioModel(mod)) == nullptr)
 			{
 				Utils::log("%s (%d) 错误：获取模型信息失败 0x%X", __FILE__, __LINE__, (DWORD)this);
 				return Vector();

@@ -145,7 +145,7 @@ public:
 };
 
 // 各类接口
-extern CInterfaces g_cInterfaces;
+extern CInterfaces g_interface;
 
 #include "./definitions.h"
 #include "./indexes.h"

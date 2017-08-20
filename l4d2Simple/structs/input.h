@@ -224,37 +224,37 @@ public:
 	void StartPrediction(CUserCmd* pCmd)
 	{
 		CBaseEntity* client = GetLocalClient();
-		if (g_cInterfaces.MoveHelper == nullptr || pCmd == nullptr || client == nullptr ||
+		if (g_interface.MoveHelper == nullptr || pCmd == nullptr || client == nullptr ||
 			m_bPredictionRunning)
 			return;
 
 		m_bPredictionRunning = true;
-		m_flOldCurtime = g_cInterfaces.Globals->curtime;
-		m_flOldFrametime = g_cInterfaces.Globals->frametime;
+		m_flOldCurtime = g_interface.Globals->curtime;
+		m_flOldFrametime = g_interface.Globals->frametime;
 		m_flOldFrametime = client->GetNetProp<int>("m_fFlags", "DT_BasePlayer");
 
-		g_cInterfaces.Globals->curtime = client->GetTickBase() * g_cInterfaces.Globals->interval_per_tick;
-		g_cInterfaces.Globals->frametime = g_cInterfaces.Globals->interval_per_tick;
-		g_cInterfaces.GameMovement->StartTrackPredictionErrors(client);
+		g_interface.Globals->curtime = client->GetTickBase() * g_interface.Globals->interval_per_tick;
+		g_interface.Globals->frametime = g_interface.Globals->interval_per_tick;
+		g_interface.GameMovement->StartTrackPredictionErrors(client);
 
 		ZeroMemory(&m_MoveData, sizeof(m_MoveData));
-		g_cInterfaces.MoveHelper->SetHost(client);
-		g_cInterfaces.Prediction->SetupMove(client, pCmd, nullptr, &g_bMoveData);
-		g_cInterfaces.GameMovement->ProcessMovement(client, &g_bMoveData);
-		g_cInterfaces.Prediction->FinishMove(client, pCmd, &g_bMoveData);
+		g_interface.MoveHelper->SetHost(client);
+		g_interface.Prediction->SetupMove(client, pCmd, nullptr, &g_predMoveData);
+		g_interface.GameMovement->ProcessMovement(client, &g_predMoveData);
+		g_interface.Prediction->FinishMove(client, pCmd, &g_predMoveData);
 	}
 
 	void EndPrediction(CUserCmd* pCmd)
 	{
 		CBaseEntity* client = GetLocalClient();
-		if (g_cInterfaces.MoveHelper == nullptr || pCmd == nullptr || client == nullptr ||
+		if (g_interface.MoveHelper == nullptr || pCmd == nullptr || client == nullptr ||
 			!m_bPredictionRunning)
 			return;
 
-		g_cInterfaces.GameMovement->FinishTrackPredictionErrors(client);
-		g_cInterfaces.MoveHelper->SetHost(nullptr);
-		g_cInterfaces.Globals->curtime = m_flOldCurtime;
-		g_cInterfaces.Globals->frametime = m_flOldFrametime;
+		g_interface.GameMovement->FinishTrackPredictionErrors(client);
+		g_interface.MoveHelper->SetHost(nullptr);
+		g_interface.Globals->curtime = m_flOldCurtime;
+		g_interface.Globals->frametime = m_flOldFrametime;
 		client->SetNetProp("m_fFlags", m_iOldFlags, "DT_BasePlayer");
 
 		m_bPredictionRunning = false;

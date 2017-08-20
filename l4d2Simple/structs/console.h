@@ -483,7 +483,7 @@ public:
 	virtual bool RegisterConCommandBase(ConCommandBase *pVar)
 	{
 		Utils::log("%s (%d) ×¢²áÁËÒ»¸ö ConVar %s", __FILE__, __LINE__, pVar->GetName());
-		g_cInterfaces.Cvar->RegisterConCommand(pVar);
+		g_interface.Cvar->RegisterConCommand(pVar);
 		return true;
 	}
 };
@@ -497,12 +497,12 @@ IConCommandBaseAccessor	*ConCommandBase::s_pAccessor = &s_DefaultAccessor;
 
 void ConVar_Register(int nCVarFlag, IConCommandBaseAccessor *pAccessor)
 {
-	if (!g_cInterfaces.Cvar || s_bRegistered)
+	if (!g_interface.Cvar || s_bRegistered)
 		return;
 
 	s_bRegistered = true;
 	s_nCVarFlag = nCVarFlag;
-	s_nDLLIdentifier = g_cInterfaces.Cvar->AllocateDLLIdentifier();
+	s_nDLLIdentifier = g_interface.Cvar->AllocateDLLIdentifier();
 
 	ConCommandBase *pCur, *pNext;
 

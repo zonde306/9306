@@ -362,7 +362,7 @@ enum SolidFlags_t
 #define D3DDevice				0x173988		// shaderapidx9.dll
 
 // 获取本地玩家
-#define GetLocalClient()			g_cInterfaces.ClientEntList->GetClientEntity(g_cInterfaces.Engine->GetLocalPlayer())
+#define GetLocalClient()			g_interface.ClientEntList->GetClientEntity(g_interface.Engine->GetLocalPlayer())
 
 // 倒地
 #define IsFallDown(_e)				(_e->GetNetProp<byte>("m_isIncapacitated", "DT_TerrorPlayer") != 0)
@@ -395,7 +395,7 @@ enum SolidFlags_t
 #define IsGhostInfected(_e)			(_e->GetNetProp<byte>("m_isGhost", "DT_TerrorPlayer") != 0 || (_e->GetNetProp<int>("m_fEffects", "DT_BaseCombatCharacter") & EF_NODRAW))
 
 // 获取当前服务器时间
-#define GetServerTime()				(g_cInterfaces.ClientEntList->GetClientEntity(g_cInterfaces.Engine->GetLocalPlayer())->GetTickBase() * g_cInterfaces.Globals->interval_per_tick)
+#define GetServerTime()				(g_interface.ClientEntList->GetClientEntity(g_interface.Engine->GetLocalPlayer())->GetTickBase() * g_interface.Globals->interval_per_tick)
 
 // 输出偏移地址
 #define printo(_s,_n)				std::cout << XorStr(_s) << XorStr(" = 0x") << std::setiosflags(std::ios::hex|std::ios::uppercase) << std::hex << (DWORD)_n << std::resetiosflags(std::ios::hex|std::ios::uppercase) << std::oct << std::endl
@@ -777,21 +777,21 @@ enum entityGender_t
 
 #define l4d2_zombies(_s,_n,_p)		(l4d2_common(_s,_n,_p) || l4d2_special(_s,_n,_p))
 
-#define CVAR_MAKE_FLAGS(_s)				if(g_tConVar[_s] != nullptr)\
+#define CVAR_MAKE_FLAGS(_s)				if(g_conVar[_s] != nullptr)\
 {\
-	if(g_tConVar[_s]->IsFlagSet(FCVAR_CHEAT | FCVAR_SPONLY | FCVAR_REPLICATED | FCVAR_NOT_CONNECTED | FCVAR_SERVER_CAN_EXECUTE))\
-		g_tConVar[_s]->RemoveFlags(FCVAR_CHEAT | FCVAR_SPONLY | FCVAR_REPLICATED | FCVAR_NOT_CONNECTED | FCVAR_SERVER_CAN_EXECUTE);\
-	if(!g_tConVar[_s]->IsFlagSet(FCVAR_SERVER_CANNOT_QUERY))\
-		g_tConVar[_s]->AddFlags(FCVAR_SERVER_CANNOT_QUERY);\
+	if(g_conVar[_s]->IsFlagSet(FCVAR_CHEAT | FCVAR_SPONLY | FCVAR_REPLICATED | FCVAR_NOT_CONNECTED | FCVAR_SERVER_CAN_EXECUTE))\
+		g_conVar[_s]->RemoveFlags(FCVAR_CHEAT | FCVAR_SPONLY | FCVAR_REPLICATED | FCVAR_NOT_CONNECTED | FCVAR_SERVER_CAN_EXECUTE);\
+	if(!g_conVar[_s]->IsFlagSet(FCVAR_SERVER_CANNOT_QUERY))\
+		g_conVar[_s]->AddFlags(FCVAR_SERVER_CANNOT_QUERY);\
 }
 
-#define CVAR_MAKE_VALUE(_s,_v1,_v2)		if(g_tConVar[_s] != nullptr)\
+#define CVAR_MAKE_VALUE(_s,_v1,_v2)		if(g_conVar[_s] != nullptr)\
 {\
-	if(g_tConVar[_s]->GetInt() == _v1)\
-		g_tConVar[_s]->SetValue(_v2);\
+	if(g_conVar[_s]->GetInt() == _v1)\
+		g_conVar[_s]->SetValue(_v2);\
 	else\
-		g_tConVar[_s]->SetValue(_v1);\
-	g_cInterfaces.Engine->ClientCmd("echo \"[ConVar] %s set %d\"", _s, g_tConVar[_s]->GetInt());\
+		g_conVar[_s]->SetValue(_v1);\
+	g_interface.Engine->ClientCmd("echo \"[ConVar] %s set %d\"", _s, g_conVar[_s]->GetInt());\
 }
 
 #define VMTHOOK_DESTORY(_v)		if(_v)_v->HookTable(false)

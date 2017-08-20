@@ -474,8 +474,8 @@ float GetAnglesFieldOfView(const Vector& myAngles, const Vector& aimAngles)
 bool WorldToScreen(const Vector &point, Vector &out)
 {
 	int m_iWidth, m_iHeight;
-	g_cInterfaces.Engine->GetScreenSize(m_iWidth, m_iHeight);
-	const VMatrix &worldToScreen = g_cInterfaces.Engine->WorldToScreenMatrix();
+	g_interface.Engine->GetScreenSize(m_iWidth, m_iHeight);
+	const VMatrix &worldToScreen = g_interface.Engine->WorldToScreenMatrix();
 	float w = worldToScreen[3][0] * point[0] + worldToScreen[3][1] * point[1] + worldToScreen[3][2] * point[2] + worldToScreen[3][3];
 	out.z = 0;
 	if (w > 0.01)
@@ -500,10 +500,10 @@ Vector2D DoEnemyCircle(CBaseEntity* pLocalPlayer, const Vector &vecDelta, float 
 {
 	float flRadius = 360.0f;
 	int iScreenWidth, iScreenHeight;
-	g_cInterfaces.Engine->GetScreenSize(iScreenWidth, iScreenHeight);
+	g_interface.Engine->GetScreenSize(iScreenWidth, iScreenHeight);
 
 	Vector vRealAngles;
-	g_cInterfaces.Engine->GetViewAngles(vRealAngles);
+	g_interface.Engine->GetViewAngles(vRealAngles);
 
 	Vector vForward, vRight, vUp(0.0f, 0.0f, 1.0f);
 

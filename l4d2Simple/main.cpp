@@ -9,7 +9,7 @@ static std::unique_ptr<DetourXS> g_pDetourReset, g_pDetourPresent, g_pDetourEndS
 	g_pDetourDrawIndexedPrimitive, g_pDetourCreateQuery, g_pDetourCL_Move, g_pDetourDebugger;
 
 std::unique_ptr<CNetVars> g_pNetVars;
-CInterfaces g_cInterfaces;
+CInterfaces g_interface;
 
 // D3D Device 虚表挂钩
 static std::unique_ptr<CVMTHookManager> g_pVMTDevice;
@@ -32,7 +32,7 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved)
 		g_hMyInstance = module;
 
 		// 获取所有接口
-		g_cInterfaces.GetInterfaces();
+		g_interface.GetInterfaces();
 
 		// 初始化 NetProp 表
 		g_pNetVars = std::make_unique<CNetVars>();
@@ -105,12 +105,12 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved)
 		DETOURXS_DESTORY(g_pDetourCreateQuery);
 		DETOURXS_DESTORY(g_pDetourDebugger);
 		DETOURXS_DESTORY(g_pDetourCL_Move);
-		VMTHOOK_DESTORY(g_cInterfaces.ClientModeHook);
-		VMTHOOK_DESTORY(g_cInterfaces.PanelHook);
-		VMTHOOK_DESTORY(g_cInterfaces.ClientHook);
-		VMTHOOK_DESTORY(g_cInterfaces.PredictionHook);
-		VMTHOOK_DESTORY(g_cInterfaces.ModelRenderHook);
-		VMTHOOK_DESTORY(g_cInterfaces.GameEventHook);
+		VMTHOOK_DESTORY(g_interface.ClientModeHook);
+		VMTHOOK_DESTORY(g_interface.PanelHook);
+		VMTHOOK_DESTORY(g_interface.ClientHook);
+		VMTHOOK_DESTORY(g_interface.PredictionHook);
+		VMTHOOK_DESTORY(g_interface.ModelRenderHook);
+		VMTHOOK_DESTORY(g_interface.GameEventHook);
 		VMTHOOK_DESTORY(g_pVMTDevice);
 	}
 
@@ -219,7 +219,7 @@ static bool g_bNewFrame = false;										// 现在是否运行在新的一帧
 static bool* g_pbSendPacket;											// 数据包是否发送到服务器
 static int g_iSpeedMultiple = 5;										// 加速倍数
 static CUserCmd* g_pUserCommands;										// 本地玩家当前按键
-std::map<std::string, ConVar*> g_tConVar;								// 控制台变量
+std::map<std::string, ConVar*> g_conVar;								// 控制台变量
 static float g_fAimbotFieldOfView = 30.0f;								// 自动瞄准角度
 static CBaseEntity* g_pCurrentAiming;									// 当前的自动瞄准目标
 static CBaseEntity* g_pGameRulesProxy;									// 游戏规则实体，在这里会有一些有用的东西
@@ -239,30 +239,30 @@ DWORD WINAPI StartCheat(LPVOID params)
 	Utils::log("client.dll 0x%X", g_iClientBase);
 	Utils::log("engine.dll 0x%X", g_iEngineBase);
 	Utils::log("materialsystem.dll 0x%X", g_iMaterialModules);
-	Utils::log("VEngineClient 0x%X", (DWORD)g_cInterfaces.Engine);
-	Utils::log("EngineTraceClient 0x%X", (DWORD)g_cInterfaces.Trace);
-	Utils::log("VClient 0x%X", (DWORD)g_cInterfaces.Client);
-	Utils::log("VClientEntityList 0x%X", (DWORD)g_cInterfaces.ClientEntList);
-	Utils::log("VModelInfoClient 0x%X", (DWORD)g_cInterfaces.ModelInfo);
-	Utils::log("VGUI_Panel 0x%X", (DWORD)g_cInterfaces.Panel);
-	Utils::log("VGUI_Surface 0x%X", (DWORD)g_cInterfaces.Surface);
-	Utils::log("PlayerInfoManager 0x%X", (DWORD)g_cInterfaces.PlayerInfo);
-	Utils::log("VClientPrediction 0x%X", (DWORD)g_cInterfaces.Prediction);
-	Utils::log("GameMovement 0x%X", (DWORD)g_cInterfaces.GameMovement);
-	Utils::log("VDebugOverlay 0x%X", (DWORD)g_cInterfaces.DebugOverlay);
-	Utils::log("GameEventsManager 0x%X", (DWORD)g_cInterfaces.GameEvent);
-	Utils::log("VEngineModel 0x%X", (DWORD)g_cInterfaces.ModelRender);
-	Utils::log("VEngineRenderView 0x%X", (DWORD)g_cInterfaces.RenderView);
-	Utils::log("VEngineCvar 0x%X", (DWORD)g_cInterfaces.Engine);
-	Utils::log("GlobalsVariable 0x%X", (DWORD)g_cInterfaces.Globals);
-	Utils::log("InputSystem 0x%X", (DWORD)g_cInterfaces.InputSystem);
-	Utils::log("MaterialSystem 0x%X", (DWORD)g_cInterfaces.MaterialSystem);
-	Utils::log("Input 0x%X", (DWORD)g_cInterfaces.Input);
-	Utils::log("UserMessages 0x%X", (DWORD)g_cInterfaces.UserMessage);
-	Utils::log("MoveHelper 0x%X", (DWORD)g_cInterfaces.MoveHelper);
+	Utils::log("VEngineClient 0x%X", (DWORD)g_interface.Engine);
+	Utils::log("EngineTraceClient 0x%X", (DWORD)g_interface.Trace);
+	Utils::log("VClient 0x%X", (DWORD)g_interface.Client);
+	Utils::log("VClientEntityList 0x%X", (DWORD)g_interface.ClientEntList);
+	Utils::log("VModelInfoClient 0x%X", (DWORD)g_interface.ModelInfo);
+	Utils::log("VGUI_Panel 0x%X", (DWORD)g_interface.Panel);
+	Utils::log("VGUI_Surface 0x%X", (DWORD)g_interface.Surface);
+	Utils::log("PlayerInfoManager 0x%X", (DWORD)g_interface.PlayerInfo);
+	Utils::log("VClientPrediction 0x%X", (DWORD)g_interface.Prediction);
+	Utils::log("GameMovement 0x%X", (DWORD)g_interface.GameMovement);
+	Utils::log("VDebugOverlay 0x%X", (DWORD)g_interface.DebugOverlay);
+	Utils::log("GameEventsManager 0x%X", (DWORD)g_interface.GameEvent);
+	Utils::log("VEngineModel 0x%X", (DWORD)g_interface.ModelRender);
+	Utils::log("VEngineRenderView 0x%X", (DWORD)g_interface.RenderView);
+	Utils::log("VEngineCvar 0x%X", (DWORD)g_interface.Engine);
+	Utils::log("GlobalsVariable 0x%X", (DWORD)g_interface.Globals);
+	Utils::log("InputSystem 0x%X", (DWORD)g_interface.InputSystem);
+	Utils::log("MaterialSystem 0x%X", (DWORD)g_interface.MaterialSystem);
+	Utils::log("Input 0x%X", (DWORD)g_interface.Input);
+	Utils::log("UserMessages 0x%X", (DWORD)g_interface.UserMessage);
+	Utils::log("MoveHelper 0x%X", (DWORD)g_interface.MoveHelper);
 	
 	// 这个好像是不正确的...
-	g_cInterfaces.MoveHelper = nullptr;
+	g_interface.MoveHelper = nullptr;
 
 	if ((oCL_Move = (FnCL_Move)Utils::FindPattern("engine.dll",
 		XorStr("55 8B EC B8 ? ? ? ? E8 ? ? ? ? A1 ? ? ? ? 33 C5 89 45 FC 53 56 57 E8"))) != nullptr)
@@ -306,80 +306,80 @@ DWORD WINAPI StartCheat(LPVOID params)
 	FnGetClientMode GetClientModeNormal = nullptr;
 	if ((GetClientModeNormal = (FnGetClientMode)Utils::FindPattern("client.dll",
 		XorStr("8B 0D ? ? ? ? 8B 01 8B 90 ? ? ? ? FF D2 8B 04 85 ? ? ? ? C3"))) != nullptr &&
-		(g_cInterfaces.ClientMode = GetClientModeNormal()) != nullptr)
+		(g_interface.ClientMode = GetClientModeNormal()) != nullptr)
 	{
-		g_cInterfaces.ClientModeHook = std::make_unique<CVMTHookManager>(g_cInterfaces.ClientMode);
-		// printo("ClientModePtr", g_cInterfaces.ClientMode);
+		g_interface.ClientModeHook = std::make_unique<CVMTHookManager>(g_interface.ClientMode);
+		// printo("ClientModePtr", g_interface.ClientMode);
 		Utils::log("GetClientMode = client.dll + 0x%X", (DWORD)GetClientModeNormal - g_iClientBase);
-		Utils::log("g_pClientMode = 0x%X", (DWORD)g_cInterfaces.ClientMode);
-		Utils::log("m_pChatElement = 0x%X", (DWORD)g_cInterfaces.ClientMode->GetHudChat());
+		Utils::log("g_pClientMode = 0x%X", (DWORD)g_interface.ClientMode);
+		Utils::log("m_pChatElement = 0x%X", (DWORD)g_interface.ClientMode->GetHudChat());
 	}
 	else
 		Utils::log("ClientModeShared not found");
 
-	if (g_cInterfaces.PanelHook && indexes::PaintTraverse > -1)
+	if (g_interface.PanelHook && indexes::PaintTraverse > -1)
 	{
-		oPaintTraverse = (FnPaintTraverse)g_cInterfaces.PanelHook->HookFunction(indexes::PaintTraverse, Hooked_PaintTraverse);
-		g_cInterfaces.PanelHook->HookTable(true);
+		oPaintTraverse = (FnPaintTraverse)g_interface.PanelHook->HookFunction(indexes::PaintTraverse, Hooked_PaintTraverse);
+		g_interface.PanelHook->HookTable(true);
 		Utils::log("oPaintTraverse = 0x%X", (DWORD)oPaintTraverse);
 	}
 
-	if (g_cInterfaces.ClientModeHook && indexes::SharedCreateMove > -1)
+	if (g_interface.ClientModeHook && indexes::SharedCreateMove > -1)
 	{
-		oCreateMoveShared = (FnCreateMoveShared)g_cInterfaces.ClientModeHook->HookFunction(indexes::SharedCreateMove, Hooked_CreateMoveShared);
-		// g_cInterfaces.ClientModeHook->HookTable(true);
+		oCreateMoveShared = (FnCreateMoveShared)g_interface.ClientModeHook->HookFunction(indexes::SharedCreateMove, Hooked_CreateMoveShared);
+		// g_interface.ClientModeHook->HookTable(true);
 		Utils::log("oCreateMoveShared = 0x%X", (DWORD)oCreateMoveShared);
 	}
 
-	if (g_cInterfaces.ClientHook && indexes::CreateMove > -1)
+	if (g_interface.ClientHook && indexes::CreateMove > -1)
 	{
-		oCreateMove = (FnCreateMove)g_cInterfaces.ClientHook->HookFunction(indexes::CreateMove, Hooked_CreateMove);
-		g_cInterfaces.ClientHook->HookTable(true);
+		oCreateMove = (FnCreateMove)g_interface.ClientHook->HookFunction(indexes::CreateMove, Hooked_CreateMove);
+		g_interface.ClientHook->HookTable(true);
 		Utils::log("oCreateMove = 0x%X", (DWORD)oCreateMove);
 	}
 
-	if (g_cInterfaces.ClientHook && indexes::FrameStageNotify > -1)
+	if (g_interface.ClientHook && indexes::FrameStageNotify > -1)
 	{
-		oFrameStageNotify = (FnFrameStageNotify)g_cInterfaces.ClientHook->HookFunction(indexes::FrameStageNotify, Hooked_FrameStageNotify);
-		g_cInterfaces.ClientHook->HookTable(true);
+		oFrameStageNotify = (FnFrameStageNotify)g_interface.ClientHook->HookFunction(indexes::FrameStageNotify, Hooked_FrameStageNotify);
+		g_interface.ClientHook->HookTable(true);
 		Utils::log("oFrameStageNotify = 0x%X", (DWORD)oFrameStageNotify);
 	}
 
-	if (g_cInterfaces.ClientHook && indexes::InKeyEvent > -1)
+	if (g_interface.ClientHook && indexes::InKeyEvent > -1)
 	{
-		oInKeyEvent = (FnInKeyEvent)g_cInterfaces.ClientHook->HookFunction(indexes::InKeyEvent, Hooked_InKeyEvent);
-		g_cInterfaces.ClientHook->HookTable(true);
+		oInKeyEvent = (FnInKeyEvent)g_interface.ClientHook->HookFunction(indexes::InKeyEvent, Hooked_InKeyEvent);
+		g_interface.ClientHook->HookTable(true);
 		Utils::log("oInKeyEvent = 0x%X", (DWORD)oInKeyEvent);
 	}
 
-	if (g_cInterfaces.ClientHook && indexes::DispatchUserMessage > -1)
+	if (g_interface.ClientHook && indexes::DispatchUserMessage > -1)
 	{
-		oDispatchUserMessage = (FnDispatchUserMessage)g_cInterfaces.ClientHook->HookFunction(indexes::DispatchUserMessage, Hooked_DispatchUserMessage);
-		g_cInterfaces.ClientHook->HookTable(true);
+		oDispatchUserMessage = (FnDispatchUserMessage)g_interface.ClientHook->HookFunction(indexes::DispatchUserMessage, Hooked_DispatchUserMessage);
+		g_interface.ClientHook->HookTable(true);
 		Utils::log("oDispatchUserMessage = 0x%X", (DWORD)oDispatchUserMessage);
 	}
 
-	if (g_cInterfaces.PredictionHook && indexes::RunCommand > -1)
+	if (g_interface.PredictionHook && indexes::RunCommand > -1)
 	{
-		oRunCommand = (FnRunCommand)g_cInterfaces.PredictionHook->HookFunction(indexes::RunCommand, Hooked_RunCommand);
-		g_cInterfaces.PredictionHook->HookTable(true);
+		oRunCommand = (FnRunCommand)g_interface.PredictionHook->HookFunction(indexes::RunCommand, Hooked_RunCommand);
+		g_interface.PredictionHook->HookTable(true);
 		Utils::log("oRunCommand = 0x%X", (DWORD)oRunCommand);
 	}
 
 	/*
-	if (g_cInterfaces.ModelRenderHook && indexes::DrawModel > -1)
+	if (g_interface.ModelRenderHook && indexes::DrawModel > -1)
 	{
-		oDrawModel = (FnDrawModel)g_cInterfaces.ModelRenderHook->HookFunction(indexes::DrawModel, Hooked_DrawModel);
-		g_cInterfaces.ModelRenderHook->HookTable(true);
+		oDrawModel = (FnDrawModel)g_interface.ModelRenderHook->HookFunction(indexes::DrawModel, Hooked_DrawModel);
+		g_interface.ModelRenderHook->HookTable(true);
 		Utils::log("oDrawModel = 0x%X", (DWORD)oDrawModel);
 	}
 	*/
 
 	/*
-	if (g_cInterfaces.ViewRenderHook && indexes::VGui_Paint > -1)
+	if (g_interface.ViewRenderHook && indexes::VGui_Paint > -1)
 	{
-		oVGUIPaint = (FnVGUIPaint)g_cInterfaces.ViewRenderHook->HookFunction(indexes::VGui_Paint, &Hooked_VGUIPaint);
-		g_cInterfaces.ViewRenderHook->HookTable(true);
+		oVGUIPaint = (FnVGUIPaint)g_interface.ViewRenderHook->HookFunction(indexes::VGui_Paint, &Hooked_VGUIPaint);
+		g_interface.ViewRenderHook->HookTable(true);
 		Utils::log("oVgui_Paint = 0x%X", (DWORD)oVGUIPaint);
 	}
 	*/
@@ -401,35 +401,41 @@ DWORD WINAPI StartCheat(LPVOID params)
 		}
 	}
 
-	if (g_cInterfaces.Cvar)
+	if (g_interface.Cvar)
 	{
 #ifdef USE_CVAR_CHANGE
-		g_tConVar["sv_cheats"] = g_cInterfaces.Cvar->FindVar("sv_cheats");
-		g_tConVar["r_drawothermodels"] = g_cInterfaces.Cvar->FindVar("r_drawothermodels");
-		g_tConVar["cl_drawshadowtexture"] = g_cInterfaces.Cvar->FindVar("cl_drawshadowtexture");
-		g_tConVar["mat_fullbright"] = g_cInterfaces.Cvar->FindVar("mat_fullbright");
-		g_tConVar["sv_pure"] = g_cInterfaces.Cvar->FindVar("sv_pure");
-		g_tConVar["sv_consistency"] = g_cInterfaces.Cvar->FindVar("sv_consistency");
-		g_tConVar["mp_gamemode"] = g_cInterfaces.Cvar->FindVar("mp_gamemode");
-		g_tConVar["c_thirdpersonshoulder"] = g_cInterfaces.Cvar->FindVar("c_thirdpersonshoulder");
+		g_conVar["sv_cheats"] = g_interface.Cvar->FindVar("sv_cheats");
+		g_conVar["r_drawothermodels"] = g_interface.Cvar->FindVar("r_drawothermodels");
+		g_conVar["cl_drawshadowtexture"] = g_interface.Cvar->FindVar("cl_drawshadowtexture");
+		g_conVar["mat_fullbright"] = g_interface.Cvar->FindVar("mat_fullbright");
+		g_conVar["sv_pure"] = g_interface.Cvar->FindVar("sv_pure");
+		g_conVar["sv_consistency"] = g_interface.Cvar->FindVar("sv_consistency");
+		g_conVar["mp_gamemode"] = g_interface.Cvar->FindVar("mp_gamemode");
+		g_conVar["c_thirdpersonshoulder"] = g_interface.Cvar->FindVar("c_thirdpersonshoulder");
+		g_conVar["c_thirdpersonshoulderheight"] = g_interface.Cvar->FindVar("c_thirdpersonshoulderheight");
+		g_conVar["c_thirdpersonshoulderoffset"] = g_interface.Cvar->FindVar("c_thirdpersonshoulderoffset");
 
-		Utils::log("sv_cheats = 0x%X", (DWORD)g_tConVar["sv_cheats"]);
-		Utils::log("r_drawothermodels = 0x%X", (DWORD)g_tConVar["r_drawothermodels"]);
-		Utils::log("cl_drawshadowtexture = 0x%X", (DWORD)g_tConVar["cl_drawshadowtexture"]);
-		Utils::log("mat_fullbright = 0x%X", (DWORD)g_tConVar["mat_fullbright"]);
-		Utils::log("sv_pure = 0x%X", (DWORD)g_tConVar["sv_pure"]);
-		Utils::log("sv_consistency = 0x%X", (DWORD)g_tConVar["sv_consistency"]);
-		Utils::log("mp_gamemode = 0x%X", (DWORD)g_tConVar["mp_gamemode"]);
-		Utils::log("c_thirdpersonshoulder = 0x%X", (DWORD)g_tConVar["c_thirdpersonshoulder"]);
+		Utils::log("sv_cheats = 0x%X", (DWORD)g_conVar["sv_cheats"]);
+		Utils::log("r_drawothermodels = 0x%X", (DWORD)g_conVar["r_drawothermodels"]);
+		Utils::log("cl_drawshadowtexture = 0x%X", (DWORD)g_conVar["cl_drawshadowtexture"]);
+		Utils::log("mat_fullbright = 0x%X", (DWORD)g_conVar["mat_fullbright"]);
+		Utils::log("sv_pure = 0x%X", (DWORD)g_conVar["sv_pure"]);
+		Utils::log("sv_consistency = 0x%X", (DWORD)g_conVar["sv_consistency"]);
+		Utils::log("mp_gamemode = 0x%X", (DWORD)g_conVar["mp_gamemode"]);
+		Utils::log("c_thirdpersonshoulder = 0x%X", (DWORD)g_conVar["c_thirdpersonshoulder"]);
+		Utils::log("c_thirdpersonshoulderheight = 0x%X", (DWORD)g_conVar["c_thirdpersonshoulderheight"]);
+		Utils::log("c_thirdpersonshoulderoffset = 0x%X", (DWORD)g_conVar["c_thirdpersonshoulderoffset"]);
 #else
-		g_tConVar["sv_cheats"] = nullptr;
-		g_tConVar["r_drawothermodels"] = nullptr;
-		g_tConVar["cl_drawshadowtexture"] = nullptr;
-		g_tConVar["mat_fullbright"] = nullptr;
-		g_tConVar["sv_pure"] = nullptr;
-		g_tConVar["sv_consistency"] = nullptr;
-		g_tConVar["mp_gamemode"] = nullptr;
-		g_tConVar["c_thirdpersonshoulder"] = nullptr;
+		g_conVar["sv_cheats"] = nullptr;
+		g_conVar["r_drawothermodels"] = nullptr;
+		g_conVar["cl_drawshadowtexture"] = nullptr;
+		g_conVar["mat_fullbright"] = nullptr;
+		g_conVar["sv_pure"] = nullptr;
+		g_conVar["sv_consistency"] = nullptr;
+		g_conVar["mp_gamemode"] = nullptr;
+		g_conVar["c_thirdpersonshoulder"] = nullptr;
+		g_conVar["c_thirdpersonshoulderheight"] = nullptr;
+		g_conVar["c_thirdpersonshoulderoffset"] = nullptr;
 #endif
 	}
 
@@ -464,7 +470,7 @@ DWORD WINAPI StartCheat(LPVOID params)
 	bindAlias(45);
 
 	// 事件监听器
-	if (g_cInterfaces.GameEvent)
+	if (g_interface.GameEvent)
 	{
 		class EventListener : public IGameEventListener2
 		{
@@ -475,19 +481,19 @@ DWORD WINAPI StartCheat(LPVOID params)
 				if (_strcmpi(eventName, "player_death") == 0)
 				{
 					// 受害者（死者）
-					int victim = g_cInterfaces.Engine->GetPlayerForUserID(event->GetInt("userid"));
+					int victim = g_interface.Engine->GetPlayerForUserID(event->GetInt("userid"));
 					if (victim <= 0)
 						victim = event->GetInt("entityid");
 
 					// 攻击者（击杀者）
-					int attacker = g_cInterfaces.Engine->GetPlayerForUserID(event->GetInt("attacker"));
+					int attacker = g_interface.Engine->GetPlayerForUserID(event->GetInt("attacker"));
 					if (attacker <= 0)
 						attacker = event->GetInt("attackerentid");
 
 					if (victim <= 0)
 						return;
 
-					CBaseEntity* entity = g_cInterfaces.ClientEntList->GetClientEntity(victim);
+					CBaseEntity* entity = g_interface.ClientEntList->GetClientEntity(victim);
 					if (!IsValidVictim(entity))
 						return;
 
@@ -512,9 +518,9 @@ DWORD WINAPI StartCheat(LPVOID params)
 					if (victim <= 0)
 						return;
 
-					int attacker = g_cInterfaces.Engine->GetPlayerForUserID(event->GetInt("attacker"));
+					int attacker = g_interface.Engine->GetPlayerForUserID(event->GetInt("attacker"));
 
-					CBaseEntity* entity = g_cInterfaces.ClientEntList->GetClientEntity(victim);
+					CBaseEntity* entity = g_interface.ClientEntList->GetClientEntity(victim);
 					if (!IsValidVictim(entity))
 						return;
 
@@ -535,11 +541,11 @@ DWORD WINAPI StartCheat(LPVOID params)
 				}
 				else if (_strcmpi(eventName, "player_spawn") == 0)
 				{
-					int client = g_cInterfaces.Engine->GetPlayerForUserID(event->GetInt("userid"));
+					int client = g_interface.Engine->GetPlayerForUserID(event->GetInt("userid"));
 					if (client <= 0)
 						return;
 
-					CBaseEntity* entity = g_cInterfaces.ClientEntList->GetClientEntity(client);
+					CBaseEntity* entity = g_interface.ClientEntList->GetClientEntity(client);
 					if (!IsValidVictim(entity))
 						return;
 
@@ -585,7 +591,7 @@ DWORD WINAPI StartCheat(LPVOID params)
 				}
 				else if (_strcmpi(eventName, "player_say") == 0 || _strcmpi(eventName, "player_chat") == 0)
 				{
-					int client = g_cInterfaces.Engine->GetPlayerForUserID(event->GetInt("userid"));
+					int client = g_interface.Engine->GetPlayerForUserID(event->GetInt("userid"));
 					const char* text = event->GetString("text");
 
 					bool teamOnly = (eventName[7] == 'c' ? event->GetBool("teamonly") : false);
@@ -593,7 +599,7 @@ DWORD WINAPI StartCheat(LPVOID params)
 					if (client <= 0 || text == nullptr || text[0] == '\0' || !teamOnly)
 						return;
 
-					CBaseEntity* entity = g_cInterfaces.ClientEntList->GetClientEntity(client);
+					CBaseEntity* entity = g_interface.ClientEntList->GetClientEntity(client);
 					if (!IsValidVictim(entity))
 						return;
 
@@ -622,13 +628,13 @@ DWORD WINAPI StartCheat(LPVOID params)
 					if (event->GetBool("disconnect"))
 						return;
 
-					int client = g_cInterfaces.Engine->GetPlayerForUserID(event->GetInt("userid"));
+					int client = g_interface.Engine->GetPlayerForUserID(event->GetInt("userid"));
 					int oldTeam = event->GetInt("oldteam");
 					int newTeam = event->GetInt("team");
 					if (client <= 0 || newTeam == 0)
 						return;
 
-					CBaseEntity* entity = g_cInterfaces.ClientEntList->GetClientEntity(client);
+					CBaseEntity* entity = g_interface.ClientEntList->GetClientEntity(client);
 					if (!IsValidVictim(entity))
 						return;
 
@@ -643,7 +649,7 @@ DWORD WINAPI StartCheat(LPVOID params)
 				}
 				else if (_strcmpi(eventName, "door_unlocked") == 0)
 				{
-					int client = g_cInterfaces.Engine->GetPlayerForUserID(event->GetInt("userid"));
+					int client = g_interface.Engine->GetPlayerForUserID(event->GetInt("userid"));
 					bool checkpoint = event->GetBool("checkpoint");
 					if (client <= 0 || !checkpoint)
 						return;
@@ -662,7 +668,7 @@ DWORD WINAPI StartCheat(LPVOID params)
 					if (team <= 1 || voter <= 0)
 						return;
 
-					CBaseEntity* entity = g_cInterfaces.ClientEntList->GetClientEntity(voter);
+					CBaseEntity* entity = g_interface.ClientEntList->GetClientEntity(voter);
 					if (!IsValidVictim(entity))
 						return;
 
@@ -694,7 +700,7 @@ DWORD WINAPI StartCheat(LPVOID params)
 					if (client <= 0 || team <= 1)
 						return;
 
-					CBaseEntity* entity = g_cInterfaces.ClientEntList->GetClientEntity(client);
+					CBaseEntity* entity = g_interface.ClientEntList->GetClientEntity(client);
 					if (!IsValidVictim(entity))
 						return;
 
@@ -712,7 +718,7 @@ DWORD WINAPI StartCheat(LPVOID params)
 					if (client <= 0 || team <= 1)
 						return;
 
-					CBaseEntity* entity = g_cInterfaces.ClientEntList->GetClientEntity(client);
+					CBaseEntity* entity = g_interface.ClientEntList->GetClientEntity(client);
 					if (!IsValidVictim(entity))
 						return;
 
@@ -724,7 +730,7 @@ DWORD WINAPI StartCheat(LPVOID params)
 				}
 				else if (_strcmpi(eventName, "tank_spawn") == 0)
 				{
-					int client = g_cInterfaces.Engine->GetPlayerForUserID(event->GetInt("userid"));
+					int client = g_interface.Engine->GetPlayerForUserID(event->GetInt("userid"));
 					if (client <= 0)
 						return;
 
@@ -736,13 +742,13 @@ DWORD WINAPI StartCheat(LPVOID params)
 				else if (_strcmpi(eventName, "friendly_fire") == 0)
 				{
 					// 受害者
-					int victim = g_cInterfaces.Engine->GetPlayerForUserID(event->GetInt("userid"));
+					int victim = g_interface.Engine->GetPlayerForUserID(event->GetInt("userid"));
 
 					// 攻击者
-					int attacker = g_cInterfaces.Engine->GetPlayerForUserID(event->GetInt("attacker"));
+					int attacker = g_interface.Engine->GetPlayerForUserID(event->GetInt("attacker"));
 
 					// 是谁的错
-					int guilty = g_cInterfaces.Engine->GetPlayerForUserID(event->GetInt("guilty"));
+					int guilty = g_interface.Engine->GetPlayerForUserID(event->GetInt("guilty"));
 
 					// 伤害类型
 					// int damageType = event->GetInt("type");
@@ -750,8 +756,8 @@ DWORD WINAPI StartCheat(LPVOID params)
 					if (victim <= 0 || attacker <= 0)
 						return;
 
-					CBaseEntity* entityAttacker = g_cInterfaces.ClientEntList->GetClientEntity(attacker);
-					CBaseEntity* entityVictim = g_cInterfaces.ClientEntList->GetClientEntity(victim);
+					CBaseEntity* entityAttacker = g_interface.ClientEntList->GetClientEntity(attacker);
+					CBaseEntity* entityVictim = g_interface.ClientEntList->GetClientEntity(victim);
 					if (!IsValidVictim(entityAttacker) || !IsValidVictim(entityVictim))
 						return;
 
@@ -787,10 +793,10 @@ DWORD WINAPI StartCheat(LPVOID params)
 				else if (_strcmpi(eventName, "tank_killed") == 0)
 				{
 					// 受害者
-					int victim = g_cInterfaces.Engine->GetPlayerForUserID(event->GetInt("userid"));
+					int victim = g_interface.Engine->GetPlayerForUserID(event->GetInt("userid"));
 
 					// 攻击者
-					int attacker = g_cInterfaces.Engine->GetPlayerForUserID(event->GetInt("attacker"));
+					int attacker = g_interface.Engine->GetPlayerForUserID(event->GetInt("attacker"));
 
 					if (victim <= 0)
 						return;
@@ -813,24 +819,24 @@ DWORD WINAPI StartCheat(LPVOID params)
 				}
 				else if (_strcmpi(eventName, "weapon_fire") == 0)
 				{
-					if (g_tConVar["c_thirdpersonshoulder"] == nullptr ||
-						g_tConVar["c_thirdpersonshoulder"]->GetInt() <= 0)
+					if (g_conVar["c_thirdpersonshoulder"] == nullptr ||
+						g_conVar["c_thirdpersonshoulder"]->GetInt() <= 0)
 						return;
 					
-					int client = g_cInterfaces.Engine->GetPlayerForUserID(event->GetInt("userid"));
+					int client = g_interface.Engine->GetPlayerForUserID(event->GetInt("userid"));
 					const char* weapon = event->GetString("weapon");
-					if (client != g_cInterfaces.Engine->GetLocalPlayer() ||
+					if (client != g_interface.Engine->GetLocalPlayer() ||
 						weapon == nullptr || weapon[0] == '\0')
 						return;
 
 					if (_strcmpi(weapon, "autoshotgun") == 0)
-						g_cInterfaces.Engine->ClientCmd("play \"weapons/auto_shotgun/gunfire/auto_shotgun_fire_1.wav\"");
+						g_interface.Engine->ClientCmd("play \"weapons/auto_shotgun/gunfire/auto_shotgun_fire_1.wav\"");
 					else if(_strcmpi(weapon, "shotgun_spas") == 0)
-						g_cInterfaces.Engine->ClientCmd("play \"weapons/auto_shotgun_spas/gunfire/shotgun_fire_1.wav\"");
+						g_interface.Engine->ClientCmd("play \"weapons/auto_shotgun_spas/gunfire/shotgun_fire_1.wav\"");
 					else if (_strcmpi(weapon, "pumpshotgun") == 0)
-						g_cInterfaces.Engine->ClientCmd("play \"weapons/shotgun/gunfire/shotgun_fire_1.wav\"");
+						g_interface.Engine->ClientCmd("play \"weapons/shotgun/gunfire/shotgun_fire_1.wav\"");
 					else if (_strcmpi(weapon, "shotgun_chrome") == 0)
-						g_cInterfaces.Engine->ClientCmd("play \"weapons/shotgun_chrome/gunfire/shotgun_fire_1.wav\"");
+						g_interface.Engine->ClientCmd("play \"weapons/shotgun_chrome/gunfire/shotgun_fire_1.wav\"");
 
 				}
 			}
@@ -838,26 +844,26 @@ DWORD WINAPI StartCheat(LPVOID params)
 
 		// 注册事件监听器
 		EventListener* listener = new EventListener();
-		g_cInterfaces.GameEvent->AddListener(listener, "player_spawn", false);
-		g_cInterfaces.GameEvent->AddListener(listener, "player_death", false);
-		g_cInterfaces.GameEvent->AddListener(listener, "infected_death", false);
-		g_cInterfaces.GameEvent->AddListener(listener, "map_transition", false);
-		g_cInterfaces.GameEvent->AddListener(listener, "mission_lost", false);
-		g_cInterfaces.GameEvent->AddListener(listener, "weapon_fire", false);
+		g_interface.GameEvent->AddListener(listener, "player_spawn", false);
+		g_interface.GameEvent->AddListener(listener, "player_death", false);
+		g_interface.GameEvent->AddListener(listener, "infected_death", false);
+		g_interface.GameEvent->AddListener(listener, "map_transition", false);
+		g_interface.GameEvent->AddListener(listener, "mission_lost", false);
+		g_interface.GameEvent->AddListener(listener, "weapon_fire", false);
 
 		/*
-		g_cInterfaces.GameEvent->AddListener(listener, "player_connect", false);
-		g_cInterfaces.GameEvent->AddListener(listener, "player_disconnect", false);
-		g_cInterfaces.GameEvent->AddListener(listener, "player_chat", false);
-		g_cInterfaces.GameEvent->AddListener(listener, "player_team", false);
-		g_cInterfaces.GameEvent->AddListener(listener, "door_unlocked", false);
-		g_cInterfaces.GameEvent->AddListener(listener, "vote_started", false);
-		g_cInterfaces.GameEvent->AddListener(listener, "vote_passed", false);
-		g_cInterfaces.GameEvent->AddListener(listener, "vote_cast_yes", false);
-		g_cInterfaces.GameEvent->AddListener(listener, "vote_cast_no", false);
-		g_cInterfaces.GameEvent->AddListener(listener, "tank_spawn", false);
-		g_cInterfaces.GameEvent->AddListener(listener, "friendly_fire", false);
-		g_cInterfaces.GameEvent->AddListener(listener, "tank_killed", false);
+		g_interface.GameEvent->AddListener(listener, "player_connect", false);
+		g_interface.GameEvent->AddListener(listener, "player_disconnect", false);
+		g_interface.GameEvent->AddListener(listener, "player_chat", false);
+		g_interface.GameEvent->AddListener(listener, "player_team", false);
+		g_interface.GameEvent->AddListener(listener, "door_unlocked", false);
+		g_interface.GameEvent->AddListener(listener, "vote_started", false);
+		g_interface.GameEvent->AddListener(listener, "vote_passed", false);
+		g_interface.GameEvent->AddListener(listener, "vote_cast_yes", false);
+		g_interface.GameEvent->AddListener(listener, "vote_cast_no", false);
+		g_interface.GameEvent->AddListener(listener, "tank_spawn", false);
+		g_interface.GameEvent->AddListener(listener, "friendly_fire", false);
+		g_interface.GameEvent->AddListener(listener, "tank_killed", false);
 		*/
 	}
 
@@ -939,11 +945,11 @@ void showSpectator()
 
 		CBaseEntity* player = nullptr, *target = nullptr;
 
-		g_cInterfaces.Engine->ClientCmd("echo \"========= player list =========\"");
+		g_interface.Engine->ClientCmd("echo \"========= player list =========\"");
 
 		for (int i = 1; i < 64; ++i)
 		{
-			player = g_cInterfaces.ClientEntList->GetClientEntity(i);
+			player = g_interface.ClientEntList->GetClientEntity(i);
 			if (player == nullptr || player->IsDormant())
 				continue;
 
@@ -951,7 +957,7 @@ void showSpectator()
 			int mode = player->GetNetProp<int>("m_hObserverTarget", "DT_BasePlayer");
 
 #ifdef USE_PLAYER_INFO
-			g_cInterfaces.Engine->GetPlayerInfo(i, &info);
+			g_interface.Engine->GetPlayerInfo(i, &info);
 #endif
 
 			if (team == 1)
@@ -962,7 +968,7 @@ void showSpectator()
 
 				target = (CBaseEntity*)player->GetNetProp<CBaseHandle*>("m_iObserverMode", "DT_BasePlayer");
 				if (target && (int)target != -1)
-					target = g_cInterfaces.ClientEntList->GetClientEntityFromHandle((CBaseHandle*)target);
+					target = g_interface.ClientEntList->GetClientEntityFromHandle((CBaseHandle*)target);
 
 				if (target == nullptr || (int)target == -1)
 					continue;
@@ -971,10 +977,10 @@ void showSpectator()
 				{
 					// 姝ｅ湪瑙傚療鏈湴鐜╁
 #ifdef USE_PLAYER_INFO
-					g_cInterfaces.Engine->ClientCmd("echo \"[spectator] player %s %s you\"",
+					g_interface.Engine->ClientCmd("echo \"[spectator] player %s %s you\"",
 						info.name, (mode == 4 ? "watching" : "following"));
 #else
-					g_cInterfaces.Engine->ClientCmd("echo \"[spectator] player %d %s you\"",
+					g_interface.Engine->ClientCmd("echo \"[spectator] player %d %s you\"",
 						player->GetIndex(), (mode == 4 ? "watching" : "following"));
 #endif
 				}
@@ -983,11 +989,11 @@ void showSpectator()
 					// 姝ｅ湪瑙傚療鍏朵粬鐜╁
 #ifdef USE_PLAYER_INFO
 					player_info_t other;
-					g_cInterfaces.Engine->GetPlayerInfo(target->GetIndex(), &other);
-					g_cInterfaces.Engine->ClientCmd("echo \"[spectator] player %s %s %s\"",
+					g_interface.Engine->GetPlayerInfo(target->GetIndex(), &other);
+					g_interface.Engine->ClientCmd("echo \"[spectator] player %s %s %s\"",
 						info.name, (mode == 4 ? "watching" : "following"), other.name);
 #else
-					g_cInterfaces.Engine->ClientCmd("echo \"[spectator] player %d %s %d\"",
+					g_interface.Engine->ClientCmd("echo \"[spectator] player %d %s %d\"",
 						player->GetIndex(), (mode == 4 ? "watching" : "following"), target->GetIndex());
 #endif
 				}
@@ -999,10 +1005,10 @@ void showSpectator()
 				{
 					// 娲荤潃
 #ifdef USE_PLAYER_INFO
-					g_cInterfaces.Engine->ClientCmd("echo \"[survivor] player %s is alive (%d + %.0f)\"",
+					g_interface.Engine->ClientCmd("echo \"[survivor] player %s is alive (%d + %.0f)\"",
 						info.name, player->GetHealth(), player->GetNetProp<float>("m_healthBuffer", "DT_TerrorPlayer"));
 #else
-					g_cInterfaces.Engine->ClientCmd("echo \"[survivor] player %d is alive (%d + %.0f)\"",
+					g_interface.Engine->ClientCmd("echo \"[survivor] player %d is alive (%d + %.0f)\"",
 						player->GetIndex(), player->GetHealth(), player->GetNetProp<float>("m_healthBuffer", "DT_TerrorPlayer"));
 #endif
 				}
@@ -1014,7 +1020,7 @@ void showSpectator()
 
 					target = (CBaseEntity*)player->GetNetProp<CBaseHandle*>("m_iObserverMode", "DT_BasePlayer");
 					if (target && (int)target != -1)
-						target = g_cInterfaces.ClientEntList->GetClientEntityFromHandle((CBaseHandle*)target);
+						target = g_interface.ClientEntList->GetClientEntityFromHandle((CBaseHandle*)target);
 
 					if (target == nullptr || (int)target == -1)
 						continue;
@@ -1023,10 +1029,10 @@ void showSpectator()
 					{
 						// 姝ｅ湪瑙傚療鏈湴鐜╁
 #ifdef USE_PLAYER_INFO
-						g_cInterfaces.Engine->ClientCmd("echo \"[survivor] player %s %s you\"",
+						g_interface.Engine->ClientCmd("echo \"[survivor] player %s %s you\"",
 							info.name, (mode == 4 ? "watching" : "following"));
 #else
-						g_cInterfaces.Engine->ClientCmd("echo \"[survivor] player %d %s you\"",
+						g_interface.Engine->ClientCmd("echo \"[survivor] player %d %s you\"",
 							player->GetIndex(), (mode == 4 ? "watching" : "following"));
 #endif
 					}
@@ -1035,11 +1041,11 @@ void showSpectator()
 						// 姝ｅ湪瑙傚療鍏朵粬鐜╁
 #ifdef USE_PLAYER_INFO
 						player_info_t other;
-						g_cInterfaces.Engine->GetPlayerInfo(target->GetIndex(), &other);
-						g_cInterfaces.Engine->ClientCmd("echo \"[survivor] player %s %s %s\"",
+						g_interface.Engine->GetPlayerInfo(target->GetIndex(), &other);
+						g_interface.Engine->ClientCmd("echo \"[survivor] player %s %s %s\"",
 							info.name, (mode == 4 ? "watching" : "following"), other.name);
 #else
-						g_cInterfaces.Engine->ClientCmd("echo \"[survivor] player %d %s %d\"",
+						g_interface.Engine->ClientCmd("echo \"[survivor] player %d %s %d\"",
 							player->GetIndex(), (mode == 4 ? "watching" : "following"), target->GetIndex());
 #endif
 					}
@@ -1081,10 +1087,10 @@ void showSpectator()
 				{
 					// 娲荤潃
 #ifdef USE_PLAYER_INFO
-					g_cInterfaces.Engine->ClientCmd("echo \"[infected] player %s is %s (%d)\"",
+					g_interface.Engine->ClientCmd("echo \"[infected] player %s is %s (%d)\"",
 						info.name, zombieName, player->GetHealth());
 #else
-					g_cInterfaces.Engine->ClientCmd("echo \"[infected] player %d is %s (%d)\"",
+					g_interface.Engine->ClientCmd("echo \"[infected] player %d is %s (%d)\"",
 						player->GetIndex(), zombieName, player->GetHealth());
 #endif
 				}
@@ -1092,10 +1098,10 @@ void showSpectator()
 				{
 					// 骞界伒鐘舵�
 #ifdef USE_PLAYER_INFO
-					g_cInterfaces.Engine->ClientCmd("echo \"[infected] player %s is ghost %s (%d)\"",
+					g_interface.Engine->ClientCmd("echo \"[infected] player %s is ghost %s (%d)\"",
 						info.name, zombieName, player->GetHealth());
 #else
-					g_cInterfaces.Engine->ClientCmd("echo \"[infected] player %d is ghost %s (%d)\"",
+					g_interface.Engine->ClientCmd("echo \"[infected] player %d is ghost %s (%d)\"",
 						player->GetIndex(), zombieName, player->GetHealth());
 #endif
 				}
@@ -1107,7 +1113,7 @@ void showSpectator()
 
 					target = (CBaseEntity*)player->GetNetProp<CBaseHandle*>("m_iObserverMode", "DT_BasePlayer");
 					if (target && (int)target != -1)
-						target = g_cInterfaces.ClientEntList->GetClientEntityFromHandle((CBaseHandle*)target);
+						target = g_interface.ClientEntList->GetClientEntityFromHandle((CBaseHandle*)target);
 
 					if (target == nullptr || (int)target == -1)
 						continue;
@@ -1116,10 +1122,10 @@ void showSpectator()
 					{
 						// 姝ｅ湪瑙傚療鏈湴鐜╁
 #ifdef USE_PLAYER_INFO
-						g_cInterfaces.Engine->ClientCmd("echo \"[infected] player %s %s you\"",
+						g_interface.Engine->ClientCmd("echo \"[infected] player %s %s you\"",
 							info.name, (mode == 4 ? "watching" : "following"));
 #else
-						g_cInterfaces.Engine->ClientCmd("echo \"[infected] player %s %s you\"",
+						g_interface.Engine->ClientCmd("echo \"[infected] player %s %s you\"",
 							player->GetIndex(), (mode == 4 ? "watching" : "following"));
 #endif
 					}
@@ -1128,11 +1134,11 @@ void showSpectator()
 						// 姝ｅ湪瑙傚療鍏朵粬鐜╁
 #ifdef USE_PLAYER_INFO
 						player_info_t other;
-						g_cInterfaces.Engine->GetPlayerInfo(target->GetIndex(), &other);
-						g_cInterfaces.Engine->ClientCmd("echo \"[infected] player %s %s %s\"",
+						g_interface.Engine->GetPlayerInfo(target->GetIndex(), &other);
+						g_interface.Engine->ClientCmd("echo \"[infected] player %s %s %s\"",
 							info.name, (mode == 4 ? "watching" : "following"), other.name);
 #else
-						g_cInterfaces.Engine->ClientCmd("echo \"[infected] player %d %s %d\"",
+						g_interface.Engine->ClientCmd("echo \"[infected] player %d %s %d\"",
 							player->GetIndex(), (mode == 4 ? "watching" : "following"), target->GetIndex());
 #endif
 					}
@@ -1140,7 +1146,7 @@ void showSpectator()
 			}
 		}
 
-		g_cInterfaces.Engine->ClientCmd("echo \"========= list end =========\"");
+		g_interface.Engine->ClientCmd("echo \"========= list end =========\"");
 	}
 
 	std::this_thread::sleep_for(std::chrono::microseconds(1));
@@ -1148,127 +1154,96 @@ void showSpectator()
 
 void bindAlias(int wait)
 {
-	g_cInterfaces.Engine->ClientCmd("echo \"echo \"========= alias begin =========\"\"");
-	g_cInterfaces.Engine->ClientCmd("alias +autofire \"alias autofire_launcher autofire_loop; autofire_launcher\"");
-	g_cInterfaces.Engine->ClientCmd("alias -autofire \"alias autofire_launcher autofire_stop\"");
-	g_cInterfaces.Engine->ClientCmd("alias autofire_launcher autofire_loop");
-	g_cInterfaces.Engine->ClientCmd("alias autofire_loop \"+attack; wait 5; -attack; wait 5; autofire_launcher\"");
-	g_cInterfaces.Engine->ClientCmd("alias autofire_stop \"-attack\"");
-	g_cInterfaces.Engine->ClientCmd("alias +autojump \"alias autojump_launcher autojump_loop; autojump_launcher\"");
-	g_cInterfaces.Engine->ClientCmd("alias -autojump \"alias autojump_launcher autojump_stop\"");
-	g_cInterfaces.Engine->ClientCmd("alias autojump_launcher autojump_loop");
-	g_cInterfaces.Engine->ClientCmd("alias autojump_loop \"+jump; wait 5; -jump; wait 5; autojump_launcher\"");
-	g_cInterfaces.Engine->ClientCmd("alias autojump_stop \"-jump\"");
-	g_cInterfaces.Engine->ClientCmd("alias +bigjump \"+jump; +duck\"");
-	g_cInterfaces.Engine->ClientCmd("alias -bigjump \"-jump; -duck\"");
-	g_cInterfaces.Engine->ClientCmd("alias +pistolspam \"alias pistolspam dopistolspam; dopistolspam\"");
-	g_cInterfaces.Engine->ClientCmd("alias -pistolspam \"alias pistolspam -use\"");
-	g_cInterfaces.Engine->ClientCmd("alias dopistolspam \"+use; wait 3; -use; wait 3; pistolspam\"");
-	g_cInterfaces.Engine->ClientCmd("alias +fastmelee \"alias fastmelee_launcher fastmelee_loop; fastmelee_launcher\"");
-	g_cInterfaces.Engine->ClientCmd("alias fastmelee_launcher fastmelee_loop");
-	g_cInterfaces.Engine->ClientCmd("alias fastmelee_loop \"+attack; slot1; wait 1; -attack; slot2; wait 45; fastmelee_launcher\"");
-	g_cInterfaces.Engine->ClientCmd("alias fastmelee_stop \"-attack\"");
-	g_cInterfaces.Engine->ClientCmd("alias -fastmelee \"alias fastmelee_launcher fastmelee_stop\"");
-	g_cInterfaces.Engine->ClientCmd("alias thirdperson_toggle \"thirdperson_enable\"");
-	g_cInterfaces.Engine->ClientCmd("alias thirdperson_enable \"alias thirdperson_toggle thirdperson_disable; thirdpersonshoulder\"");
-	g_cInterfaces.Engine->ClientCmd("alias thirdperson_disable \"alias thirdperson_toggle thirdperson_enable; thirdpersonshoulder; c_thirdpersonshoulder 0\"");
-	g_cInterfaces.Engine->ClientCmd("c_thirdpersonshoulderoffset 0");
-	g_cInterfaces.Engine->ClientCmd("c_thirdpersonshoulderaimdist 720");
-	g_cInterfaces.Engine->ClientCmd("cam_ideallag 0");
-	g_cInterfaces.Engine->ClientCmd("cam_idealdist 40");
-	g_cInterfaces.Engine->ClientCmd("bind leftarrow \"incrementvar cam_idealdist 30 130 10\"");
-	g_cInterfaces.Engine->ClientCmd("bind rightarrow \"incrementvar cam_idealdist 30 130 -10\"");
-	g_cInterfaces.Engine->ClientCmd("bind uparrow \"incrementvar c_thirdpersonshoulderheight 5 25 5\"");
-	g_cInterfaces.Engine->ClientCmd("bind downarrow \"incrementvar c_thirdpersonshoulderheight 5 25 -5\"");
-	g_cInterfaces.Engine->ClientCmd("cl_crosshair_alpha 255");
-	g_cInterfaces.Engine->ClientCmd("cl_crosshair_blue 0");
-	g_cInterfaces.Engine->ClientCmd("cl_crosshair_green 50");
-	g_cInterfaces.Engine->ClientCmd("cl_crosshair_red 190");
-	g_cInterfaces.Engine->ClientCmd("cl_crosshair_dynamic 0");
-	g_cInterfaces.Engine->ClientCmd("cl_crosshair_thickness 1.0");
-	g_cInterfaces.Engine->ClientCmd("crosshair 1");
-	g_cInterfaces.Engine->ClientCmd("con_enable 1");
-	g_cInterfaces.Engine->ClientCmd("muzzleflash_light 1");
-	g_cInterfaces.Engine->ClientCmd("sv_voiceenable 1");
-	g_cInterfaces.Engine->ClientCmd("voice_enable 1");
-	g_cInterfaces.Engine->ClientCmd("voice_forcemicrecord 1");
-	g_cInterfaces.Engine->ClientCmd("mat_monitorgamma 1.6");
-	g_cInterfaces.Engine->ClientCmd("mat_monitorgamma_tv_enabled 1");
-	g_cInterfaces.Engine->ClientCmd("cl_ignore_vpk_assocation 1");
-	g_cInterfaces.Engine->ClientCmd("cl_observercrosshair 1");
-	g_cInterfaces.Engine->ClientCmd("cl_showpluginmessages 0");
-	g_cInterfaces.Engine->ClientCmd("cl_viewmodelfovsurvivor 67");
-	g_cInterfaces.Engine->ClientCmd("cl_restrict_server_commands 1");
-	g_cInterfaces.Engine->ClientCmd("con_enable 1");
-	g_cInterfaces.Engine->ClientCmd("z_nightvision_r 255");
-	g_cInterfaces.Engine->ClientCmd("z_nightvision_g 255");
-	g_cInterfaces.Engine->ClientCmd("z_nightvision_b 255");
-	g_cInterfaces.Engine->ClientCmd("bind space +jump");
-	g_cInterfaces.Engine->ClientCmd("bind mouse1 +attack");
-	g_cInterfaces.Engine->ClientCmd("bind mouse2 +attack2");
-	g_cInterfaces.Engine->ClientCmd("bind mouse3 +zoom");
-	g_cInterfaces.Engine->ClientCmd("bind ctrl +duck");
-	g_cInterfaces.Engine->ClientCmd("unbind ins");
-	g_cInterfaces.Engine->ClientCmd("unbind home");
-	g_cInterfaces.Engine->ClientCmd("unbind pgup");
-	g_cInterfaces.Engine->ClientCmd("unbind pgdn");
-	g_cInterfaces.Engine->ClientCmd("unbind end");
-	g_cInterfaces.Engine->ClientCmd("unbind del");
-	g_cInterfaces.Engine->ClientCmd("unbind f9");
-	g_cInterfaces.Engine->ClientCmd("unbind f10");
-	g_cInterfaces.Engine->ClientCmd("unbind f11");
-	g_cInterfaces.Engine->ClientCmd("unbind f12");
-	g_cInterfaces.Engine->ClientCmd("unbind f8");
-	g_cInterfaces.Engine->ClientCmd("echo \"echo \"========= alias end =========\"\"");
+	g_interface.Engine->ClientCmd("echo \"echo \"========= alias begin =========\"\"");
+	g_interface.Engine->ClientCmd("alias +autofire \"alias autofire_launcher autofire_loop; autofire_launcher\"");
+	g_interface.Engine->ClientCmd("alias -autofire \"alias autofire_launcher autofire_stop\"");
+	g_interface.Engine->ClientCmd("alias autofire_launcher autofire_loop");
+	g_interface.Engine->ClientCmd("alias autofire_loop \"+attack; wait 5; -attack; wait 5; autofire_launcher\"");
+	g_interface.Engine->ClientCmd("alias autofire_stop \"-attack\"");
+	g_interface.Engine->ClientCmd("alias +autojump \"alias autojump_launcher autojump_loop; autojump_launcher\"");
+	g_interface.Engine->ClientCmd("alias -autojump \"alias autojump_launcher autojump_stop\"");
+	g_interface.Engine->ClientCmd("alias autojump_launcher autojump_loop");
+	g_interface.Engine->ClientCmd("alias autojump_loop \"+jump; wait 5; -jump; wait 5; autojump_launcher\"");
+	g_interface.Engine->ClientCmd("alias autojump_stop \"-jump\"");
+	g_interface.Engine->ClientCmd("alias +bigjump \"+jump; +duck\"");
+	g_interface.Engine->ClientCmd("alias -bigjump \"-jump; -duck\"");
+	g_interface.Engine->ClientCmd("alias +pistolspam \"alias pistolspam dopistolspam; dopistolspam\"");
+	g_interface.Engine->ClientCmd("alias -pistolspam \"alias pistolspam -use\"");
+	g_interface.Engine->ClientCmd("alias dopistolspam \"+use; wait 3; -use; wait 3; pistolspam\"");
+	g_interface.Engine->ClientCmd("alias +fastmelee \"alias fastmelee_launcher fastmelee_loop; fastmelee_launcher\"");
+	g_interface.Engine->ClientCmd("alias fastmelee_launcher fastmelee_loop");
+	g_interface.Engine->ClientCmd("alias fastmelee_loop \"+attack; slot1; wait 1; -attack; slot2; wait 45; fastmelee_launcher\"");
+	g_interface.Engine->ClientCmd("alias fastmelee_stop \"-attack\"");
+	g_interface.Engine->ClientCmd("alias -fastmelee \"alias fastmelee_launcher fastmelee_stop\"");
+	g_interface.Engine->ClientCmd("alias thirdperson_toggle \"thirdperson_enable\"");
+	g_interface.Engine->ClientCmd("alias thirdperson_enable \"alias thirdperson_toggle thirdperson_disable; thirdpersonshoulder\"");
+	g_interface.Engine->ClientCmd("alias thirdperson_disable \"alias thirdperson_toggle thirdperson_enable; thirdpersonshoulder; c_thirdpersonshoulder 0\"");
+	g_interface.Engine->ClientCmd("c_thirdpersonshoulder 0");
+	g_interface.Engine->ClientCmd("c_thirdpersonshoulderoffset 0");
+	g_interface.Engine->ClientCmd("c_thirdpersonshoulderaimdist 720");
+	g_interface.Engine->ClientCmd("cam_ideallag 0");
+	g_interface.Engine->ClientCmd("cam_idealdist 40");
+	g_interface.Engine->ClientCmd("bind leftarrow \"incrementvar cam_idealdist 30 130 10\"");
+	g_interface.Engine->ClientCmd("bind rightarrow \"incrementvar cam_idealdist 30 130 -10\"");
+	g_interface.Engine->ClientCmd("bind uparrow \"incrementvar c_thirdpersonshoulderheight 5 25 5\"");
+	g_interface.Engine->ClientCmd("bind downarrow \"incrementvar c_thirdpersonshoulderheight 5 25 -5\"");
+	g_interface.Engine->ClientCmd("c_thirdpersonshoulderoffset 0");
+	g_interface.Engine->ClientCmd("cl_crosshair_alpha 255");
+	g_interface.Engine->ClientCmd("cl_crosshair_blue 0");
+	g_interface.Engine->ClientCmd("cl_crosshair_green 50");
+	g_interface.Engine->ClientCmd("cl_crosshair_red 190");
+	g_interface.Engine->ClientCmd("cl_crosshair_dynamic 0");
+	g_interface.Engine->ClientCmd("cl_crosshair_thickness 1.0");
+	g_interface.Engine->ClientCmd("crosshair 1");
+	g_interface.Engine->ClientCmd("con_enable 1");
+	g_interface.Engine->ClientCmd("muzzleflash_light 1");
+	g_interface.Engine->ClientCmd("sv_voiceenable 1");
+	g_interface.Engine->ClientCmd("voice_enable 1");
+	g_interface.Engine->ClientCmd("voice_forcemicrecord 1");
+	g_interface.Engine->ClientCmd("mat_monitorgamma 1.6");
+	g_interface.Engine->ClientCmd("mat_monitorgamma_tv_enabled 1");
+	g_interface.Engine->ClientCmd("cl_ignore_vpk_assocation 1");
+	g_interface.Engine->ClientCmd("cl_observercrosshair 1");
+	g_interface.Engine->ClientCmd("cl_showpluginmessages 0");
+	g_interface.Engine->ClientCmd("cl_viewmodelfovsurvivor 67");
+	g_interface.Engine->ClientCmd("cl_restrict_server_commands 1");
+	g_interface.Engine->ClientCmd("con_enable 1");
+	g_interface.Engine->ClientCmd("z_nightvision_r 255");
+	g_interface.Engine->ClientCmd("z_nightvision_g 255");
+	g_interface.Engine->ClientCmd("z_nightvision_b 255");
+	g_interface.Engine->ClientCmd("bind space +jump");
+	g_interface.Engine->ClientCmd("bind mouse1 +attack");
+	g_interface.Engine->ClientCmd("bind mouse2 +attack2");
+	g_interface.Engine->ClientCmd("bind mouse3 +zoom");
+	g_interface.Engine->ClientCmd("bind ctrl +duck");
+	g_interface.Engine->ClientCmd("unbind ins");
+	g_interface.Engine->ClientCmd("unbind home");
+	g_interface.Engine->ClientCmd("unbind pgup");
+	g_interface.Engine->ClientCmd("unbind pgdn");
+	g_interface.Engine->ClientCmd("unbind end");
+	g_interface.Engine->ClientCmd("unbind del");
+	g_interface.Engine->ClientCmd("unbind f9");
+	g_interface.Engine->ClientCmd("unbind f10");
+	g_interface.Engine->ClientCmd("unbind f11");
+	g_interface.Engine->ClientCmd("unbind f12");
+	g_interface.Engine->ClientCmd("unbind f8");
+	g_interface.Engine->ClientCmd("net_graph 0");
+	g_interface.Engine->ClientCmd("net_graphpos 1");
+	g_interface.Engine->ClientCmd("net_graphshowinterp 0");
+	g_interface.Engine->ClientCmd("net_graphshowlatency 0");
+	g_interface.Engine->ClientCmd("net_graphtext 1");
+	g_interface.Engine->ClientCmd("alias +shownetscores \"+showscores; net_graph 3\"");
+	g_interface.Engine->ClientCmd("alias -shownetscores \"-showscores; net_graph 0\"");
+	g_interface.Engine->ClientCmd("bind tab +shownetscores");
+	g_interface.Engine->ClientCmd("alias \"lerp_0\" \"rate 30000;cl_cmdrate 100;cl_updaterate 100;cl_interp 0.0;cl_interp_ratio -1;alias lerp_change lerp_16;echo Lerp set to 0 (rate 30000, cl_cmdrate 100, cl_updaterate 100, cl_interp 0.0, cl_interp_ratio -1).\";");
+	g_interface.Engine->ClientCmd("alias \"lerp_16\" \"rate 30000;cl_cmdrate 100;cl_updaterate 100;cl_interp 0.0167;cl_interp_ratio -1;alias lerp_change lerp_33;echo Lerp set to 16.7 (rate 30000, cl_cmdrate 100, cl_updaterate 100, cl_interp 0.0167, cl_interp_ratio -1).\";");
+	g_interface.Engine->ClientCmd("alias \"lerp_33\" \"rate 30000;cl_cmdrate 100;cl_updaterate 100;cl_interp 0.0334;cl_interp_ratio -1;alias lerp_change lerp_50;echo Lerp set to 33.4 (rate 30000, cl_cmdrate 100, cl_updaterate 100, cl_interp 0.0334, cl_interp_ratio -1).\";");
+	g_interface.Engine->ClientCmd("alias \"lerp_50\" \"rate 30000;cl_cmdrate 100;cl_updaterate 100;cl_interp 0.0501;cl_interp_ratio -1;alias lerp_change lerp_66;echo Lerp set to 50.1 (rate 30000, cl_cmdrate 100, cl_updaterate 100, cl_interp 0.0501, cl_interp_ratio -1).\";");
+	g_interface.Engine->ClientCmd("alias \"lerp_66\" \"rate 30000;cl_cmdrate 100;cl_updaterate 100;cl_interp 0.0667;cl_interp_ratio -1;alias lerp_change lerp_0;echo Lerp set to 66.7 (rate 30000, cl_cmdrate 100, cl_updaterate 100, cl_interp 0.0667, cl_interp_ratio -1).\";");
+	g_interface.Engine->ClientCmd("echo \"echo \"========= alias end =========\"\"");
 }
 
-static CMoveData g_bMoveData;
-
-#define StartEnginePrediction(_client,_cmd)	float curTime = g_cInterfaces.Globals->curtime;\
-float frameTime = g_cInterfaces.Globals->frametime;\
-int flags = _client->GetNetProp<int>("m_fFlags", "DT_BasePlayer");\
-g_cInterfaces.Globals->curtime = _client->GetTickBase() * g_cInterfaces.Globals->interval_per_tick;\
-g_cInterfaces.Globals->frametime = g_cInterfaces.Globals->interval_per_tick;\
-g_cInterfaces.GameMovement->StartTrackPredictionErrors(_client);\
-ZeroMemory(&g_bMoveData, sizeof(g_bMoveData));\
-g_cInterfaces.MoveHelper->SetHost(_client);\
-g_cInterfaces.Prediction->SetupMove(client, _cmd, nullptr, &g_bMoveData);\
-g_cInterfaces.GameMovement->ProcessMovement(client, &g_bMoveData);\
-g_cInterfaces.Prediction->FinishMove(client, _cmd, &g_bMoveData);
-
-#define EndEnginePrediction(_client)	g_cInterfaces.GameMovement->FinishTrackPredictionErrors(_client);\
-g_cInterfaces.MoveHelper->SetHost(nullptr);\
-g_cInterfaces.Globals->curtime = curTime;\
-g_cInterfaces.Globals->frametime = frameTime;\
-client->SetNetProp("m_fFlags", flags, "DT_BasePlayer");
-
-// engine pred not 100% perfect but almost
-void RunEnginePrediction(CUserCmd* cmd)
-{
-	CBaseEntity* client = GetLocalClient();
-	if (g_cInterfaces.MoveHelper == nullptr || cmd == nullptr || client == nullptr)
-		return;
-
-	float curTime = g_cInterfaces.Globals->curtime;
-	float frameTime = g_cInterfaces.Globals->frametime;
-	int flags = client->GetNetProp<int>("m_fFlags", "DT_BasePlayer");
-
-	g_cInterfaces.Globals->curtime = client->GetTickBase() * g_cInterfaces.Globals->interval_per_tick;
-	g_cInterfaces.Globals->frametime = g_cInterfaces.Globals->interval_per_tick;
-
-	ZeroMemory(&g_bMoveData, sizeof(g_bMoveData));
-	g_cInterfaces.GameMovement->StartTrackPredictionErrors(client);
-	g_cInterfaces.MoveHelper->SetHost(client);
-	g_cInterfaces.Prediction->SetupMove(client, cmd, nullptr, &g_bMoveData);
-	g_cInterfaces.GameMovement->ProcessMovement(client, &g_bMoveData);
-	g_cInterfaces.Prediction->FinishMove(client, cmd, &g_bMoveData);
-	g_cInterfaces.GameMovement->FinishTrackPredictionErrors(client);
-	g_cInterfaces.MoveHelper->SetHost(nullptr);
-
-	g_cInterfaces.Globals->curtime = curTime;
-	g_cInterfaces.Globals->frametime = frameTime;
-	client->SetNetProp("m_fFlags", flags, "DT_BasePlayer");
-}
+static CMoveData g_predMoveData;
 
 // 检查该实体是否为生还者/特感/普感/Witch
 bool IsValidVictim(CBaseEntity* entity)
@@ -1300,7 +1275,7 @@ bool IsValidVictim(CBaseEntity* entity)
 		if (!entity->IsAlive() || entity->GetNetProp<byte>("m_isGhost", "DT_TerrorPlayer") != 0)
 		{
 #ifdef _DEBUG_OUTPUT
-			g_cInterfaces.Engine->ClientCmd("echo \"Special 0x%X healh = %d, ghost = %d\"", (DWORD)entity,
+			g_interface.Engine->ClientCmd("echo \"Special 0x%X healh = %d, ghost = %d\"", (DWORD)entity,
 				entity->GetNetProp<int>("m_iHealth", "DT_TerrorPlayer"), entity->GetNetProp<int>("m_isGhost", "DT_TerrorPlayer"));
 #endif
 			return false;
@@ -1309,7 +1284,7 @@ bool IsValidVictim(CBaseEntity* entity)
 		if (id == ET_TANK && sequence > 70)
 		{
 #ifdef _DEBUG_OUTPUT
-			g_cInterfaces.Engine->ClientCmd("echo \"tank 0x%X is dead\"", (DWORD)entity);
+			g_interface.Engine->ClientCmd("echo \"tank 0x%X is dead\"", (DWORD)entity);
 #endif
 			return false;
 		}
@@ -1319,7 +1294,7 @@ bool IsValidVictim(CBaseEntity* entity)
 		if ((solid & SF_NOT_SOLID) || sequence > 305)
 		{
 #ifdef _DEBUG_OUTPUT
-			g_cInterfaces.Engine->ClientCmd("echo \"Common 0x%X is dead\"", (DWORD)entity);
+			g_interface.Engine->ClientCmd("echo \"Common 0x%X is dead\"", (DWORD)entity);
 #endif
 			return false;
 		}
@@ -1333,7 +1308,7 @@ bool IsValidVictim(CBaseEntity* entity)
 		if (!entity->IsAlive())
 		{
 #ifdef _DEBUG_OUTPUT
-			g_cInterfaces.Engine->ClientCmd("echo \"Survivor 0x%X is dead %d\"", (DWORD)entity,
+			g_interface.Engine->ClientCmd("echo \"Survivor 0x%X is dead %d\"", (DWORD)entity,
 				entity->GetNetProp<int>("m_iHealth", "DT_TerrorPlayer"));
 #endif
 			return false;
@@ -1343,7 +1318,7 @@ bool IsValidVictim(CBaseEntity* entity)
 	{
 #ifdef _DEBUG_OUTPUT
 		// Utils::log("Invalid ClassId = %d | sequence = %d | solid = %d", id, sequence, solid);
-		g_cInterfaces.Engine->ClientCmd("echo \"Invalid Entity 0x%X ClassId %d\"", (DWORD)entity, id);
+		g_interface.Engine->ClientCmd("echo \"Invalid Entity 0x%X ClassId %d\"", (DWORD)entity, id);
 #endif
 		return false;
 	}
@@ -1580,7 +1555,7 @@ Vector GetHeadHitboxPosition(CBaseEntity* entity)
 // 速度预测
 inline Vector VelocityExtrapolate(CBaseEntity* player, const Vector& aimpos)
 {
-	return aimpos + (player->GetVelocity() * g_cInterfaces.Globals->interval_per_tick);
+	return aimpos + (player->GetVelocity() * g_interface.Globals->interval_per_tick);
 }
 
 // 获取当前正在瞄准的敌人
@@ -1600,7 +1575,7 @@ CBaseEntity* GetAimingTarget(int hitbox = 0)
 	src = VelocityExtrapolate(client, src);
 	
 	filter.pSkip1 = client;
-	g_cInterfaces.Engine->GetViewAngles(dst);
+	g_interface.Engine->GetViewAngles(dst);
 
 	// angle (QAngle) to basic vectors.
 	AngleVectors(dst, &dst);
@@ -1618,7 +1593,7 @@ CBaseEntity* GetAimingTarget(int hitbox = 0)
 		(DWORD)client, src.x, src.y, src.z, dst.x, dst.y, dst.z);
 #endif
 
-	g_cInterfaces.Trace->TraceRay(ray, MASK_SHOT, &filter, &trace);
+	g_interface.Trace->TraceRay(ray, MASK_SHOT, &filter, &trace);
 
 #ifdef _DEBUG_OUTPUT
 	Utils::log("TraceRay: entity = 0x%X | hitbox = %d | bone = %d | hitGroup = %d | fraction = %.2f | classId = %d",
@@ -1631,7 +1606,7 @@ CBaseEntity* GetAimingTarget(int hitbox = 0)
 		trace.m_pEnt->GetClientClass()->m_ClassID == ET_WORLD)
 	{
 #ifdef _DEBUG_OUTPUT
-		g_cInterfaces.Engine->ClientCmd("echo \"invalid entity 0x%X | start (%.2f %.2f %.2f) end (%.2f %.2f %.2f)\"",
+		g_interface.Engine->ClientCmd("echo \"invalid entity 0x%X | start (%.2f %.2f %.2f) end (%.2f %.2f %.2f)\"",
 			(DWORD)trace.m_pEnt, trace.start.x, trace.start.y, trace.start.z, trace.end.x, trace.end.y, trace.end.z);
 #endif
 		return nullptr;
@@ -1641,7 +1616,7 @@ CBaseEntity* GetAimingTarget(int hitbox = 0)
 	if (trace.hitbox == 0 || (hitbox > 0 && trace.hitbox != hitbox))
 	{
 #ifdef _DEBUG_OUTPUT
-		g_cInterfaces.Engine->ClientCmd("echo \"invalid hitbox 0x%X | hitbox = %d | bone = %d | group = %d\"",
+		g_interface.Engine->ClientCmd("echo \"invalid hitbox 0x%X | hitbox = %d | bone = %d | group = %d\"",
 			(DWORD)trace.m_pEnt, trace.hitbox, trace.physicsBone, trace.hitGroup);
 #endif
 		return nullptr;
@@ -1652,7 +1627,7 @@ CBaseEntity* GetAimingTarget(int hitbox = 0)
 		if (trace.hitbox < HITBOX_COMMON_1 || trace.hitbox > HITBOX_COMMON_4)
 		{
 #ifdef _DEBUG_OUTPUT
-			g_cInterfaces.Engine->ClientCmd("echo \"invalid hitbox by infected %d\"", trace.hitbox);
+			g_interface.Engine->ClientCmd("echo \"invalid hitbox by infected %d\"", trace.hitbox);
 #endif
 			return nullptr;
 		}
@@ -1685,7 +1660,7 @@ bool IsTargetVisible(CBaseEntity* entity, Vector end, Vector start)
 #endif
 
 	CBaseEntity* client = GetLocalClient();
-	if (client == nullptr || !g_cInterfaces.Engine->IsInGame())
+	if (client == nullptr || !g_interface.Engine->IsInGame())
 		return false;
 
 	trace_t trace;
@@ -1700,7 +1675,7 @@ bool IsTargetVisible(CBaseEntity* entity, Vector end, Vector start)
 		end = GetHeadHitboxPosition(entity);
 
 	ray.Init(start, end);
-	g_cInterfaces.Trace->TraceRay(ray, MASK_SHOT, &filter, &trace);
+	g_interface.Trace->TraceRay(ray, MASK_SHOT, &filter, &trace);
 
 	// 检查是否为指定目标
 	if ((DWORD)trace.m_pEnt != (DWORD)entity || trace.hitbox <= 0)
@@ -1782,7 +1757,7 @@ HRESULT WINAPI Hooked_EndScene(IDirect3DDevice9* device)
 
 #ifdef USE_D3D_DRAW
 	CBaseEntity* local = GetLocalClient();
-	if (local == nullptr || !g_cInterfaces.Engine->IsInGame())
+	if (local == nullptr || !g_interface.Engine->IsInGame())
 		goto finish_draw;
 
 	// 目前最小距离
@@ -1819,20 +1794,20 @@ HRESULT WINAPI Hooked_EndScene(IDirect3DDevice9* device)
 		g_pCurrentAiming = nullptr;
 
 	Vector myViewAngles;
-	g_cInterfaces.Engine->GetViewAngles(myViewAngles);
+	g_interface.Engine->GetViewAngles(myViewAngles);
 
 	Vector myEyeOrigin = local->GetEyePosition();
 	Vector myOrigin = local->GetAbsOrigin();
 
 	// 一般普感实体索引上限 512 就够了，太大会卡的
-	int maxEntity = g_cInterfaces.ClientEntList->GetHighestEntityIndex();
+	int maxEntity = g_interface.ClientEntList->GetHighestEntityIndex();
 
 	// 绘制颜色
 	D3DCOLOR color = 0;
 
 	for (int i = 1; i <= maxEntity; ++i)
 	{
-		CBaseEntity* entity = g_cInterfaces.ClientEntList->GetClientEntity(i);
+		CBaseEntity* entity = g_interface.ClientEntList->GetClientEntity(i);
 		if ((DWORD)entity == (DWORD)local)
 			continue;
 
@@ -1971,7 +1946,7 @@ HRESULT WINAPI Hooked_EndScene(IDirect3DDevice9* device)
 				{
 					CBaseEntity* weapon = (CBaseEntity*)entity->GetActiveWeapon();
 					if (weapon != nullptr)
-						weapon = g_cInterfaces.ClientEntList->GetClientEntityFromHandle((CBaseHandle*)weapon);
+						weapon = g_interface.ClientEntList->GetClientEntityFromHandle((CBaseHandle*)weapon);
 					if (weapon != nullptr)
 					{
 						int ammoType = weapon->GetNetProp<int>("m_iPrimaryAmmoType", "DT_BaseCombatWeapon");
@@ -2007,7 +1982,7 @@ HRESULT WINAPI Hooked_EndScene(IDirect3DDevice9* device)
 				entity->GetNetProp<CBaseHandle*>("m_hActiveWeapon", "DT_BaseCombatCharacter"));
 
 				CBaseEntity* weapon = (handle->IsValid() ?
-				g_cInterfaces.ClientEntList->GetClientEntityFromHandle(handle):
+				g_interface.ClientEntList->GetClientEntityFromHandle(handle):
 				nullptr);
 
 				if (weapon != nullptr)
@@ -2112,10 +2087,10 @@ HRESULT WINAPI Hooked_EndScene(IDirect3DDevice9* device)
 	if (g_bDrawCrosshairs)
 	{
 		int width, height;
-		g_cInterfaces.Engine->GetScreenSize(width, height);
+		g_interface.Engine->GetScreenSize(width, height);
 
 		int aiming = *(int*)(local + m_iCrosshairsId);
-		CBaseEntity* target = (aiming > 0 ? g_cInterfaces.ClientEntList->GetClientEntity(aiming) : GetAimingTarget(-1));
+		CBaseEntity* target = (aiming > 0 ? g_interface.ClientEntList->GetClientEntity(aiming) : GetAimingTarget(-1));
 
 #ifdef _DEBUG
 		try
@@ -2182,7 +2157,7 @@ HRESULT WINAPI Hooked_DrawIndexedPrimitive(IDirect3DDevice9* device, D3DPRIMITIV
 		showHint = true;
 	}
 
-	if (g_cInterfaces.Engine->IsInGame())
+	if (g_interface.Engine->IsInGame())
 	{
 		IDirect3DVertexBuffer9* stream = nullptr;
 		UINT offsetByte, stride;
@@ -2246,7 +2221,7 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 
 	if (MatSystemTopPanel == 0 || FocusOverlayPanel == 0)
 	{
-		const char* panelName = g_cInterfaces.Panel->GetName(panel);
+		const char* panelName = g_interface.Panel->GetName(panel);
 		if (panelName[0] == 'M' && panelName[3] == 'S' && panelName[9] == 'T')
 		{
 			MatSystemTopPanel = panel;
@@ -2262,8 +2237,8 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 	static unsigned long font = 0;
 	if (font == 0)
 	{
-		font = g_cInterfaces.Surface->SCreateFont();
-		g_cInterfaces.Surface->SetFontGlyphSet(font, "arial", FontSize, FW_DONTCARE, 0, 0, 0x200);
+		font = g_interface.Surface->SCreateFont();
+		g_interface.Surface->SetFontGlyphSet(font, "arial", FontSize, FW_DONTCARE, 0, 0, 0x200);
 	}
 
 	/*	Panel Tree
@@ -2296,7 +2271,7 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 		g_bNewFrame = false;
 
 		CBaseEntity* local = GetLocalClient();
-		if (local == nullptr || !g_cInterfaces.Engine->IsInGame())
+		if (local == nullptr || !g_interface.Engine->IsInGame())
 			goto finish_draw;
 
 		// 目前最小距离
@@ -2334,13 +2309,13 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 			g_pCurrentAiming = nullptr;
 
 		Vector myViewAngles;
-		g_cInterfaces.Engine->GetViewAngles(myViewAngles);
+		g_interface.Engine->GetViewAngles(myViewAngles);
 
 		Vector myEyeOrigin = local->GetEyePosition();
 		Vector myOrigin = local->GetAbsOrigin();
 
 		// 一般普感实体索引上限 512 就够了，太大会卡的
-		int maxEntity = g_cInterfaces.ClientEntList->GetHighestEntityIndex();
+		int maxEntity = g_interface.ClientEntList->GetHighestEntityIndex();
 
 		// 绘制颜色
 		D3DCOLOR color = 0;
@@ -2348,7 +2323,7 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 		// 0 为 worldspawn，没有意义
 		for (int i = 1; i <= maxEntity; ++i)
 		{
-			CBaseEntity* entity = g_cInterfaces.ClientEntList->GetClientEntity(i);
+			CBaseEntity* entity = g_interface.ClientEntList->GetClientEntity(i);
 			int classId = ET_INVALID;
 
 			try
@@ -2357,6 +2332,17 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 					continue;
 
 				classId = entity->GetClientClass()->m_ClassID;
+				
+#ifdef _DEBUG_OUTPUT_
+				if (IsSurvivor(classId) || IsSpecialInfected(classId) || IsCommonInfected(classId))
+				{
+#endif
+					// 检查 生还者/特感/普感 是否是有效的
+					if (!IsValidVictim(entity))
+						continue;
+#ifdef _DEBUG_OUTPUT_
+				}
+#endif
 			}
 			catch (std::exception e)
 			{
@@ -2374,27 +2360,6 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 				g_pGameRulesProxy = entity;
 				Utils::log("TerrorGameRulesProxy Entity found 0x%X", (DWORD)g_pGameRulesProxy);
 			}
-
-#ifdef _DEBUG
-			try
-			{
-#endif
-				if (/*(IsSurvivor(classId) || IsSpecialInfected(classId) || IsCommonInfected(classId)) &&*/
-					!IsValidVictim(entity))
-					continue;
-#ifdef _DEBUG
-			}
-			catch (std::exception e)
-			{
-				Utils::log("%s (%d): %s | 0x%X", __FILE__, __LINE__, e.what(), (DWORD)entity);
-				continue;
-			}
-			catch (...)
-			{
-				Utils::log("%s (%d): 未知异常 | 0x%X", __FILE__, __LINE__, (DWORD)entity);
-				continue;
-			}
-#endif
 
 			Vector head, foot, headbox, origin;
 			
@@ -2491,7 +2456,7 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 					}
 
 					/*
-					g_cInterfaces.Surface->drawString(foot.x - width / 2, head.y,
+					g_interface.Surface->drawString(foot.x - width / 2, head.y,
 						(color & 0xFF0000) >> 16, (color & 0xFF00) >> 8, color & 0xFF,
 						font, Utils::c2w(ss.str()).c_str());
 					*/
@@ -2509,7 +2474,7 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 					{
 						CBaseEntity* weapon = (CBaseEntity*)entity->GetActiveWeapon();
 						if (weapon != nullptr)
-							weapon = g_cInterfaces.ClientEntList->GetClientEntityFromHandle((CBaseHandle*)weapon);
+							weapon = g_interface.ClientEntList->GetClientEntityFromHandle((CBaseHandle*)weapon);
 						if (weapon != nullptr)
 						{
 							int ammoType = weapon->GetNetProp<int>("m_iPrimaryAmmoType", "DT_BaseCombatWeapon");
@@ -2538,7 +2503,7 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 					color = (visible ? DrawManager::BLUE : DrawManager::YELLOW);
 
 					/*
-					g_cInterfaces.Surface->drawString(foot.x - width / 2, head.y + FontSize,
+					g_interface.Surface->drawString(foot.x - width / 2, head.y + FontSize,
 						(color & 0xFF0000) >> 16, (color & 0xFF00) >> 8, color & 0xFF,
 						font, Utils::c2w(ss.str()).c_str());
 					*/
@@ -2548,7 +2513,7 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 
 					// 绘制一个框（虽然这个框只有上下两条线）
 					/*
-					g_cInterfaces.Surface->drawBox(foot.x - width / 2, foot.y, width, -height, 1,
+					g_interface.Surface->drawBox(foot.x - width / 2, foot.y, width, -height, 1,
 						(color & 0xFF0000) >> 16, (color & 0xFF00) >> 8, color & 0xFF,
 						(color & 0xFF000000) >> 24);
 					*/
@@ -2563,9 +2528,9 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 						continue;
 
 					// 正方形的边长
-					int boxSize = 2;
-					if (visible)
-						boxSize = 4;
+					int boxSize = 4;
+					if (dist > 1000.0f)
+						boxSize = 2;
 
 					color = DrawManager::GREEN;
 					if (classId == ET_WITCH)
@@ -2573,11 +2538,15 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 
 					// 画一个小方形，以标记为头部
 					/*
-					g_cInterfaces.Surface->FillRGBA(head.x, head.y, size, size,
+					g_interface.Surface->FillRGBA(head.x, head.y, boxSize, boxSize,
 						(color & 0xFF0000) >> 16, (color & 0xFF00) >> 8, color & 0xFF,
 						(color & 0xFF000000) >> 24);
 					*/
-					g_pDrawRender->AddFillRect(color, head.x, head.y, boxSize, boxSize);
+					
+					if (visible)
+						g_pDrawRender->AddFillCircle(color, head.x, head.y, boxSize, 8);
+					else
+						g_pDrawRender->AddCircle(color, head.x, head.y, boxSize, 8);
 				}
 				else
 				{
@@ -2588,53 +2557,19 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 					if (classId == ET_TankRock)
 					{
 						// Tank 的石头
-						g_pDrawRender->AddText(DrawManager::PURPLE, foot.x, foot.y, true, "rock (%.0f)", dist);
+						g_pDrawRender->AddCircle(DrawManager::PURPLE, foot.x, foot.y, 9, 8);
 					}
-					else if (classId == ET_WeaponFirstAidKit)
+					else if (classId == ET_WeaponFirstAidKit || classId == ET_WeaponDefibrillator ||
+						classId == ET_WeaponPainPills || classId == ET_WeaponPainPills)
 					{
-						// 包
-						g_pDrawRender->AddText(DrawManager::DARKORANGE, foot.x, foot.y, true, "medkit (%.0f)", dist);
+						// 医疗品
+						g_pDrawRender->AddFillRect(DrawManager::DARKORANGE, foot.x, foot.y, 2, 8);
 					}
-					else if (classId == ET_WeaponDefibrillator)
+					else if (classId == ET_WeaponPipeBomb || classId == ET_WeaponMolotov ||
+						classId == ET_WeaponVomitjar)
 					{
-						// 电
-						g_pDrawRender->AddText(DrawManager::DARKORANGE, foot.x, foot.y, true, "defib (%.0f)", dist);
-					}
-
-					else if (classId == ET_WeaponPainPills)
-					{
-						// 药
-						g_pDrawRender->AddText(DrawManager::DARKORANGE, foot.x, foot.y, true, "pills (%.0f)", dist);
-					}
-					else if (classId == ET_WeaponAdrenaline)
-					{
-						// 针
-						g_pDrawRender->AddText(DrawManager::DARKORANGE, foot.x, foot.y, true, "adren (%.0f)", dist);
-					}
-					else if (classId == ET_WeaponGnome)
-					{
-						// 侏儒
-						g_pDrawRender->AddText(DrawManager::DARKORANGE, foot.x, foot.y, true, "gnome (%.0f)", dist);
-					}
-					else if (classId == ET_WeaponCola)
-					{
-						// 可乐
-						g_pDrawRender->AddText(DrawManager::DARKORANGE, foot.x, foot.y, true, "cola (%.0f)", dist);
-					}
-					else if (classId == ET_WeaponPipeBomb)
-					{
-						// 土雷
-						g_pDrawRender->AddText(DrawManager::DARKORANGE, foot.x, foot.y, true, "pipe (%.0f)", dist);
-					}
-					else if (classId == ET_WeaponMolotov)
-					{
-						// 火瓶
-						g_pDrawRender->AddText(DrawManager::DARKORANGE, foot.x, foot.y, true, "molotov (%.0f)", dist);
-					}
-					else if (classId == ET_WeaponVomitjar)
-					{
-						// 胆汁
-						g_pDrawRender->AddText(DrawManager::DARKORANGE, foot.x, foot.y, true, "vomitjar (%.0f)", dist);
+						// 投掷武器
+						g_pDrawRender->AddFillRect(DrawManager::DARKGRAY, foot.x, foot.y, 2, 8);
 					}
 				}
 			}
@@ -2665,10 +2600,10 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 		if (g_bDrawCrosshairs)
 		{
 			int width, height;
-			g_cInterfaces.Engine->GetScreenSize(width, height);
+			g_interface.Engine->GetScreenSize(width, height);
 
 			int aiming = *(int*)(local + m_iCrosshairsId);
-			CBaseEntity* target = (aiming > 0 ? g_cInterfaces.ClientEntList->GetClientEntity(aiming) : GetAimingTarget(-1));
+			CBaseEntity* target = (aiming > 0 ? g_interface.ClientEntList->GetClientEntity(aiming) : GetAimingTarget(-1));
 
 #ifdef _DEBUG
 			try
@@ -2702,12 +2637,25 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 				color = DrawManager::RED;
 
 			/*
-			g_cInterfaces.Surface->drawCrosshair(width / 2, height / 2,
+			g_interface.Surface->drawCrosshair(width / 2, height / 2,
 				(color & 0xFF0000) >> 16, (color & 0xFF00) >> 8, color & 0xFF);
 			*/
 			
 			width /= 2;
 			height /= 2;
+
+			/*
+			if (g_conVar["c_thirdpersonshoulder"] != nullptr &&
+				g_conVar["c_thirdpersonshoulder"]->GetInt() > 0)
+			{
+				// 上下偏移
+				height += g_conVar["c_thirdpersonshoulderheight"]->GetInt();
+
+				// 左右偏移
+				width += g_conVar["c_thirdpersonshoulderoffset"]->GetInt();
+			}
+			*/
+
 			g_pDrawRender->AddLine(color, width - 10, height, width + 10, height);
 			g_pDrawRender->AddLine(color, width, height - 10, width, height + 10);
 		}
@@ -2718,7 +2666,7 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 finish_draw:
 #endif
 
-	// ((FnPaintTraverse)g_cInterfaces.PanelHook->GetOriginalFunction(indexes::PaintTraverse))(ecx, panel, forcePaint, allowForce);
+	// ((FnPaintTraverse)g_interface.PanelHook->GetOriginalFunction(indexes::PaintTraverse))(ecx, panel, forcePaint, allowForce);
 	oPaintTraverse(pPanel, panel, forcePaint, allowForce);
 }
 
@@ -2737,8 +2685,8 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 
 	oCreateMove(sequence_number, input_sample_frametime, active);
 
-	CVerifiedUserCmd *pVerifiedCmd = &(*(CVerifiedUserCmd**)((DWORD)g_cInterfaces.Input + 0xE0))[sequence_number % 150];
-	CUserCmd *pCmd = &(*(CUserCmd**)((DWORD_PTR)g_cInterfaces.Input + 0xDC))[sequence_number % 150];
+	CVerifiedUserCmd *pVerifiedCmd = &(*(CVerifiedUserCmd**)((DWORD)g_interface.Input + 0xE0))[sequence_number % 150];
+	CUserCmd *pCmd = &(*(CUserCmd**)((DWORD_PTR)g_interface.Input + 0xDC))[sequence_number % 150];
 	if (showHint)
 	{
 		showHint = false;
@@ -2749,13 +2697,13 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 
 	CBaseEntity* client = GetLocalClient();
 	if (client == nullptr || pCmd == nullptr || pVerifiedCmd == nullptr || !client->IsAlive() ||
-		g_cInterfaces.Engine->IsConsoleVisible())
+		g_interface.Engine->IsConsoleVisible())
 		return;
 
 	float serverTime = GetServerTime();
 	CBaseEntity* weapon = (CBaseEntity*)client->GetActiveWeapon();
 	if (weapon != nullptr)
-		weapon = g_cInterfaces.ClientEntList->GetClientEntityFromHandle((CBaseHandle*)weapon);
+		weapon = g_interface.ClientEntList->GetClientEntityFromHandle((CBaseHandle*)weapon);
 	else
 		weapon = nullptr;
 
@@ -2808,29 +2756,29 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 	}
 
 	// 引擎预测备份
-	float oldCurtime = g_cInterfaces.Globals->curtime;
-	float oldFrametime = g_cInterfaces.Globals->frametime;
+	float oldCurtime = g_interface.Globals->curtime;
+	float oldFrametime = g_interface.Globals->frametime;
 
 	// 引擎预测
-	if(g_cInterfaces.MoveHelper)
+	if(g_interface.MoveHelper)
 	{
 		// 设置需要预测的时间（帧）
-		g_cInterfaces.Globals->curtime = serverTime;
-		g_cInterfaces.Globals->frametime = g_cInterfaces.Globals->interval_per_tick;
+		g_interface.Globals->curtime = serverTime;
+		g_interface.Globals->frametime = g_interface.Globals->interval_per_tick;
 		
 		// 开始检查错误
-		g_cInterfaces.GameMovement->StartTrackPredictionErrors(client);
+		g_interface.GameMovement->StartTrackPredictionErrors(client);
 
 		// 清空预测结果的数据
-		ZeroMemory(&g_bMoveData, sizeof(CMoveData));
+		ZeroMemory(&g_predMoveData, sizeof(CMoveData));
 
 		// 设置需要预测的玩家
-		g_cInterfaces.MoveHelper->SetHost(client);
+		g_interface.MoveHelper->SetHost(client);
 
 		// 开始预测
-		g_cInterfaces.Prediction->SetupMove(client, pCmd, g_cInterfaces.MoveHelper, &g_bMoveData);
-		g_cInterfaces.GameMovement->ProcessMovement(client, &g_bMoveData);
-		g_cInterfaces.Prediction->FinishMove(client, pCmd, &g_bMoveData);
+		g_interface.Prediction->SetupMove(client, pCmd, g_interface.MoveHelper, &g_predMoveData);
+		g_interface.GameMovement->ProcessMovement(client, &g_predMoveData);
+		g_interface.Prediction->FinishMove(client, pCmd, &g_predMoveData);
 	}
 
 	// 自动瞄准
@@ -2894,10 +2842,10 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 #ifdef _DEBUG_OUTPUT
 		else
 		{
-			g_cInterfaces.Engine->ClientCmd("echo \"m_flNextPrimaryAttack = %.2f | serverTime = %.2f\"",
+			g_interface.Engine->ClientCmd("echo \"m_flNextPrimaryAttack = %.2f | serverTime = %.2f\"",
 				nextAttack, serverTime);
-			g_cInterfaces.Engine->ClientCmd("echo \"interval_per_tick = %.2f | m_nTickBase = %d\"",
-				g_cInterfaces.Globals->interval_per_tick, client->GetTickBase());
+			g_interface.Engine->ClientCmd("echo \"interval_per_tick = %.2f | m_nTickBase = %d\"",
+				g_interface.Globals->interval_per_tick, client->GetTickBase());
 		}
 #endif
 
@@ -2935,11 +2883,11 @@ end_aimbot:
 		if (target != nullptr)
 		{
 			if (!IsValidVictim(target))
-				g_cInterfaces.Engine->ClientCmd("echo \"aiming dead 0x%X\"", (DWORD)target);
+				g_interface.Engine->ClientCmd("echo \"aiming dead 0x%X\"", (DWORD)target);
 			if (target->GetTeam() == client->GetTeam())
-				g_cInterfaces.Engine->ClientCmd("echo \"aiming team 0x%X\"", (DWORD)target);
+				g_interface.Engine->ClientCmd("echo \"aiming team 0x%X\"", (DWORD)target);
 			if (target->GetClientClass()->m_ClassID == ET_INFECTED)
-				g_cInterfaces.Engine->ClientCmd("echo \"aiming infected 0x%X\"", (DWORD)target);
+				g_interface.Engine->ClientCmd("echo \"aiming infected 0x%X\"", (DWORD)target);
 		}
 #endif
 
@@ -2971,17 +2919,42 @@ end_aimbot:
 
 end_trigger_bot:
 
+	// 在开枪前检查，防止攻击队友
+	if ((pCmd->buttons & IN_ATTACK) && IsGunWeapon(weaponId) && myTeam == 2)
+	{
+		int cid = client->GetCrosshairsId();
+		CBaseEntity* aiming = (cid > 0 ? g_interface.ClientEntList->GetClientEntity(cid) : nullptr);
+
+		if (aiming != nullptr && !aiming->IsDormant() && aiming->IsAlive() &&
+			aiming->GetTeam() == myTeam && !IsNeedRescue(aiming) && !IsFallDown(client))
+		{
+			// 取消开枪
+			pCmd->buttons &= ~IN_ATTACK;
+		}
+	}
+
+	// 无后坐力，并没有任何效果
+	{
+		Vector punch = client->GetLocalNetProp<Vector>("m_vecPunchAngle");
+		/*
+		float modifiler = VectorNormalize(punch);
+		modifiler -= (10.0f + modifiler * 0.5f) * g_interface.Globals->interval_per_tick;
+		punch *= modifiler;
+		*/
+		pCmd->viewangles -= punch * 2.0f;
+	}
+
 	// 引擎预测
-	if (g_cInterfaces.MoveHelper)
+	if (g_interface.MoveHelper)
 	{
 		// 结束预测
-		// g_cInterfaces.Prediction->FinishMove(client, pCmd, &g_bMoveData);
-		g_cInterfaces.GameMovement->FinishTrackPredictionErrors(client);
-		g_cInterfaces.MoveHelper->SetHost(nullptr);
+		// g_interface.Prediction->FinishMove(client, pCmd, &g_predMoveData);
+		g_interface.GameMovement->FinishTrackPredictionErrors(client);
+		g_interface.MoveHelper->SetHost(nullptr);
 
 		// 还原备份
-		g_cInterfaces.Globals->curtime = oldCurtime;
-		g_cInterfaces.Globals->frametime = oldFrametime;
+		g_interface.Globals->curtime = oldCurtime;
+		g_interface.Globals->frametime = oldFrametime;
 
 		// 修复一些错误
 		client->SetNetProp("m_fFlags", flags, "DT_BasePlayer");
@@ -3010,26 +2983,8 @@ end_trigger_bot:
 		}
 	}
 
-	// 在开枪前检查，防止攻击队友
-	if ((pCmd->buttons & IN_ATTACK) && IsGunWeapon(weaponId) && myTeam == 2)
-	{
-		int cid = client->GetCrosshairsId();
-		CBaseEntity* aiming = (cid > 0 ? g_cInterfaces.ClientEntList->GetClientEntity(cid) : nullptr);
-
-		if (aiming != nullptr && !aiming->IsDormant() && aiming->IsAlive() &&
-			aiming->GetTeam() == myTeam && !IsNeedRescue(aiming) && !IsFallDown(client))
-		{
-			// 取消开枪
-			pCmd->buttons &= ~IN_ATTACK;
-		}
-	}
-
-	// 完成声音修复
-	// EndEnginePrediction(client);
-	// g_cInterfaces.Prediction->EndPrediction(pCmd);
-
 	// 近战武器快速攻击
-	if(myTeam == 2 && GetAsyncKeyState(VK_XBUTTON2) & 0x8000)
+	if (myTeam == 2 && GetAsyncKeyState(VK_XBUTTON2) & 0x8000)
 	{
 		static enum FastMeleeStatus
 		{
@@ -3037,8 +2992,9 @@ end_trigger_bot:
 			FMS_Primary = 1,
 			FMS_Secondary = 2
 		} fms = FMS_None;
+		static unsigned int ignoreTick = 0;
 
-		switch(fms)
+		switch (fms)
 		{
 		case FMS_None:
 			if (weaponId == Weapon_Melee && nextAttack <= serverTime)
@@ -3047,35 +3003,38 @@ end_trigger_bot:
 				pCmd->buttons |= IN_ATTACK;
 				fms = FMS_Primary;
 			}
+			else if (ignoreTick > 0)
+				ignoreTick = 0;
 			break;
 		case FMS_Primary:
 			if (weaponId == Weapon_Melee && nextAttack > serverTime)
 			{
 				// 在攻击之后切换到主武器
-				g_cInterfaces.Engine->ClientCmd("slot1");
+				g_interface.Engine->ClientCmd("slot1");
 				fms = FMS_Secondary;
 			}
+			else
+				++ignoreTick;
 			break;
 		case FMS_Secondary:
 			if (weaponId != Weapon_Melee)
 			{
 				// 在主武器时切换到近战武器
-				g_cInterfaces.Engine->ClientCmd("slot2");
+				g_interface.Engine->ClientCmd("slot2");
 				fms = FMS_None;
 			}
+			else
+				++ignoreTick;
 			break;
 		}
-	}
 
-	// 无后坐力，并没有任何效果
-	{
-		Vector punch = client->GetLocalNetProp<Vector>("m_vecPunchAngle");
-		/*
-		float modifiler = VectorNormalize(punch);
-		modifiler -= (10.0f + modifiler * 0.5f) * g_cInterfaces.Globals->interval_per_tick;
-		punch *= modifiler;
-		*/
-		pCmd->viewangles -= punch * 2.0f;
+		if (ignoreTick >= 30)
+		{
+			ignoreTick = 0;
+			fms = FMS_None;
+
+			g_interface.Engine->ClientCmd("echo \"fastmelee stopped\"");
+		}
 	}
 
 	// 修复角度不正确
@@ -3102,7 +3061,7 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 	QAngle punch, velocity;
 	CBaseEntity* client = GetLocalClient();
 
-	if (stage == FRAME_RENDER_START && g_cInterfaces.Engine->IsInGame())
+	if (stage == FRAME_RENDER_START && g_interface.Engine->IsInGame())
 	{
 		if (client != nullptr && client->IsAlive())
 		{
@@ -3131,7 +3090,7 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 		static DWORD fmWait = 45;
 		static bool connected = false;
 
-		if (g_cInterfaces.Engine->IsConnected())
+		if (g_interface.Engine->IsConnected())
 		{
 			// 修改 r_drawothermodels 实现简单的 esp
 			if (GetAsyncKeyState(VK_INSERT) & 0x01)
@@ -3142,7 +3101,7 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 #endif
 
 #ifdef USE_CVAR_CHANGE
-				if (g_tConVar["r_drawothermodels"] != nullptr && g_tConVar["cl_drawshadowtexture"] != nullptr)
+				if (g_conVar["r_drawothermodels"] != nullptr && g_conVar["cl_drawshadowtexture"] != nullptr)
 				{
 					CVAR_MAKE_VALUE("r_drawothermodels", 2, 1);
 					CVAR_MAKE_VALUE("cl_drawshadowtexture", 1, 0);
@@ -3161,9 +3120,9 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 						Utils::writeMemory(1, g_iClientBase + cl_drawshadowtexture);
 					}
 
-					g_cInterfaces.Engine->ClientCmd("echo \"r_drawothermodels set %d\"",
+					g_interface.Engine->ClientCmd("echo \"r_drawothermodels set %d\"",
 						Utils::readMemory<int>(g_iClientBase + r_drawothermodels));
-					g_cInterfaces.Engine->ClientCmd("echo \"cl_drawshadowtexture set %d\"",
+					g_interface.Engine->ClientCmd("echo \"cl_drawshadowtexture set %d\"",
 						Utils::readMemory<int>(g_iClientBase + cl_drawshadowtexture));
 #ifdef USE_CVAR_CHANGE
 				}
@@ -3185,7 +3144,7 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 #endif
 
 #ifdef USE_CVAR_CHANGE
-				if (g_tConVar["mat_fullbright"] != nullptr)
+				if (g_conVar["mat_fullbright"] != nullptr)
 				{
 					CVAR_MAKE_VALUE("mat_fullbright", 1, 0);
 				}
@@ -3197,7 +3156,7 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 					else
 						Utils::writeMemory(1, g_iMaterialModules + mat_fullbright);
 
-					g_cInterfaces.Engine->ClientCmd("echo \"mat_fullbright set %d\"",
+					g_interface.Engine->ClientCmd("echo \"mat_fullbright set %d\"",
 						Utils::readMemory<int>(g_iMaterialModules + mat_fullbright));
 #ifdef USE_CVAR_CHANGE
 				}
@@ -3213,22 +3172,22 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 #endif
 
 #ifdef USE_CVAR_CHANGE
-				if (g_tConVar["mp_gamemode"] != nullptr)
+				if (g_conVar["mp_gamemode"] != nullptr)
 				{
-					const char* mode = g_tConVar["mp_gamemode"]->GetString();
+					const char* mode = g_conVar["mp_gamemode"]->GetString();
 					if (_strcmpi(mode, "versus") == 0 || _strcmpi(mode, "realismversus") == 0)
 					{
-						g_tConVar["mp_gamemode"]->SetValue("coop");
-						strcpy_s(g_tConVar["mp_gamemode"]->m_pszString, g_tConVar["mp_gamemode"]->m_StringLength, "coop");
+						g_conVar["mp_gamemode"]->SetValue("coop");
+						strcpy_s(g_conVar["mp_gamemode"]->m_pszString, g_conVar["mp_gamemode"]->m_StringLength, "coop");
 					}
 					else
 					{
-						g_tConVar["mp_gamemode"]->SetValue("versus");
-						strcpy_s(g_tConVar["mp_gamemode"]->m_pszString, g_tConVar["mp_gamemode"]->m_StringLength, "versus");
+						g_conVar["mp_gamemode"]->SetValue("versus");
+						strcpy_s(g_conVar["mp_gamemode"]->m_pszString, g_conVar["mp_gamemode"]->m_StringLength, "versus");
 					}
 
-					g_cInterfaces.Engine->ClientCmd("echo \"[ConVar] mp_gamemode set %s\"",
-						g_tConVar["mp_gamemode"]->GetString());
+					g_interface.Engine->ClientCmd("echo \"[ConVar] mp_gamemode set %s\"",
+						g_conVar["mp_gamemode"]->GetString());
 				}
 				else
 				{
@@ -3249,7 +3208,7 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 						else
 							printf("VirtualProtect 0x%X Fail!\n", (DWORD)mode);
 
-						g_cInterfaces.Engine->ClientCmd("echo \"mp_gamemode set %s\"", mode);
+						g_interface.Engine->ClientCmd("echo \"mp_gamemode set %s\"", mode);
 					}
 #ifdef USE_CVAR_CHANGE
 				}
@@ -3265,20 +3224,20 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 #endif
 
 #ifdef USE_CVAR_CHANGE
-				if (g_tConVar["sv_cheats"] != nullptr)
+				if (g_conVar["sv_cheats"] != nullptr)
 				{
-					g_tConVar["sv_cheats"]->SetValue(1);
-					g_tConVar["sv_cheats"]->m_fValue = 1.0f;
-					g_tConVar["sv_cheats"]->m_nValue = 1;
-					g_cInterfaces.Engine->ClientCmd("echo \"[ConVar] sv_cheats set %d\"",
-						g_tConVar["sv_cheats"]->GetInt());
+					g_conVar["sv_cheats"]->SetValue(1);
+					g_conVar["sv_cheats"]->m_fValue = 1.0f;
+					g_conVar["sv_cheats"]->m_nValue = 1;
+					g_interface.Engine->ClientCmd("echo \"[ConVar] sv_cheats set %d\"",
+						g_conVar["sv_cheats"]->GetInt());
 				}
 #endif
 
 				if (Utils::readMemory<int>(g_iEngineBase + sv_cheats) != 1)
 				{
 					Utils::writeMemory(1, g_iEngineBase + sv_cheats);
-					g_cInterfaces.Engine->ClientCmd("echo \"sv_cheats set %d\"",
+					g_interface.Engine->ClientCmd("echo \"sv_cheats set %d\"",
 						Utils::readMemory<int>(g_iEngineBase + sv_cheats));
 				}
 			}
@@ -3297,7 +3256,7 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 			if (GetAsyncKeyState(VK_F8) & 0x01)
 			{
 				g_bAutoStrafe = !g_bAutoStrafe;
-				g_cInterfaces.Engine->ClientCmd("echo \"[segt] auto strafe set %s\"",
+				g_interface.Engine->ClientCmd("echo \"[segt] auto strafe set %s\"",
 					(g_bAutoStrafe ? "enable" : "disabled"));
 
 				if (g_pDrawRender != nullptr)
@@ -3311,7 +3270,7 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 			if (GetAsyncKeyState(VK_F9) & 0x01)
 			{
 				g_bTriggerBot = !g_bTriggerBot;
-				g_cInterfaces.Engine->ClientCmd("echo \"[segt] trigger bot set %s\"",
+				g_interface.Engine->ClientCmd("echo \"[segt] trigger bot set %s\"",
 					(g_bTriggerBot ? "enable" : "disabled"));
 
 				if (g_pDrawRender != nullptr)
@@ -3325,7 +3284,7 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 			if (GetAsyncKeyState(VK_F10) & 0x01)
 			{
 				g_bAimBot = !g_bAimBot;
-				g_cInterfaces.Engine->ClientCmd("echo \"[segt] aim bot set %s\"",
+				g_interface.Engine->ClientCmd("echo \"[segt] aim bot set %s\"",
 					(g_bAimBot ? "enable" : "disabled"));
 
 				if (g_pDrawRender != nullptr)
@@ -3339,7 +3298,7 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 			if (GetAsyncKeyState(VK_F11) & 0x01)
 			{
 				g_bAutoBunnyHop = !g_bAutoBunnyHop;
-				g_cInterfaces.Engine->ClientCmd("echo \"[segt] auto bunnyHop set %s\"",
+				g_interface.Engine->ClientCmd("echo \"[segt] auto bunnyHop set %s\"",
 					(g_bAutoBunnyHop ? "enable" : "disabled"));
 
 				if (g_pDrawRender != nullptr)
@@ -3353,7 +3312,7 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 			if (GetAsyncKeyState(VK_F12) & 0x01)
 			{
 				g_bSilentAimbot = !g_bSilentAimbot;
-				g_cInterfaces.Engine->ClientCmd("echo \"[segt] silent aim %s\"",
+				g_interface.Engine->ClientCmd("echo \"[segt] silent aim %s\"",
 					(g_bSilentAimbot ? "enable" : "disabled"));
 
 				if (g_pDrawRender != nullptr)
@@ -3364,7 +3323,7 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 			}
 
 			// 去除 CRC 验证
-			// if (g_cInterfaces.Engine->IsConnected())
+			// if (g_interface.Engine->IsConnected())
 			{
 #ifdef USE_CVAR_CHANGE
 				CVAR_MAKE_FLAGS("sv_pure");
@@ -3373,10 +3332,10 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 #endif
 
 #ifdef USE_CVAR_CHANGE
-				if (g_tConVar["sv_pure"] != nullptr && g_tConVar["sv_pure"]->GetInt() != 0)
-					g_tConVar["sv_pure"]->SetValue(0);
-				if (g_tConVar["sv_consistency"] != nullptr && g_tConVar["sv_consistency"]->GetInt() != 0)
-					g_tConVar["sv_consistency"]->SetValue(0);
+				if (g_conVar["sv_pure"] != nullptr && g_conVar["sv_pure"]->GetInt() != 0)
+					g_conVar["sv_pure"]->SetValue(0);
+				if (g_conVar["sv_consistency"] != nullptr && g_conVar["sv_consistency"]->GetInt() != 0)
+					g_conVar["sv_consistency"]->SetValue(0);
 #endif
 
 				if (Utils::readMemory<int>(g_iEngineBase + sv_pure) != 0 ||
@@ -3385,7 +3344,7 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 					Utils::writeMemory(0, g_iEngineBase + sv_pure);
 					Utils::writeMemory(0, g_iEngineBase + sv_consistency);
 
-					g_cInterfaces.Engine->ClientCmd("echo \"sv_pure and sv_consistency set %d\"",
+					g_interface.Engine->ClientCmd("echo \"sv_pure and sv_consistency set %d\"",
 						Utils::readMemory<int>(g_iEngineBase + sv_pure));
 				}
 			}
@@ -3393,13 +3352,13 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 			if (!connected)
 			{
 				g_pGameRulesProxy = nullptr;
-				g_cInterfaces.Engine->ClientCmd("echo \"********* connected *********\"");
+				g_interface.Engine->ClientCmd("echo \"********* connected *********\"");
 				Utils::log("*** connected ***");
 			}
 
 			connected = true;
 		}
-		else if (connected && !g_cInterfaces.Engine->IsInGame())
+		else if (connected && !g_interface.Engine->IsInGame())
 		{
 			connected = false;
 			g_pGameRulesProxy = nullptr;
@@ -3408,8 +3367,8 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 
 		if (GetAsyncKeyState(VK_ADD) & 0x8000)
 		{
-			g_cInterfaces.Engine->ClientCmd("alias fastmelee_loop \"+attack; slot1; wait 1; -attack; slot2; wait %d; fastmelee_launcher\"", ++fmWait);
-			g_cInterfaces.Engine->ClientCmd("echo \"fastmelee wait set %d\"", fmWait);
+			g_interface.Engine->ClientCmd("alias fastmelee_loop \"+attack; slot1; wait 1; -attack; slot2; wait %d; fastmelee_launcher\"", ++fmWait);
+			g_interface.Engine->ClientCmd("echo \"fastmelee wait set %d\"", fmWait);
 
 			if (g_pDrawRender != nullptr)
 				g_pDrawRender->PushRenderText(DrawManager::WHITE, "fast melee wait tick set %d", fmWait);
@@ -3417,8 +3376,8 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 
 		if (GetAsyncKeyState(VK_SUBTRACT) & 0x8000)
 		{
-			g_cInterfaces.Engine->ClientCmd("alias fastmelee_loop \"+attack; slot1; wait 1; -attack; slot2; wait %d; fastmelee_launcher\"", --fmWait);
-			g_cInterfaces.Engine->ClientCmd("echo \"fastmelee wait set %d\"", fmWait);
+			g_interface.Engine->ClientCmd("alias fastmelee_loop \"+attack; slot1; wait 1; -attack; slot2; wait %d; fastmelee_launcher\"", --fmWait);
+			g_interface.Engine->ClientCmd("echo \"fastmelee wait set %d\"", fmWait);
 
 			if (g_pDrawRender != nullptr)
 				g_pDrawRender->PushRenderText(DrawManager::WHITE, "fast melee wait tick set %d", fmWait);
@@ -3427,7 +3386,7 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 		if (GetAsyncKeyState(VK_MULTIPLY) & 0x8000)
 		{
 			g_fAimbotFieldOfView += 1.0f;
-			g_cInterfaces.Engine->ClientCmd("echo \"aimbot fov set %.2f\"", g_fAimbotFieldOfView);
+			g_interface.Engine->ClientCmd("echo \"aimbot fov set %.2f\"", g_fAimbotFieldOfView);
 
 			if (g_pDrawRender != nullptr)
 				g_pDrawRender->PushRenderText(DrawManager::WHITE, "aimbot angles set %.0f", g_fAimbotFieldOfView);
@@ -3436,7 +3395,7 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 		if (GetAsyncKeyState(VK_DIVIDE) & 0x8000)
 		{
 			g_fAimbotFieldOfView -= 1.0f;
-			g_cInterfaces.Engine->ClientCmd("echo \"aimbot fov set %.2f\"", g_fAimbotFieldOfView);
+			g_interface.Engine->ClientCmd("echo \"aimbot fov set %.2f\"", g_fAimbotFieldOfView);
 
 			if (g_pDrawRender != nullptr)
 				g_pDrawRender->PushRenderText(DrawManager::WHITE, "aimbot angles set %.0f", g_fAimbotFieldOfView);
@@ -3461,7 +3420,7 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 		}
 
 		if (GetAsyncKeyState(VK_DELETE) & 0x01)
-			g_cInterfaces.Engine->ClientCmd("disconnect");
+			g_interface.Engine->ClientCmd("disconnect");
 	}
 }
 
@@ -3470,13 +3429,13 @@ void __fastcall Hooked_RunCommand(void* ecx, void* edx, CBaseEntity* pEntity, CU
 	oRunCommand(ecx, pEntity, pCmd, moveHelper);
 
 	static bool showHint = true;
-	if (showHint || g_cInterfaces.MoveHelper == nullptr)
+	if (showHint || g_interface.MoveHelper == nullptr)
 	{
 		showHint = false;
 		Utils::log("MoveHelperPointer = 0x%X", (DWORD)moveHelper);
 	}
 
-	g_cInterfaces.MoveHelper = moveHelper;
+	g_interface.MoveHelper = moveHelper;
 }
 
 bool __stdcall Hooked_CreateMoveShared(float flInputSampleTime, CUserCmd* cmd)
@@ -3675,5 +3634,5 @@ void __stdcall Hooked_DrawModelExecute(const DrawModelState_t &state,
 	};
 
 	DrawModelExecute(state, pInfo, pBoneToWorld);
-	g_cInterfaces.ModelRender->ForcedMaterialOverride(nullptr);
+	g_interface.ModelRender->ForcedMaterialOverride(nullptr);
 }
