@@ -605,17 +605,6 @@ void DrawManager::BeginRendering()
 	m_pDevice->SetVertexShader(nullptr);
 	m_pDevice->SetFVF(D3DFVF_XYZRHW | D3DFVF_DIFFUSE);
 
-	/*
-	m_pDevice->SetRenderState(D3DRS_ZENABLE, false);
-	m_pDevice->SetRenderState(D3DRS_ALPHABLENDENABLE, false);
-	m_pDevice->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
-	m_pDevice->SetRenderState(D3DRS_SCISSORTESTENABLE, false);
-	m_pDevice->SetRenderState(D3DRS_COLORWRITEENABLE, 0xFFFFFFFF);
-	*/
-
-	// 绘制 2D 框可以进行的优化
-	// m_pDevice->SetRenderState(D3DRS_CULLMODE, D3DCULL_CCW);
-
 	// 修复颜色不正确，某些东西绘制不出来
 	m_pDevice->SetRenderState(D3DRS_COLORWRITEENABLE, 0xFFFFFFFF);
 	m_pDevice->SetRenderState(D3DRS_LIGHTING, false);
@@ -664,21 +653,18 @@ void DrawManager::EndRendering()
 
 void DrawManager::DrawQueueObject()
 {
-	// 绘制文本列表
-	if (!this->m_textDrawQueue.empty())
+	if (!m_textDrawQueue.empty() || !m_delayString.empty())
 	{
+#ifndef ORIGINAL_CD3DFONT
+		// 开始批量绘制
+		m_pFont->BeginDrawing();
+#endif
+		
 		int drawQueue = -1;
 		time_t currentTime = time(nullptr);
-		std::vector<DrawManager::TextQueue>::iterator i;
-
-#ifndef ORIGINAL_CD3DFONT
-		this->DrawString2Begin();
-#endif
-
-		for (i = this->m_textDrawQueue.begin(); i != this->m_textDrawQueue.end(); )
+		auto i = m_textDrawQueue.begin();;
+		for (; i != m_textDrawQueue.end(); )
 		{
-			// 绘制文本
-
 #ifndef ORIGINAL_CD3DFONT
 			m_pFont->DrawText(10.0f, m_iFontSize * ++drawQueue + 12.0f, i->color, i->text.c_str());
 #else
@@ -686,52 +672,51 @@ void DrawManager::DrawQueueObject()
 #endif
 
 			if (i->destoryTime <= currentTime)
-				i = this->m_textDrawQueue.erase(i);
+				i = m_textDrawQueue.erase(i);
 			else
 				++i;
 		}
 
-#ifndef ORIGINAL_CD3DFONT
-		this->DrawString2Finish();
-#endif
 
-	}
-
-	// 延迟绘制文本
-	if (!m_delayString.empty())
-	{
-
-#ifndef ORIGINAL_CD3DFONT
-		this->DrawString2Begin();
-#endif
-
-		for (auto each : m_delayString)
+		for (const auto& each : m_delayString)
 		{
 			if (each.text.empty())
 				continue;
 
-			m_pFont->DrawText(each.x, each.y, each.color, each.text.c_str(), each.flags, each.background);
+#ifndef ORIGINAL_CD3DFONT
+			m_pFont->DrawText(each.x, each.y, each.color,
+				each.text.c_str(), each.flags, each.background);
+#else
+			m_pFont->DrawText(each.x, each.y, each.color,
+				Utils::c2w(each.text).c_str(), each.flags);
+#endif
 		}
 
-#ifndef ORIGINAL_CD3DFONT
-		this->DrawString2Finish();
-#endif
-
 		m_delayString.clear();
-	}
 
+#ifndef ORIGINAL_CD3DFONT
+		// 完成批量绘制
+		m_pFont->EndDrawing();
+#endif
+	}
+	
 	// 延迟绘制图形
 	if (!m_delayDraw.empty())
 	{
-		for (auto each : m_delayDraw)
+		// 优化绘制速度
+		m_pDevice->SetRenderState(D3DRS_CULLMODE, D3DCULL_CW);
+
+		for (const auto& each : m_delayDraw)
 		{
 			if (each.vertex.empty() || each.vertexCount <= 0)
 				continue;
 
-			m_pDevice->DrawPrimitiveUP(each.type, each.vertexCount, &(each.vertex[0]), sizeof(D3DVertex));
+			m_pDevice->DrawPrimitiveUP(each.type, each.vertexCount,
+				&(each.vertex[0]), sizeof(D3DVertex));
 		}
 
 		m_delayDraw.clear();
+		// m_pDevice->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE);
 	}
 }
 
@@ -931,8 +916,8 @@ void DrawManager::RenderFillRect(D3DCOLOR color, int x, int y, int w, int h)
 	D3DVertex vertices[4] =
 	{
 		D3DVertex((float)x, (float)y, 1.0f, color),
-		D3DVertex((float)(x + w), (float)y, 1.0f, color),
 		D3DVertex((float)x, (float)(y + h), 1.0f, color),
+		D3DVertex((float)(x + w), (float)y, 1.0f, color),
 		D3DVertex((float)(x + w), (float)(y + h), 1.0f, color)
 	};
 
@@ -946,8 +931,8 @@ void DrawManager::AddFillRect(D3DCOLOR color, int x, int y, int w, int h)
 	
 	this->m_delayDraw.emplace_back(D3DPT_TRIANGLESTRIP, 2, std::vector<D3DVertex>{
 		D3DVertex((float)x, (float)y, 1.0f, color),
-		D3DVertex((float)(x + w), (float)y, 1.0f, color),
 		D3DVertex((float)x, (float)(y + h), 1.0f, color),
+		D3DVertex((float)(x + w), (float)y, 1.0f, color),
 		D3DVertex((float)(x + w), (float)(y + h), 1.0f, color)
 	});
 

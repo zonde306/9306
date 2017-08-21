@@ -3028,7 +3028,7 @@ end_trigger_bot:
 			break;
 		}
 
-		if (ignoreTick >= 30)
+		if (ignoreTick >= 10)
 		{
 			ignoreTick = 0;
 			fms = FMS_None;
