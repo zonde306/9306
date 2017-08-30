@@ -215,17 +215,21 @@ void showSpectator();
 void bindAlias(int);
 
 // -------------------------------- Golbals Variable --------------------------------
+static int g_iCurrentAiming = 0;										// 当前正在瞄准的玩家的 ID
 static bool g_bNewFrame = false;										// 现在是否运行在新的一帧
 static bool* g_pbSendPacket;											// 数据包是否发送到服务器
 static int g_iSpeedMultiple = 5;										// 加速倍数
 static CUserCmd* g_pUserCommands;										// 本地玩家当前按键
 std::map<std::string, ConVar*> g_conVar;								// 控制台变量
 static float g_fAimbotFieldOfView = 30.0f;								// 自动瞄准角度
-static CBaseEntity* g_pCurrentAiming;									// 当前的自动瞄准目标
-static CBaseEntity* g_pGameRulesProxy;									// 游戏规则实体，在这里会有一些有用的东西
+CBaseEntity* g_pCurrentAimbot;											// 当前的自动瞄准目标
+CBaseEntity* g_pCurrentAiming;											// 当前正在瞄准的目标
+CBaseEntity* g_pGameRulesProxy;											// 游戏规则实体，在这里会有一些有用的东西
+CBaseEntity* g_pPlayerResource;											// 玩家资源，可以用来获取某些东西
 static DWORD g_iClientBase, g_iEngineBase, g_iMaterialModules;			// 有用的 DLL 文件地址
 static bool g_bDrawBoxEsp = true, g_bTriggerBot = false, g_bAimBot = false, g_bAutoBunnyHop = true,
-	g_bRapidFire = true, g_bSilentAimbot = false, g_bAutoStrafe = false, g_bDrawCrosshairs = true;
+	g_bRapidFire = true, g_bSilentAimbot = false, g_bAutoStrafe = false, g_bDrawCrosshairs = true,
+	g_bDrawBoneEsp = false;
 
 std::string GetZombieClassName(CBaseEntity* player);
 bool IsValidVictim(CBaseEntity* entity);
@@ -497,8 +501,8 @@ DWORD WINAPI StartCheat(LPVOID params)
 					if (!IsValidVictim(entity))
 						return;
 
-					if ((DWORD)entity == (DWORD)g_pCurrentAiming)
-						g_pCurrentAiming = nullptr;
+					if ((DWORD)entity == (DWORD)g_pCurrentAimbot)
+						g_pCurrentAimbot = nullptr;
 
 					/*
 					Utils::log("player %d death, killed by %d%s", victim, attacker,
@@ -524,8 +528,8 @@ DWORD WINAPI StartCheat(LPVOID params)
 					if (!IsValidVictim(entity))
 						return;
 
-					if ((DWORD)entity == (DWORD)g_pCurrentAiming)
-						g_pCurrentAiming = nullptr;
+					if ((DWORD)entity == (DWORD)g_pCurrentAimbot)
+						g_pCurrentAimbot = nullptr;
 
 					/*
 					Utils::log("infected %d death, killed by %d%s", victim, attacker,
@@ -810,12 +814,12 @@ DWORD WINAPI StartCheat(LPVOID params)
 				else if (_strcmpi(eventName, "map_transition") == 0)
 				{
 					Utils::log("*** map change ***");
-					g_pCurrentAiming = nullptr;
+					g_pCurrentAimbot = nullptr;
 				}
 				else if (_strcmpi(eventName, "mission_lost") == 0)
 				{
 					Utils::log("*** round lost ***");
-					g_pCurrentAiming = nullptr;
+					g_pCurrentAimbot = nullptr;
 				}
 				else if (_strcmpi(eventName, "weapon_fire") == 0)
 				{
@@ -1487,8 +1491,8 @@ Vector GetHeadPosition(CBaseEntity* player)
 	if (!position.IsValid() || position.IsZero(0.001f))
 	{
 		if (zombieClass == ZC_JOCKEY)
-			position.z = g_pCurrentAiming->GetAbsOrigin().z + 30.0f;
-		else if (zombieClass == ZC_HUNTER && (g_pCurrentAiming->GetFlags() & FL_DUCKING))
+			position.z = g_pCurrentAimbot->GetAbsOrigin().z + 30.0f;
+		else if (zombieClass == ZC_HUNTER && (g_pCurrentAimbot->GetFlags() & FL_DUCKING))
 			position.z -= 12.0f;
 	}
 
@@ -1773,25 +1777,25 @@ HRESULT WINAPI Hooked_EndScene(IDirect3DDevice9* device)
 	try
 	{
 #endif
-		targetSelected = IsValidVictim(g_pCurrentAiming);
+		targetSelected = IsValidVictim(g_pCurrentAimbot);
 #ifdef _DEBUG
 	}
 	catch (std::exception e)
 	{
-		Utils::log("%s (%d): %s | 0x%X", __FILE__, __LINE__, e.what(), (DWORD)g_pCurrentAiming);
+		Utils::log("%s (%d): %s | 0x%X", __FILE__, __LINE__, e.what(), (DWORD)g_pCurrentAimbot);
 		targetSelected = false;
-		g_pCurrentAiming = nullptr;
+		g_pCurrentAimbot = nullptr;
 	}
 	catch (...)
 	{
-		Utils::log("%s (%d): 未知异常 | 0x%X", __FILE__, __LINE__, (DWORD)g_pCurrentAiming);
+		Utils::log("%s (%d): 未知异常 | 0x%X", __FILE__, __LINE__, (DWORD)g_pCurrentAimbot);
 		targetSelected = false;
-		g_pCurrentAiming = nullptr;
+		g_pCurrentAimbot = nullptr;
 	}
 #endif
 
 	if (!targetSelected || !(GetAsyncKeyState(VK_LBUTTON) & 0x8000))
-		g_pCurrentAiming = nullptr;
+		g_pCurrentAimbot = nullptr;
 
 	Vector myViewAngles;
 	g_interface.Engine->GetViewAngles(myViewAngles);
@@ -1816,6 +1820,13 @@ HRESULT WINAPI Hooked_EndScene(IDirect3DDevice9* device)
 		{
 			g_pGameRulesProxy = entity;
 			Utils::log("TerrorGameRulesProxy Entity found 0x%X", (DWORD)g_pGameRulesProxy);
+		}
+
+		if (g_pPlayerResource == nullptr && entity != nullptr && !entity->IsDormant() &&
+			entity->GetClientClass()->m_ClassID == ET_TerrorPlayerResource)
+		{
+			g_pPlayerResource = entity;
+			Utils::log("TerrorGameRulesProxy Entity found 0x%X", (DWORD)g_pPlayerResource);
 		}
 
 #ifdef _DEBUG
@@ -2077,7 +2088,7 @@ HRESULT WINAPI Hooked_EndScene(IDirect3DDevice9* device)
 			if (entity->GetTeam() != team && dist < distmin && visible &&
 				GetAnglesFieldOfView(myViewAngles, CalculateAim(myEyeOrigin, headbox)) <= g_fAimbotFieldOfView)
 			{
-				g_pCurrentAiming = entity;
+				g_pCurrentAimbot = entity;
 				distmin = dist;
 			}
 		}
@@ -2288,25 +2299,25 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 		try
 		{
 #endif
-			targetSelected = IsValidVictim(g_pCurrentAiming);
+			targetSelected = IsValidVictim(g_pCurrentAimbot);
 #ifdef _DEBUG
 		}
 		catch (std::exception e)
 		{
-			Utils::log("%s (%d): %s | 0x%X", __FILE__, __LINE__, e.what(), (DWORD)g_pCurrentAiming);
+			Utils::log("%s (%d): %s | 0x%X", __FILE__, __LINE__, e.what(), (DWORD)g_pCurrentAimbot);
 			targetSelected = false;
-			g_pCurrentAiming = nullptr;
+			g_pCurrentAimbot = nullptr;
 		}
 		catch (...)
 		{
-			Utils::log("%s (%d): 未知异常 | 0x%X", __FILE__, __LINE__, (DWORD)g_pCurrentAiming);
+			Utils::log("%s (%d): 未知异常 | 0x%X", __FILE__, __LINE__, (DWORD)g_pCurrentAimbot);
 			targetSelected = false;
-			g_pCurrentAiming = nullptr;
+			g_pCurrentAimbot = nullptr;
 		}
 #endif
 
 		if (!targetSelected || !(GetAsyncKeyState(VK_LBUTTON) & 0x8000))
-			g_pCurrentAiming = nullptr;
+			g_pCurrentAimbot = nullptr;
 
 		Vector myViewAngles;
 		g_interface.Engine->GetViewAngles(myViewAngles);
@@ -2319,283 +2330,6 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 
 		// 绘制颜色
 		D3DCOLOR color = 0;
-
-		// 0 为 worldspawn，没有意义
-		for (int i = 1; i <= maxEntity; ++i)
-		{
-			CBaseEntity* entity = g_interface.ClientEntList->GetClientEntity(i);
-			int classId = ET_INVALID;
-
-			try
-			{
-				if (entity == nullptr || entity->IsDormant() || (DWORD)entity == (DWORD)local)
-					continue;
-
-				classId = entity->GetClientClass()->m_ClassID;
-				
-#ifdef _DEBUG_OUTPUT_
-				if (IsSurvivor(classId) || IsSpecialInfected(classId) || IsCommonInfected(classId))
-				{
-#endif
-					// 检查 生还者/特感/普感 是否是有效的
-					if (!IsValidVictim(entity))
-						continue;
-#ifdef _DEBUG_OUTPUT_
-				}
-#endif
-			}
-			catch (std::exception e)
-			{
-				Utils::log("%s (%d): %s", __FILE__, __LINE__, e.what());
-				continue;
-			}
-			catch (...)
-			{
-				Utils::log("%s (%d): 未知异常 -> 0x%X", __FILE__, __LINE__, (DWORD)entity);
-				continue;
-			}
-
-			if (g_pGameRulesProxy == nullptr && classId == ET_TerrorGameRulesProxy)
-			{
-				g_pGameRulesProxy = entity;
-				Utils::log("TerrorGameRulesProxy Entity found 0x%X", (DWORD)g_pGameRulesProxy);
-			}
-
-			Vector head, foot, headbox, origin;
-			
-			// 目标脚下的位置
-			origin = (IsSurvivor(classId) || IsSpecialInfected(classId) ?
-				entity->GetAbsOrigin() :		// 玩家专用，其他实体是没有的
-				entity->GetNetProp<Vector>("m_vecOrigin", "DT_BaseCombatCharacter"));
-
-			// 目标的头部的位置
-			headbox = (IsSurvivor(classId) || IsSpecialInfected(classId) || IsCommonInfected(classId) ?
-				GetHeadHitboxPosition(entity) : origin);
-
-			// 检查目标是否在屏幕内
-			if (!headbox.IsValid() || !WorldToScreen(headbox, head) ||
-				!WorldToScreen(origin, foot))
-				continue;
-
-			// 目标是否可见
-			bool visible = IsTargetVisible(entity, headbox, myEyeOrigin);
-
-			// 目标与自己的距离
-			float dist = myOrigin.DistTo(origin);
-
-			// 给玩家绘制一个框
-			if (g_bDrawBoxEsp)
-			{
-				// 根据类型决定绘制的内容
-				if (IsSurvivor(classId) || IsSpecialInfected(classId))
-				{
-					// 用于格式化字符串
-					std::stringstream ss;
-
-					// 去除 float 的小数位，因为没必要
-					ss << std::setprecision(0);
-
-					// 检查是否为生还者
-					if (IsSurvivor(classId))
-					{
-						if (IsIncapacitated(entity))
-						{
-							// 倒地时只有普通血量
-							ss << "[" << entity->GetHealth() << " + incap] ";
-						}
-						else if (IsControlled(entity))
-						{
-							// 玩家被控了
-							ss << "[" << (int)(entity->GetHealth() +
-								entity->GetNetProp<float>("m_healthBuffer", "DT_TerrorPlayer")) <<
-								" + grabbed] ";
-						}
-						else
-						{
-							// 生还者显示血量，临时血量
-							ss << "[" << entity->GetHealth() << " + " << std::setprecision(0) <<
-								(int)(entity->GetNetProp<float>("m_healthBuffer", "DT_TerrorPlayer")) << "] ";
-						}
-					}
-					else
-					{
-						if (IsGhostInfected(entity))
-						{
-							// 幽灵状态的特感
-							ss << "[" << entity->GetHealth() << " ghost] ";
-						}
-						else
-						{
-							// 非生还者只显示血量就好了
-							ss << "[" << entity->GetHealth() << "] ";
-						}
-					}
-
-					// 玩家类型
-					ss << GetZombieClassName(entity);
-
-					float height = fabs(head.y - foot.y);
-					float width = height * 0.65f;
-
-					// 根据情况决定颜色
-					if (IsSurvivor(classId) &&
-						entity->GetNetProp<byte>("m_bIsOnThirdStrike", "DT_TerrorPlayer") != 0)
-					{
-						// 生还者黑白时使用白色
-						color = DrawManager::WHITE;
-					}
-					else if (IsSpecialInfected(classId) && IsGhostInfected(entity))
-					{
-						// 幽灵状态的特感，紫色
-						color = DrawManager::PURPLE;
-					}
-					else
-					{
-						// 其他情况，橙色
-						color = DrawManager::ORANGE;
-					}
-
-					/*
-					g_interface.Surface->drawString(foot.x - width / 2, head.y,
-						(color & 0xFF0000) >> 16, (color & 0xFF00) >> 8, color & 0xFF,
-						font, Utils::c2w(ss.str()).c_str());
-					*/
-
-					// 显示血量和类型
-					g_pDrawRender->AddText(color, foot.x, head.y, true, ss.str().c_str());
-
-					ss.str("");
-
-					// 显示距离
-					ss << std::setprecision(0) << (int)dist;
-
-					// 给生还者显示弹药
-					if (IsSurvivor(classId))
-					{
-						CBaseEntity* weapon = (CBaseEntity*)entity->GetActiveWeapon();
-						if (weapon != nullptr)
-							weapon = g_interface.ClientEntList->GetClientEntityFromHandle((CBaseHandle*)weapon);
-						if (weapon != nullptr)
-						{
-							int ammoType = weapon->GetNetProp<int>("m_iPrimaryAmmoType", "DT_BaseCombatWeapon");
-							int clip = weapon->GetNetProp<int>("m_iClip1", "DT_BaseCombatWeapon");
-							byte reloading = weapon->GetNetProp<byte>("m_bInReload", "DT_BaseCombatWeapon");
-
-							// 显示弹药和弹夹
-							if (ammoType > 0 && clip > -1)
-							{
-								if (reloading != 0)
-								{
-									// 正在换子弹
-									ss << " (reloading)";
-								}
-								else
-								{
-									// 没有换子弹
-									ss << " (" << clip << " / " <<
-										entity->GetNetProp<int>("m_iAmmo", "DT_TerrorPlayer", (size_t)ammoType) <<
-										")";
-								}
-							}
-						}
-					}
-
-					color = (visible ? DrawManager::BLUE : DrawManager::YELLOW);
-
-					/*
-					g_interface.Surface->drawString(foot.x - width / 2, head.y + FontSize,
-						(color & 0xFF0000) >> 16, (color & 0xFF00) >> 8, color & 0xFF,
-						font, Utils::c2w(ss.str()).c_str());
-					*/
-
-					g_pDrawRender->AddText(color, foot.x, head.y +
-						g_pDrawRender->GetFontSize(), true, ss.str().c_str());
-
-					// 绘制一个框（虽然这个框只有上下两条线）
-					/*
-					g_interface.Surface->drawBox(foot.x - width / 2, foot.y, width, -height, 1,
-						(color & 0xFF0000) >> 16, (color & 0xFF00) >> 8, color & 0xFF,
-						(color & 0xFF000000) >> 24);
-					*/
-
-					color = (entity->GetTeam() == team ? DrawManager::BLUE : DrawManager::RED);
-					g_pDrawRender->AddRect(color, foot.x - width / 2, foot.y, width, -height);
-				}
-				else if(IsCommonInfected(classId))
-				{
-					// 这只是普感而已，太远了没必要显示出来
-					if (dist > 3000.0f)
-						continue;
-
-					// 正方形的边长
-					int boxSize = 4;
-					if (dist > 1000.0f)
-						boxSize = 2;
-
-					color = DrawManager::GREEN;
-					if (classId == ET_WITCH)
-						color = DrawManager::PINK;
-
-					// 画一个小方形，以标记为头部
-					/*
-					g_interface.Surface->FillRGBA(head.x, head.y, boxSize, boxSize,
-						(color & 0xFF0000) >> 16, (color & 0xFF00) >> 8, color & 0xFF,
-						(color & 0xFF000000) >> 24);
-					*/
-					
-					if (visible)
-						g_pDrawRender->AddFillCircle(color, head.x, head.y, boxSize, 8);
-					else
-						g_pDrawRender->AddCircle(color, head.x, head.y, boxSize, 8);
-				}
-				else
-				{
-					// 其他东西
-					if (dist > 1000.0f)
-						continue;
-
-					if (classId == ET_TankRock)
-					{
-						// Tank 的石头
-						g_pDrawRender->AddCircle(DrawManager::PURPLE, foot.x, foot.y, 9, 8);
-					}
-					else if (classId == ET_WeaponFirstAidKit || classId == ET_WeaponDefibrillator ||
-						classId == ET_WeaponPainPills || classId == ET_WeaponPainPills)
-					{
-						// 医疗品
-						g_pDrawRender->AddFillRect(DrawManager::DARKORANGE, foot.x, foot.y, 2, 8);
-					}
-					else if (classId == ET_WeaponPipeBomb || classId == ET_WeaponMolotov ||
-						classId == ET_WeaponVomitjar)
-					{
-						// 投掷武器
-						g_pDrawRender->AddFillRect(DrawManager::DARKGRAY, foot.x, foot.y, 2, 8);
-					}
-				}
-			}
-
-			// 自动瞄准寻找目标
-			if (g_bAimBot && (!targetSelected || !(g_pUserCommands->buttons & IN_ATTACK)) &&
-				((team == 2 && (IsSpecialInfected(classId) || classId == ET_INFECTED)) ||
-					(team == 3 && IsSurvivor(classId))))
-			{
-				// 已经选择过目标了，并且这是一个不重要的敌人
-				if (classId == ET_INFECTED && specialSelected)
-					continue;
-
-				// 选择一个最接近的特感，因为特感越近对玩家来说越危险
-				if (entity->GetTeam() != team && dist < distmin && visible &&
-					GetAnglesFieldOfView(myViewAngles, CalculateAim(myEyeOrigin, headbox)) <=
-					g_fAimbotFieldOfView)
-				{
-					g_pCurrentAiming = entity;
-					distmin = dist;
-
-					if (IsSpecialInfected(classId))
-						specialSelected = true;
-				}
-			}
-		}
 
 		if (g_bDrawCrosshairs)
 		{
@@ -2638,27 +2372,386 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 
 			/*
 			g_interface.Surface->drawCrosshair(width / 2, height / 2,
-				(color & 0xFF0000) >> 16, (color & 0xFF00) >> 8, color & 0xFF);
+			(color & 0xFF0000) >> 16, (color & 0xFF00) >> 8, color & 0xFF);
 			*/
-			
+
 			width /= 2;
 			height /= 2;
 
 			/*
 			if (g_conVar["c_thirdpersonshoulder"] != nullptr &&
-				g_conVar["c_thirdpersonshoulder"]->GetInt() > 0)
+			g_conVar["c_thirdpersonshoulder"]->GetInt() > 0)
 			{
-				// 上下偏移
-				height += g_conVar["c_thirdpersonshoulderheight"]->GetInt();
+			// 上下偏移
+			height += g_conVar["c_thirdpersonshoulderheight"]->GetInt();
 
-				// 左右偏移
-				width += g_conVar["c_thirdpersonshoulderoffset"]->GetInt();
+			// 左右偏移
+			width += g_conVar["c_thirdpersonshoulderoffset"]->GetInt();
 			}
 			*/
 
+			g_pCurrentAiming = target;
 			g_pDrawRender->AddLine(color, width - 10, height, width + 10, height);
 			g_pDrawRender->AddLine(color, width, height - 10, width, height + 10);
 		}
+
+		// 0 为 worldspawn，没有意义
+		for (int i = 1; i <= maxEntity; ++i)
+		{
+			CBaseEntity* entity = g_interface.ClientEntList->GetClientEntity(i);
+			int classId = ET_INVALID;
+
+			try
+			{
+				if (entity == nullptr || entity->IsDormant() || (DWORD)entity == (DWORD)local)
+					continue;
+
+				classId = entity->GetClientClass()->m_ClassID;
+				if (g_pGameRulesProxy == nullptr && classId == ET_TerrorGameRulesProxy)
+				{
+					g_pGameRulesProxy = entity;
+					Utils::log("TerrorGameRulesProxy Entity found 0x%X", (DWORD)g_pGameRulesProxy);
+				}
+
+				if (g_pPlayerResource == nullptr && classId == ET_TerrorPlayerResource)
+				{
+					g_pPlayerResource = entity;
+					Utils::log("TerrorPlayerResource Entity found 0x%X", (DWORD)g_pPlayerResource);
+				}
+
+				if ((DWORD)g_pCurrentAiming == (DWORD)entity)
+					g_iCurrentAiming = i;
+				
+#ifdef _DEBUG_OUTPUT_
+				if (IsSurvivor(classId) || IsSpecialInfected(classId) || IsCommonInfected(classId))
+				{
+#endif
+					// 检查 生还者/特感/普感 是否是有效的
+					if (!IsValidVictim(entity))
+						continue;
+#ifdef _DEBUG_OUTPUT_
+				}
+#endif
+			}
+			catch (std::exception e)
+			{
+				Utils::log("%s (%d): %s", __FILE__, __LINE__, e.what());
+				continue;
+			}
+			catch (...)
+			{
+				Utils::log("%s (%d): 未知异常 -> 0x%X", __FILE__, __LINE__, (DWORD)entity);
+				continue;
+			}
+
+			Vector head, foot, headbox, origin;
+			
+			// 目标脚下的位置
+			origin = (IsSurvivor(classId) || IsSpecialInfected(classId) ?
+				entity->GetAbsOrigin() :		// 玩家专用，其他实体是没有的
+				entity->GetNetProp<Vector>("m_vecOrigin", "DT_BaseCombatCharacter"));
+
+			// 目标的头部的位置
+			headbox = (IsSurvivor(classId) || IsSpecialInfected(classId) || IsCommonInfected(classId) ?
+				GetHeadHitboxPosition(entity) : origin);
+
+			// 检查目标是否在屏幕内
+			if (!headbox.IsValid() || !WorldToScreen(headbox, head) ||
+				!WorldToScreen(origin, foot))
+				continue;
+
+			// 目标是否可见
+			bool visible = IsTargetVisible(entity, headbox, myEyeOrigin);
+
+			// 目标与自己的距离
+			float dist = myOrigin.DistTo(origin);
+
+			// 给玩家绘制一个框
+			if (g_bDrawBoxEsp)
+			{
+				// 根据类型决定绘制的内容
+				if (IsSurvivor(classId) || IsSpecialInfected(classId))
+				{
+					// 用于格式化字符串
+					std::stringstream ss;
+
+					// 取消 stream 同步可以加快运行速度
+					ss.sync_with_stdio(false);
+					ss.tie(nullptr);
+
+					// 去除 float 的小数位，因为没必要
+					ss.setf(std::ios::fixed);
+					ss.precision(0);
+
+					// 检查是否为生还者
+					if (IsSurvivor(classId))
+					{
+						if (IsIncapacitated(entity))
+						{
+							// 倒地时只有普通血量
+							ss << "[" << entity->GetHealth() << " + incap] ";
+						}
+						else if (IsControlled(entity))
+						{
+							// 玩家被控了
+							ss << "[" << (int)(entity->GetHealth() +
+								entity->GetNetProp<float>("m_healthBuffer", "DT_TerrorPlayer")) <<
+								" + grabbed] ";
+						}
+						else
+						{
+							// 生还者显示血量，临时血量
+							ss << "[" << entity->GetHealth() << " + " << std::setprecision(0) <<
+								(int)(entity->GetNetProp<float>("m_healthBuffer", "DT_TerrorPlayer")) << "] ";
+						}
+					}
+					else
+					{
+						if (IsPlayerGhost(i) && IsGhostInfected(entity))
+						{
+							// 幽灵状态的特感
+							ss << "[" << entity->GetHealth() << " ghost] ";
+						}
+						else
+						{
+							// 非生还者只显示血量就好了
+							ss << "[" << entity->GetHealth() << "] ";
+						}
+					}
+
+					// 玩家类型
+					ss << GetZombieClassName(entity);
+
+					float height = fabs(head.y - foot.y);
+					float width = height * 0.65f;
+
+					// 显示距离
+					ss << "\n" << (int)dist;
+
+					CBaseEntity* weapon = (CBaseEntity*)entity->GetActiveWeapon();
+					if (weapon != nullptr)
+						weapon = g_interface.ClientEntList->GetClientEntityFromHandle((CBaseHandle*)weapon);
+
+					// 给生还者显示弹药
+					if (IsSurvivor(classId))
+					{
+						if (weapon != nullptr)
+						{
+							int ammoType = weapon->GetNetProp<int>("m_iPrimaryAmmoType", "DT_BaseCombatWeapon");
+							int clip = weapon->GetNetProp<int>("m_iClip1", "DT_BaseCombatWeapon");
+							byte reloading = weapon->GetNetProp<byte>("m_bInReload", "DT_BaseCombatWeapon");
+
+							// 显示弹药和弹夹
+							if (ammoType > 0 && clip > -1)
+							{
+								if (reloading != 0)
+								{
+									// 正在换子弹
+									ss << " (reloading)";
+								}
+								else
+								{
+									// 没有换子弹
+									ss << " (" << clip << "/" <<
+										entity->GetNetProp<int>("m_iAmmo", "DT_TerrorPlayer", (size_t)ammoType) <<
+										")";
+								}
+							}
+						}
+					}
+					else
+					{
+						float serverTime = GetServerTime();
+						ss.precision(1);
+						
+						if (classId == ET_TANK)
+						{
+							if (weapon != nullptr)
+							{
+								float primary = weapon->GetNetProp<float>("m_flNextPrimaryAttack", "DT_BaseCombatWeapon");
+								float secondary = weapon->GetNetProp<float>("m_flNextSecondaryAttack", "DT_BaseCombatWeapon");
+								
+								ss << "(";
+								if ((primary -= serverTime) > 0.0f)
+									ss << primary;
+								else
+									ss << "ready";
+
+								ss << "/";
+								if ((secondary -= serverTime) > 0.0f)
+									ss << secondary;
+								else
+									ss << "ready";
+
+								ss << ")";
+							}
+						}
+						else
+						{
+							weapon = (CBaseEntity*)entity->GetNetProp<CBaseHandle*>("m_customAbility", "DT_TerrorPlayer");
+							if (weapon != nullptr)
+								weapon = g_interface.ClientEntList->GetClientEntityFromHandle((CBaseHandle*)weapon);
+							if (weapon != nullptr)
+							{
+								float skill = weapon->GetNetProp2<float>("m_nextActivationTimer", "m_timestamp", "DT_AbilityBase");
+								
+								ss << "(";
+								if ((skill -= serverTime) > 0.0f)
+									ss << skill;
+								else
+									ss << "ready";
+
+								ss << ")";
+							}
+						}
+
+						ss.precision(0);
+					}
+
+					color = (visible ? DrawManager::LAWNGREEN : DrawManager::GREEN);
+
+					/*
+					g_interface.Surface->drawString(foot.x - width / 2, head.y + FontSize,
+						(color & 0xFF0000) >> 16, (color & 0xFF00) >> 8, color & 0xFF,
+						font, Utils::c2w(ss.str()).c_str());
+					*/
+
+					g_pDrawRender->AddText(color, foot.x, head.y, true, ss.str().c_str());
+
+					// 绘制一个框（虽然这个框只有上下两条线）
+					/*
+					g_interface.Surface->drawBox(foot.x - width / 2, foot.y, width, -height, 1,
+						(color & 0xFF0000) >> 16, (color & 0xFF00) >> 8, color & 0xFF,
+						(color & 0xFF000000) >> 24);
+					*/
+
+					color = (entity->GetTeam() == team ? DrawManager::BLUE : DrawManager::RED);
+					if (IsSurvivor(classId))
+					{
+						if (entity->GetNetProp<byte>("m_bIsOnThirdStrike", "DT_TerrorPlayer") != 0)
+						{
+							// 黑白状态 - 白色
+							color = DrawManager::WHITE;
+						}
+						else if (IsControlled(entity))
+						{
+							// 被控 - 橙色
+							color = DrawManager::ORANGE;
+						}
+						else if (IsIncapacitated(entity))
+						{
+							// 倒地挂边 - 黄色
+							color = DrawManager::YELLOW;
+						}
+					}
+					else if (IsSpecialInfected(classId) && IsGhostInfected(entity) && IsPlayerGhost(i))
+					{
+						// 幽灵状态 - 紫色
+						color = DrawManager::PURPLE;
+					}
+
+					g_pDrawRender->AddRect(color, foot.x - width / 2, foot.y, width, -height);
+				}
+				else if(IsCommonInfected(classId))
+				{
+					// 这只是普感而已，太远了没必要显示出来
+					if (dist > 3000.0f)
+						continue;
+
+					int size = 2;
+					if (visible)
+						size = 4;
+
+					color = DrawManager::GREEN;
+					if (classId == ET_WITCH)
+						color = DrawManager::PINK;
+
+					// 画一个小方形，以标记为头部
+					/*
+					g_cInterfaces.Surface->FillRGBA(head.x, head.y, size, size,
+						(color & 0xFF0000) >> 16, (color & 0xFF00) >> 8, color & 0xFF,
+						(color & 0xFF000000) >> 24);
+					*/
+
+					g_pDrawRender->AddFillRect(color, head.x, head.y, size, size);
+				}
+				else
+				{
+					// 其他东西
+					if (dist > 1000.0f)
+						continue;
+
+					if (classId == ET_TankRock)
+					{
+						// Tank 的石头
+						g_pDrawRender->AddCircle(DrawManager::PURPLE, foot.x, foot.y, 9, 8);
+					}
+					else if (classId == ET_WeaponFirstAidKit || classId == ET_WeaponDefibrillator ||
+						classId == ET_WeaponPainPills || classId == ET_WeaponPainPills)
+					{
+						// 医疗品
+						g_pDrawRender->AddFillRect(DrawManager::DARKORANGE, foot.x, foot.y, 2, 8);
+					}
+					else if (classId == ET_WeaponPipeBomb || classId == ET_WeaponMolotov ||
+						classId == ET_WeaponVomitjar)
+					{
+						// 投掷武器
+						g_pDrawRender->AddFillRect(DrawManager::DARKGRAY, foot.x, foot.y, 2, 8);
+					}
+				}
+			}
+
+			if (g_bDrawBoneEsp)
+			{
+				if (IsSurvivor(classId) || IsSpecialInfected(classId) || IsCommonInfected(classId))
+				{
+					color = DrawManager::WHITE;
+					studiohdr_t* hdr = g_interface.ModelInfo->GetStudioModel(entity->GetModel());
+					if (hdr != nullptr)
+					{
+						Vector parent, child, screenParent, screenChild;
+						for (int i = 0; i < hdr->numbones; ++i)
+						{
+							mstudiobone_t* bone = hdr->pBone(i);
+							if (bone != nullptr && (bone->flags & 0x100) && bone->parent != -1)
+							{
+								child = entity->GetBonePosition(i);
+								parent = entity->GetBonePosition(bone->parent);
+								if (child.IsValid() && parent.IsValid() &&
+									WorldToScreen(parent, screenParent) && WorldToScreen(child, screenChild))
+								{
+									g_pDrawRender->AddLine(color, screenParent.x, screenParent.y,
+										screenChild.x, screenChild.y);
+								}
+							}
+						}
+					}
+				}
+			}
+
+			// 自动瞄准寻找目标
+			if (g_bAimBot && (!targetSelected || !(g_pUserCommands->buttons & IN_ATTACK)) &&
+				((team == 2 && (IsSpecialInfected(classId) || classId == ET_INFECTED)) ||
+					(team == 3 && IsSurvivor(classId))))
+			{
+				// 已经选择过目标了，并且这是一个不重要的敌人
+				if (classId == ET_INFECTED && specialSelected)
+					continue;
+
+				// 选择一个最接近的特感，因为特感越近对玩家来说越危险
+				if (entity->GetTeam() != team && dist < distmin && visible &&
+					GetAnglesFieldOfView(myViewAngles, CalculateAim(myEyeOrigin, headbox)) <=
+					g_fAimbotFieldOfView)
+				{
+					g_pCurrentAimbot = entity;
+					distmin = dist;
+
+					if (IsSpecialInfected(classId))
+						specialSelected = true;
+				}
+			}
+		}
+
 #endif
 	}
 
@@ -2795,28 +2888,28 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 		bool runAimbot = false;
 
 		// 目标在另一个地方选择
-		if (g_pCurrentAiming != nullptr && IsGunWeapon(weaponId) && nextAttack <= serverTime)
+		if (g_pCurrentAimbot != nullptr && IsGunWeapon(weaponId) && nextAttack <= serverTime)
 		{
 			// 鐩爣浣嶇疆
 			Vector position;
 			try
 			{
-				position = GetHeadHitboxPosition(g_pCurrentAiming);
+				position = GetHeadHitboxPosition(g_pCurrentAimbot);
 			}
 			catch (...)
 			{
-				if (g_pCurrentAiming->GetClientClass()->m_ClassID == ET_INFECTED)
+				if (g_pCurrentAimbot->GetClientClass()->m_ClassID == ET_INFECTED)
 					goto end_aimbot;
 
 				// 鑾峰彇楠ㄩ浣嶇疆澶辫触
-				position = g_pCurrentAiming->GetEyePosition();
+				position = g_pCurrentAimbot->GetEyePosition();
 				Utils::log("CBasePlayer::SetupBone error");
 
 				// 鏍规嵁涓嶅悓鐨勬儏鍐电‘瀹氶珮搴
-				int zombieClass = g_pCurrentAiming->GetNetProp<int>("m_zombieClass", "DT_TerrorPlayer");
+				int zombieClass = g_pCurrentAimbot->GetNetProp<int>("m_zombieClass", "DT_TerrorPlayer");
 				if (zombieClass == ZC_JOCKEY)
-					position.z = g_pCurrentAiming->GetAbsOrigin().z + 30.0f;
-				else if (zombieClass == ZC_HUNTER && (g_pCurrentAiming->GetFlags() & FL_DUCKING))
+					position.z = g_pCurrentAimbot->GetAbsOrigin().z + 30.0f;
+				else if (zombieClass == ZC_HUNTER && (g_pCurrentAimbot->GetFlags() & FL_DUCKING))
 					position.z -= 12.0f;
 			}
 
@@ -2833,7 +2926,7 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 
 				// 速度预测
 				myOrigin = VelocityExtrapolate(client, myOrigin);
-				position = VelocityExtrapolate(g_pCurrentAiming, position);
+				position = VelocityExtrapolate(g_pCurrentAimbot, position);
 
 				// 将准星转到敌人头部
 				pCmd->viewangles = CalculateAim(myOrigin, position);
@@ -2877,17 +2970,15 @@ end_aimbot:
 	// 自动开枪
 	if (g_bTriggerBot && !(pCmd->buttons & IN_USE) && IsGunWeapon(weaponId))
 	{
-		CBaseEntity* target = GetAimingTarget();
-
 #ifdef _DEBUG_OUTPUT
-		if (target != nullptr)
+		if (g_pCurrentAiming != nullptr)
 		{
-			if (!IsValidVictim(target))
-				g_interface.Engine->ClientCmd("echo \"aiming dead 0x%X\"", (DWORD)target);
-			if (target->GetTeam() == client->GetTeam())
-				g_interface.Engine->ClientCmd("echo \"aiming team 0x%X\"", (DWORD)target);
-			if (target->GetClientClass()->m_ClassID == ET_INFECTED)
-				g_interface.Engine->ClientCmd("echo \"aiming infected 0x%X\"", (DWORD)target);
+			if (!IsValidVictim(g_pCurrentAiming))
+				g_interface.Engine->ClientCmd("echo \"aiming dead 0x%X\"", (DWORD)g_pCurrentAiming);
+			if (g_pCurrentAiming->GetTeam() == client->GetTeam())
+				g_interface.Engine->ClientCmd("echo \"aiming team 0x%X\"", (DWORD)g_pCurrentAiming);
+			if (g_pCurrentAiming->GetClientClass()->m_ClassID == ET_INFECTED)
+				g_interface.Engine->ClientCmd("echo \"aiming infected 0x%X\"", (DWORD)g_pCurrentAiming);
 		}
 #endif
 
@@ -2895,25 +2986,26 @@ end_aimbot:
 		try
 		{
 #endif
-			if (!IsValidVictim(target))
+			if (!IsValidVictim(g_pCurrentAiming))
 				goto end_trigger_bot;
 #ifdef _DEBUG
 		}
 		catch (std::exception e)
 		{
-			Utils::log("%s (%d): %s | 0x%X", __FILE__, __LINE__, e.what(), (DWORD)target);
+			Utils::log("%s (%d): %s | 0x%X", __FILE__, __LINE__, e.what(), (DWORD)g_pCurrentAiming);
 			goto end_trigger_bot;
 		}
 		catch (...)
 		{
-			Utils::log("%s (%d): 未知异常 | 0x%X", __FILE__, __LINE__, (DWORD)target);
+			Utils::log("%s (%d): 未知异常 | 0x%X", __FILE__, __LINE__, (DWORD)g_pCurrentAiming);
 			goto end_trigger_bot;
 		}
 #endif
-		int classId = target->GetClientClass()->m_ClassID;
-		if (target->GetTeam() != myTeam && classId != ET_WITCH &&			// 不主动攻击队友和 Witch
-			(!IsSpecialInfected(classId) || !IsGhostInfected(target)) &&	// 不攻击幽灵状态的特感
-			(myTeam == 2 || classId != ET_INFECTED))						// 特感阵营不攻击普感
+		int classId = g_pCurrentAiming->GetClientClass()->m_ClassID;
+		if (g_pCurrentAiming->GetTeam() != myTeam && classId != ET_WITCH &&					// 不攻击队友和 Witch
+			g_pCurrentAiming->GetTeam() != 4 && (!IsSpecialInfected(classId) ||				// 不攻击 L4D1 生还者(因为他们是无敌的)
+			!IsPlayerGhost(g_iCurrentAiming) || !IsGhostInfected(g_pCurrentAiming)) &&	// 不攻击幽灵状态的特感
+				(myTeam == 2 || classId != ET_INFECTED))									// 特感队伍不攻击普感
 			pCmd->buttons |= IN_ATTACK;
 	}
 
@@ -2967,11 +3059,11 @@ end_trigger_bot:
 		}
 	}
 
-	// 手枪连射
+	// 手枪连射 / Hunter 连续扑
 	if (g_bRapidFire && weapon != nullptr && (pCmd->buttons & IN_ATTACK))
 	{
 		static bool ignoreButton = true;
-		if (IsWeaponSingle(weaponId) && !ignoreButton && nextAttack > serverTime)
+		if ((IsWeaponSingle(weaponId) || myTeam == 3) && !ignoreButton && nextAttack > serverTime)
 		{
 			pCmd->buttons &= ~IN_ATTACK;
 			ignoreButton = true;
@@ -3323,7 +3415,7 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 			}
 
 			// 去除 CRC 验证
-			// if (g_interface.Engine->IsConnected())
+			if(!IsPlayerHost(g_interface.Engine->GetLocalPlayer()))
 			{
 #ifdef USE_CVAR_CHANGE
 				CVAR_MAKE_FLAGS("sv_pure");
@@ -3352,8 +3444,14 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 			if (!connected)
 			{
 				g_pGameRulesProxy = nullptr;
-				g_interface.Engine->ClientCmd("echo \"********* connected *********\"");
-				Utils::log("*** connected ***");
+				g_pCurrentAimbot = nullptr;
+				g_pCurrentAiming = nullptr;
+				g_iCurrentAiming = 0;
+
+				if(IsPlayerHost(g_interface.Engine->GetLocalPlayer()))
+					Utils::log("*** connected by listen host ***");
+				else
+					Utils::log("*** connected ***");
 			}
 
 			connected = true;
@@ -3362,6 +3460,10 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 		{
 			connected = false;
 			g_pGameRulesProxy = nullptr;
+			g_pCurrentAimbot = nullptr;
+			g_pCurrentAiming = nullptr;
+			g_iCurrentAiming = 0;
+
 			Utils::log("*** disconnected ***");
 		}
 

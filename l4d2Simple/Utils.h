@@ -602,11 +602,17 @@ void DrawManager::BeginRendering()
 
 	m_pDevice->SetTexture(0, nullptr);
 	m_pDevice->SetPixelShader(nullptr);
-	m_pDevice->SetVertexShader(nullptr);
 	m_pDevice->SetFVF(D3DFVF_XYZRHW | D3DFVF_DIFFUSE);
-
-	// 修复颜色不正确，某些东西绘制不出来
+	m_pDevice->SetRenderState(D3DRS_ZENABLE, false);
+	m_pDevice->SetRenderState(D3DRS_ALPHABLENDENABLE, false);
+	m_pDevice->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
+	m_pDevice->SetRenderState(D3DRS_SCISSORTESTENABLE, false);
 	m_pDevice->SetRenderState(D3DRS_COLORWRITEENABLE, 0xFFFFFFFF);
+
+	// 绘制 2D 框可以进行的优化
+	// m_pDevice->SetRenderState(D3DRS_CULLMODE, D3DCULL_CCW);
+
+	// 修复颜色不正确
 	m_pDevice->SetRenderState(D3DRS_LIGHTING, false);
 	m_pDevice->SetRenderState(D3DRS_FOGENABLE, false);
 	m_pDevice->SetRenderState(D3DRS_ZENABLE, D3DZB_FALSE);

@@ -3,6 +3,9 @@
 #include "../libraries/math.h"
 
 static std::map<std::string, unsigned int> g_offsetList;
+extern CBaseEntity* g_pPlayerResource;
+extern CBaseEntity* g_pGameRulesProxy;
+
 
 #define NETPROP_GET_MAKE(_f,_t,_p,_r)	_r& _f()\
 {\
@@ -143,6 +146,12 @@ public:
 		return g_offsetList[prop];
 	}
 
+	template<typename... PropArg>
+	static int GetNetPropOffsetEx(const std::string& table, const std::string& prop, const PropArg& ...arg)
+	{
+		return CBaseEntity::GetNetPropOffset(table, prop) + CBaseEntity::GetNetPropOffset(table, arg...);
+	}
+
 	template<typename T>
 	inline T& GetNetProp(const std::string& prop, const std::string& table = "DT_BaseEntity", size_t element = 0) const
 	{
@@ -153,6 +162,32 @@ public:
 	inline T& SetNetProp(const std::string& prop, const T& value, const std::string& table = "DT_BaseEntity", size_t element = 0) const
 	{
 		return (*(T*)(this + this->GetNetPropOffset(table, prop) + element * sizeof(T)) = value);
+	}
+
+	template<typename T>
+	inline T& GetNetProp2(const std::string& prop1, const std::string& prop2, const std::string& table = "DT_BaseEntity", size_t element = 0) const
+	{
+		return *(T*)(this + this->GetNetPropOffset(table, prop1) +
+			this->GetNetPropOffset(table, prop2) + element * sizeof(T));
+	}
+
+	template<typename T>
+	inline T& SetNetProp2(const std::string& prop1, const std::string& prop2, const T& value, const std::string& table = "DT_BaseEntity", size_t element = 0) const
+	{
+		return (*(T*)(this + this->GetNetPropOffset(table, prop1) +
+			this->GetNetPropOffset(table, prop2) + element * sizeof(T)) = value);
+	}
+
+	template<typename T, typename... PropArg>
+	inline T& GetNetPropEx(const std::string& table, size_t element, const PropArg& ...arg) const
+	{
+		return *(T*)(this + this->GetNetPropOffsetEx(table, arg...) + element * sizeof(T));
+	}
+
+	template<typename T, typename... PropArg>
+	inline T& SetNetPropEx(const std::string& table, const T& value, size_t element, const PropArg& ...arg) const
+	{
+		return (*(T*)(this + this->GetNetPropOffsetEx(table, arg...) + element * sizeof(T)) = value);
 	}
 
 	template<typename T>
@@ -253,7 +288,7 @@ public:
 
 		try
 		{
-			if (!this->SetupBones(matrix, 128, 0x00000100, GetTickCount64()))
+			if (!this->SetupBones(matrix, 128, 0x00000100, g_interface.Globals->curtime))
 			{
 				Utils::log("%s (%d) 错误：获取骨头位置失败 0x%X", __FILE__, __LINE__, (DWORD)this);
 				return Vector();
@@ -301,7 +336,7 @@ public:
 		VMatrix boneMatrix[128];
 		try
 		{
-			if (this->SetupBones(boneMatrix, 128, 0x00000100, GetTickCount64()))
+			if (this->SetupBones(boneMatrix, 128, 0x00000100, g_interface.Globals->curtime))
 				return Vector(boneMatrix[bone][0][3], boneMatrix[bone][1][3], boneMatrix[bone][2][3]);
 		}
 		catch(...)
@@ -441,3 +476,144 @@ void CRecipientFilter::AddRecipient(CBaseEntity *player)
 	m_Recipients.AddToTail(index);
 }
 
+int GetPlayerPing(int player)
+{
+	if (g_pPlayerResource == nullptr || player <= 0 || player > 32)
+		return -1;
+
+	static int offset = g_pNetVars->GetOffset("DT_TerrorPlayerResource", "m_iPing");
+	return *(int*)(g_pPlayerResource + offset + (player * 4));
+}
+
+int GetPlayerScore(int player)
+{
+	if (g_pPlayerResource == nullptr || player <= 0 || player > 32)
+		return -1;
+
+	static int offset = g_pNetVars->GetOffset("DT_TerrorPlayerResource", "m_iScore");
+	return *(int*)(g_pPlayerResource + offset + (player * 4));
+}
+
+int GetPlayerDeath(int player)
+{
+	if (g_pPlayerResource == nullptr || player <= 0 || player > 32)
+		return -1;
+
+	static int offset = g_pNetVars->GetOffset("DT_TerrorPlayerResource", "m_iDeaths");
+	return *(int*)(g_pPlayerResource + offset + (player * 4));
+}
+
+bool IsPlayerConnected(int player)
+{
+	if (g_pPlayerResource == nullptr || player <= 0 || player > 32)
+		return false;
+
+	static int offset = g_pNetVars->GetOffset("DT_TerrorPlayerResource", "m_bConnected");
+	return ((*(byte*)(g_pPlayerResource + offset + player)) & 1);
+}
+
+int GetPlayerTeam(int player)
+{
+	if (g_pPlayerResource == nullptr || player <= 0 || player > 32)
+		return -1;
+
+	static int offset = g_pNetVars->GetOffset("DT_TerrorPlayerResource", "m_iTeam");
+	return *(int*)(g_pPlayerResource + offset + (player * 4));
+}
+
+bool IsPlayerAlive(int player)
+{
+	if (g_pPlayerResource == nullptr || player <= 0 || player > 32)
+		return false;
+
+	static int offset = g_pNetVars->GetOffset("DT_TerrorPlayerResource", "m_bAlive");
+	return ((*(byte*)(g_pPlayerResource + offset + player)) & 1);
+}
+
+int GetPlayerHealth(int player)
+{
+	if (g_pPlayerResource == nullptr || player <= 0 || player > 32)
+		return -1;
+
+	static int offset = g_pNetVars->GetOffset("DT_TerrorPlayerResource", "m_iHealth");
+	return *(int*)(g_pPlayerResource + offset + (player * 4));
+}
+
+int GetPlayerMaxHealth(int player)
+{
+	if (g_pPlayerResource == nullptr || player <= 0 || player > 32)
+		return -1;
+
+	static int offset = g_pNetVars->GetOffset("DT_TerrorPlayerResource", "m_maxHealth");
+	return *(int*)(g_pPlayerResource + offset + (player * 4));
+}
+
+bool IsPlayerGhost(int player)
+{
+	if (g_pPlayerResource == nullptr || player <= 0 || player > 32)
+		return false;
+
+	static int offset = g_pNetVars->GetOffset("DT_TerrorPlayerResource", "m_isGhost");
+	return ((*(byte*)(g_pPlayerResource + offset + player)) & 1);
+}
+
+bool IsPlayerIncapacitated(int player)
+{
+	if (g_pPlayerResource == nullptr || player <= 0 || player > 32)
+		return false;
+
+	static int offset = g_pNetVars->GetOffset("DT_TerrorPlayerResource", "m_isIncapacitated");
+	return ((*(byte*)(g_pPlayerResource + offset + player)) & 1);
+}
+
+int GetPlayerClass(int player)
+{
+	if (g_pPlayerResource == nullptr || player <= 0 || player > 32)
+		return -1;
+
+	static int offset = g_pNetVars->GetOffset("DT_TerrorPlayerResource", "m_zombieClass");
+	return *(int*)(g_pPlayerResource + offset + (player * 4));
+}
+
+bool IsPlayerHost(int player)
+{
+	if (g_pPlayerResource == nullptr || player <= 0 || player > 32)
+		return false;
+
+	static int offset = g_pNetVars->GetOffset("DT_TerrorPlayerResource", "m_listenServerHost");
+	return ((*(byte*)(g_pPlayerResource + offset + player)) & 1);
+}
+
+int GetSharedRandomSeed()
+{
+	if (g_pPlayerResource == nullptr)
+		return -1;
+
+	static int offset = g_pNetVars->GetOffset("DT_TerrorPlayerResource", "m_sharedRandomSeed");
+	return *(int*)(g_pPlayerResource + offset);
+}
+
+CBaseHandle* GetPlayerSlot(int player, int slot)
+{
+	if (g_pPlayerResource == nullptr || player <= 0 || player > 32)
+		return nullptr;
+
+	static int primary = g_pNetVars->GetOffset("DT_TerrorPlayerResource", "m_primaryWeapon");
+	static int grenade = g_pNetVars->GetOffset("DT_TerrorPlayerResource", "m_grenade");
+	static int medkit = g_pNetVars->GetOffset("DT_TerrorPlayerResource", "m_firstAidSlot");
+	static int pills = g_pNetVars->GetOffset("DT_TerrorPlayerResource", "m_pillsSlot");
+
+	switch (slot)
+	{
+	case 0:
+		return *(CBaseHandle**)(g_pPlayerResource + primary + (player * 4));
+	case 2:
+		return *(CBaseHandle**)(g_pPlayerResource + grenade + (player * 4));
+	case 3:
+		return *(CBaseHandle**)(g_pPlayerResource + medkit + (player * 4));
+	case 4:
+		return *(CBaseHandle**)(g_pPlayerResource + pills + (player * 4));
+	}
+
+	return nullptr;
+}

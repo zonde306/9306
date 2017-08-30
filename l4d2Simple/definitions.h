@@ -365,10 +365,10 @@ enum SolidFlags_t
 #define GetLocalClient()			g_interface.ClientEntList->GetClientEntity(g_interface.Engine->GetLocalPlayer())
 
 // 倒地
-#define IsFallDown(_e)				(_e->GetNetProp<byte>("m_isIncapacitated", "DT_TerrorPlayer") != 0)
+#define IsFallDown(_e)				(_e->GetNetProp<byte>("m_isIncapacitated", "DT_TerrorPlayer") & 1)
 
 // 挂边
-#define IsHangingFromLedge(_e)		(_e->GetNetProp<byte>("m_isHangingFromLedge", "DT_TerrorPlayer") != 0)
+#define IsHangingFromLedge(_e)		(_e->GetNetProp<byte>("m_isHangingFromLedge", "DT_TerrorPlayer") & 1)
 
 // 被舌头拉
 #define IsVictimSmoker(_e)			(_e->GetNetProp<int>("m_tongueOwner", "DT_TerrorPlayer") > 0)
@@ -392,7 +392,7 @@ enum SolidFlags_t
 #define IsNeedRescue(_e)			(IsIncapacitated(_e) || IsControlled(_e))
 
 // 是否为幽灵状态
-#define IsGhostInfected(_e)			(_e->GetNetProp<byte>("m_isGhost", "DT_TerrorPlayer") != 0 || (_e->GetNetProp<int>("m_fEffects", "DT_BaseCombatCharacter") & EF_NODRAW))
+#define IsGhostInfected(_e)			(_e->GetNetProp<byte>("DT_TerrorPlayer", "m_isGhost") & 1)
 
 // 获取当前服务器时间
 #define GetServerTime()				(g_interface.ClientEntList->GetClientEntity(g_interface.Engine->GetLocalPlayer())->GetTickBase() * g_interface.Globals->interval_per_tick)
@@ -493,6 +493,8 @@ enum EntityType_t
 	ET_INVALID = -1,
 	ET_WORLD = 260,
 	ET_TerrorGameRulesProxy = 228,
+	ET_TerrorPlayerResource = 232,
+	ET_PlayerResource = 133,
 	ET_CSGameRulesProxy = 47,
 	ET_GameRulesProxy = 93,
 

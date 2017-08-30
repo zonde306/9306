@@ -473,6 +473,9 @@ float GetAnglesFieldOfView(const Vector& myAngles, const Vector& aimAngles)
 
 bool WorldToScreen(const Vector &point, Vector &out)
 {
+	if (!point.IsValid())
+		return false;
+	
 	int m_iWidth, m_iHeight;
 	g_interface.Engine->GetScreenSize(m_iWidth, m_iHeight);
 	const VMatrix &worldToScreen = g_interface.Engine->WorldToScreenMatrix();
