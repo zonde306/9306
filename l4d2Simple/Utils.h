@@ -302,6 +302,9 @@ public:
 	// 延迟绘制一个填充矩形
 	void AddFillRect(D3DCOLOR color, int x, int y, int w, int h);
 
+	// 延迟绘制文本
+	void AddString(D3DCOLOR color, int x, int y, bool centered, const char* fmt, ...);
+
 	__declspec(deprecated) void DrawString(int x, int y, D3DCOLOR color, const char* text, ...);
 	__declspec(deprecated) void DrawString(int x, int y, D3DCOLOR color, const wchar_t* text, ...);
 	__declspec(deprecated) void DrawRect(int x, int y, int width, int height, D3DCOLOR color);
@@ -411,7 +414,8 @@ protected:
 	struct DelayString
 	{
 		DelayString(float _x, float _y, const std::string& _text, D3DCOLOR _color, DWORD _flags,
-			D3DCOLOR bgcolor) : x(_x), y(_y), text(_text), color(_color), flags(_flags), background(bgcolor)
+			D3DCOLOR bgcolor) : x(_x), y(_y), text(_text), color(_color), flags(_flags),
+			background(bgcolor)
 		{}
 
 		float x, y;
@@ -447,6 +451,8 @@ private:
 	std::vector<DelayDraw> m_delayDraw;
 	std::vector<DelayString> m_delayString;
 };
+
+#define D3DFONT_ORIGINAL 0x80
 
 bool DrawManager::WorldToScreen(const Vector& origin, Vector& output)
 {
@@ -566,7 +572,7 @@ void DrawManager::CreateObjects()
 	}
 
 	if (FAILED(D3DXCreateFontA(m_pDevice, m_iFontSize, 0, FW_BOLD, 1, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS,
-		DEFAULT_QUALITY, DEFAULT_PITCH | FF_DONTCARE, "Arial", &m_pDefaultFont)))
+		DEFAULT_QUALITY, DEFAULT_PITCH | FF_DONTCARE, "Tahoma", &m_pDefaultFont)))
 	{
 		throw std::exception("Failed to create the default font");
 	}
@@ -602,17 +608,11 @@ void DrawManager::BeginRendering()
 
 	m_pDevice->SetTexture(0, nullptr);
 	m_pDevice->SetPixelShader(nullptr);
+	m_pDevice->SetVertexShader(nullptr);
 	m_pDevice->SetFVF(D3DFVF_XYZRHW | D3DFVF_DIFFUSE);
-	m_pDevice->SetRenderState(D3DRS_ZENABLE, false);
-	m_pDevice->SetRenderState(D3DRS_ALPHABLENDENABLE, false);
-	m_pDevice->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
-	m_pDevice->SetRenderState(D3DRS_SCISSORTESTENABLE, false);
+
+	// 修复颜色不正确，某些东西绘制不出来
 	m_pDevice->SetRenderState(D3DRS_COLORWRITEENABLE, 0xFFFFFFFF);
-
-	// 绘制 2D 框可以进行的优化
-	// m_pDevice->SetRenderState(D3DRS_CULLMODE, D3DCULL_CCW);
-
-	// 修复颜色不正确
 	m_pDevice->SetRenderState(D3DRS_LIGHTING, false);
 	m_pDevice->SetRenderState(D3DRS_FOGENABLE, false);
 	m_pDevice->SetRenderState(D3DRS_ZENABLE, D3DZB_FALSE);
@@ -683,19 +683,45 @@ void DrawManager::DrawQueueObject()
 				++i;
 		}
 
-
+		RECT rect;
+		m_pTextSprite->Begin(D3DXSPRITE_ALPHABLEND | D3DXSPRITE_SORT_TEXTURE);
 		for (const auto& each : m_delayString)
 		{
 			if (each.text.empty())
 				continue;
 
+			if (each.flags & D3DFONT_ORIGINAL)
+			{
+				if (each.flags & D3DFONT_CENTERED)
+				{
+					rect = { 0, 0, 0, 0 };
+					
+					// 获取左上角位置 (不绘制)
+					m_pDefaultFont->DrawTextA(m_pTextSprite, each.text.c_str(), each.text.length(),
+						&rect, DT_NOCLIP | DT_CALCRECT, each.color);
+
+					// 计算中心位置
+					rect = { ((LONG)each.x) - rect.right / 2, ((LONG)each.y), 0, 0 };
+				}
+				else
+				{
+					// 左上角位置
+					rect = { ((LONG)each.x), ((LONG)each.y), 1000, 100 };
+				}
+
+				m_pDefaultFont->DrawTextA(m_pTextSprite, each.text.c_str(), each.text.length(),
+					&rect, DT_TOP | DT_LEFT | DT_NOCLIP, each.color);
+			}
+			else
+			{
 #ifndef ORIGINAL_CD3DFONT
-			m_pFont->DrawText(each.x, each.y, each.color,
-				each.text.c_str(), each.flags, each.background);
+				m_pFont->DrawText(each.x, each.y, each.color,
+					each.text.c_str(), each.flags, each.background);
 #else
-			m_pFont->DrawText(each.x, each.y, each.color,
-				Utils::c2w(each.text).c_str(), each.flags);
+				m_pFont->DrawText(each.x, each.y, each.color,
+					Utils::c2w(each.text).c_str(), each.flags);
 #endif
+			}
 		}
 
 		m_delayString.clear();
@@ -704,6 +730,7 @@ void DrawManager::DrawQueueObject()
 		// 完成批量绘制
 		m_pFont->EndDrawing();
 #endif
+		m_pTextSprite->End();
 	}
 	
 	// 延迟绘制图形
@@ -974,6 +1001,23 @@ void DrawManager::AddText(D3DCOLOR color, int x, int y, bool centered, const cha
 	va_end(ap);
 
 	this->m_delayString.emplace_back(x, y, std::move(buffer), color, (centered ? D3DFONT_CENTERED : 0), 0);
+	m_hasDelayDrawing.unlock();
+}
+
+void DrawManager::AddString(D3DCOLOR color, int x, int y, bool centered, const char * fmt, ...)
+{
+	if (!m_hasDelayDrawing.try_lock())
+		return;
+
+	va_list ap;
+	va_start(ap, fmt);
+
+	char buffer[1024];
+	vsprintf_s(buffer, fmt, ap);
+
+	va_end(ap);
+
+	this->m_delayString.emplace_back(x, y, std::move(buffer), color, (centered ? D3DFONT_CENTERED|D3DFONT_ORIGINAL : D3DFONT_ORIGINAL), 0);
 	m_hasDelayDrawing.unlock();
 }
 

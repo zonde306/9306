@@ -229,7 +229,7 @@ CBaseEntity* g_pPlayerResource;											// 玩家资源，可以用来获取某些东西
 static DWORD g_iClientBase, g_iEngineBase, g_iMaterialModules;			// 有用的 DLL 文件地址
 static bool g_bDrawBoxEsp = true, g_bTriggerBot = false, g_bAimBot = false, g_bAutoBunnyHop = true,
 	g_bRapidFire = true, g_bSilentAimbot = false, g_bAutoStrafe = false, g_bDrawCrosshairs = true,
-	g_bDrawBoneEsp = false;
+	g_bDrawBoneEsp = true;
 
 std::string GetZombieClassName(CBaseEntity* player);
 bool IsValidVictim(CBaseEntity* entity);
@@ -1231,13 +1231,13 @@ void bindAlias(int wait)
 	g_interface.Engine->ClientCmd("unbind f11");
 	g_interface.Engine->ClientCmd("unbind f12");
 	g_interface.Engine->ClientCmd("unbind f8");
-	g_interface.Engine->ClientCmd("net_graph 0");
+	g_interface.Engine->ClientCmd("net_graph 1");
 	g_interface.Engine->ClientCmd("net_graphpos 1");
 	g_interface.Engine->ClientCmd("net_graphshowinterp 0");
 	g_interface.Engine->ClientCmd("net_graphshowlatency 0");
 	g_interface.Engine->ClientCmd("net_graphtext 1");
-	g_interface.Engine->ClientCmd("alias +shownetscores \"+showscores; net_graph 3\"");
-	g_interface.Engine->ClientCmd("alias -shownetscores \"-showscores; net_graph 0\"");
+	g_interface.Engine->ClientCmd("alias +shownetscores \"+showscores; net_graph 3; net_graphtext 1\"");
+	g_interface.Engine->ClientCmd("alias -shownetscores \"-showscores; net_graph 1\"");
 	g_interface.Engine->ClientCmd("bind tab +shownetscores");
 	g_interface.Engine->ClientCmd("alias \"lerp_0\" \"rate 30000;cl_cmdrate 100;cl_updaterate 100;cl_interp 0.0;cl_interp_ratio -1;alias lerp_change lerp_16;echo Lerp set to 0 (rate 30000, cl_cmdrate 100, cl_updaterate 100, cl_interp 0.0, cl_interp_ratio -1).\";");
 	g_interface.Engine->ClientCmd("alias \"lerp_16\" \"rate 30000;cl_cmdrate 100;cl_updaterate 100;cl_interp 0.0167;cl_interp_ratio -1;alias lerp_change lerp_33;echo Lerp set to 16.7 (rate 30000, cl_cmdrate 100, cl_updaterate 100, cl_interp 0.0167, cl_interp_ratio -1).\";");
@@ -2559,6 +2559,7 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 							}
 						}
 					}
+					/*
 					else
 					{
 						float serverTime = GetServerTime();
@@ -2607,6 +2608,7 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 
 						ss.precision(0);
 					}
+					*/
 
 					color = (visible ? DrawManager::LAWNGREEN : DrawManager::GREEN);
 
@@ -2659,7 +2661,7 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 						continue;
 
 					int size = 2;
-					if (visible)
+					if (dist < 1000.0f)
 						size = 4;
 
 					color = DrawManager::GREEN;
@@ -2673,7 +2675,10 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 						(color & 0xFF000000) >> 24);
 					*/
 
-					g_pDrawRender->AddFillRect(color, head.x, head.y, size, size);
+					if (visible)
+						g_pDrawRender->AddFillCircle(color, head.x, head.y, size, 8);
+					else
+						g_pDrawRender->AddCircle(color, head.x, head.y, size, 8);
 				}
 				else
 				{
@@ -2703,7 +2708,8 @@ void __fastcall Hooked_PaintTraverse(void* pPanel, void* edx, unsigned int panel
 
 			if (g_bDrawBoneEsp)
 			{
-				if (IsSurvivor(classId) || IsSpecialInfected(classId) || IsCommonInfected(classId))
+				if ((team == 2 && entity->GetTeam() == 3) || (team == 3 && entity->GetTeam() == 2) ||
+					(IsCommonInfected(classId) && dist < 1500.0f))
 				{
 					color = DrawManager::WHITE;
 					studiohdr_t* hdr = g_interface.ModelInfo->GetStudioModel(entity->GetModel());
