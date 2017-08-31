@@ -2999,18 +2999,20 @@ end_aimbot:
 		catch (std::exception e)
 		{
 			Utils::log("%s (%d): %s | 0x%X", __FILE__, __LINE__, e.what(), (DWORD)g_pCurrentAiming);
+			g_pCurrentAiming = nullptr;
 			goto end_trigger_bot;
 		}
 		catch (...)
 		{
 			Utils::log("%s (%d): 未知异常 | 0x%X", __FILE__, __LINE__, (DWORD)g_pCurrentAiming);
+			g_pCurrentAiming = nullptr;
 			goto end_trigger_bot;
 		}
 #endif
 		int classId = g_pCurrentAiming->GetClientClass()->m_ClassID;
 		if (g_pCurrentAiming->GetTeam() != myTeam && classId != ET_WITCH &&					// 不攻击队友和 Witch
 			g_pCurrentAiming->GetTeam() != 4 && (!IsSpecialInfected(classId) ||				// 不攻击 L4D1 生还者(因为他们是无敌的)
-			!IsPlayerGhost(g_iCurrentAiming) || !IsGhostInfected(g_pCurrentAiming)) &&	// 不攻击幽灵状态的特感
+			!IsPlayerGhost(g_iCurrentAiming) || !IsGhostInfected(g_pCurrentAiming)) &&		// 不攻击幽灵状态的特感
 				(myTeam == 2 || classId != ET_INFECTED))									// 特感队伍不攻击普感
 			pCmd->buttons |= IN_ATTACK;
 	}
@@ -3020,11 +3022,8 @@ end_trigger_bot:
 	// 在开枪前检查，防止攻击队友
 	if ((pCmd->buttons & IN_ATTACK) && IsGunWeapon(weaponId) && myTeam == 2)
 	{
-		int cid = client->GetCrosshairsId();
-		CBaseEntity* aiming = (cid > 0 ? g_interface.ClientEntList->GetClientEntity(cid) : nullptr);
-
-		if (aiming != nullptr && !aiming->IsDormant() && aiming->IsAlive() &&
-			aiming->GetTeam() == myTeam && !IsNeedRescue(aiming) && !IsFallDown(client))
+		if (IsValidVictim(g_pCurrentAiming) &&
+			g_pCurrentAiming->GetTeam() == myTeam && !IsNeedRescue(g_pCurrentAiming))
 		{
 			// 取消开枪
 			pCmd->buttons &= ~IN_ATTACK;
