@@ -412,10 +412,10 @@ enum SolidFlags_t
 #define IsGunWeaponAmmotype(_at)	(_at == AT_Pistol || _at == AT_Magnum || _at == AT_Rifle || _at == AT_Smg || _at == AT_M60 || _at == AT_Shotgun || _at == AT_AutoShotgun || _at == AT_Hunting || _at == AT_Sniper || _at == AT_Grenade)
 
 // 检查是否是一把枪
-#define IsNotGunWeapon(_id)			(IsGrenadeWeapon(_id) || IsMedkitWeapon(_id) || IsPillsWeapon(_id) || IsCarryWeapon(_id) || _id == Weapon_Melee || _id == Weapon_Chainsaw)
-#define IsGunWeapon(_id)			(!IsGrenadeWeapon(_id) && !IsMedkitWeapon(_id) && !IsPillsWeapon(_id) && !IsCarryWeapon(_id) && _id != Weapon_Melee && _id != Weapon_Chainsaw)
+#define IsNotGunWeapon(_id)			(IsGrenadeWeapon(_id) || IsMedickitWeapon(_id) || IsPillsWeapon(_id) || IsCarryWeapon(_id) || _id == Weapon_Melee || _id == Weapon_Chainsaw)
+#define IsGunWeapon(_id)			(!IsGrenadeWeapon(_id) && !IsMedickitWeapon(_id) && !IsPillsWeapon(_id) && !IsCarryWeapon(_id) && _id != Weapon_Melee && _id != Weapon_Chainsaw)
 #define IsGrenadeWeapon(_id)		(_id == Weapon_Molotov || _id == Weapon_PipeBomb || _id == Weapon_Vomitjar)
-#define IsMedkitWeapon(_id)			(_id == Weapon_FirstAidKit || _id == Weapon_Defibrillator || _id == Weapon_FireAmmo || _id == Weapon_ExplodeAmmo)
+#define IsMedickitWeapon(_id)		(_id == Weapon_FirstAidKit || _id == Weapon_Defibrillator || _id == Weapon_FireAmmo || _id == Weapon_ExplodeAmmo)
 #define IsPillsWeapon(_id)			(_id == Weapon_PainPills || _id == Weapon_Adrenaline)
 #define IsCarryWeapon(_id)			(_id == Weapon_Gascan || _id == Weapon_Fireworkcrate || _id == Weapon_Propanetank || _id == Weapon_Oxygentank || _id == Weapon_Gnome || _id == Weapon_Cola)
 
@@ -747,8 +747,11 @@ enum entityGender_t
 #define l4d2_explosif(_s,_n,_p)		(_s == 32 && _n == 815 && _p == 736) //explosif bullet box
 #define l4d2_incendiary(_s,_n,_p)	(_s == 32 && _n == 821 && _p == 736) //incendiary bullet box
 
-#define l4d2_stuff(_s,_n,_p)		(l4d2_medickit(_s,_n,_p) || l4d2_adrenaline(_s,_n,_p) || l4d2_defib(_s,_n,_p) || l4d2_painpills(_s,_n,_p) || l4d2_gascan(_s,_n,_p) || l4d2_propanetank(_s,_n,_p) || l4d2_oxygentank(_s,_n,_p) || l4d2_fireworkbox(_s,_n,_p) || l4d2_pipebomb(_s,_n,_p) || l4d2_bilebomb(_s,_n,_p) || l4d2_molotov(_s,_n,_p) || l4d2_cola(_s,_n,_p) || l4d2_gnome(_s,_n,_p) || l4d2_explosif(_s,_n,_p) || l4d2_incendiary(_s,_n,_p))
-
+#define l4d2_upgradepack(_s,_n,_p)	(l4d2_explosif(_s,_n,_p) || l4d2_incendiary(_s,_n,_p))
+#define l4d2_throw(_s,_n,_p)		(l4d2_pipebomb(_s,_n,_p) || l4d2_bilebomb(_s,_n,_p) || l4d2_molotov(_s,_n,_p))
+#define l4d2_healthitem(_s,_n,_p)	(l4d2_medickit(_s,_n,_p) || l4d2_adrenaline(_s,_n,_p) || l4d2_defib(_s,_n,_p) || l4d2_painpills(_s,_n,_p))
+#define l4d2_carry(_s,_n,_p)		(l4d2_gascan(_s,_n,_p) || l4d2_propanetank(_s,_n,_p) || l4d2_oxygentank(_s,_n,_p) || l4d2_fireworkbox(_s,_n,_p) || l4d2_cola(_s,_n,_p) || l4d2_gnome(_s,_n,_p))
+#define l4d2_stuff(_s,_n,_p)		(l4d2_upgradepack(_s,_n,_p) || l4d2_throw(_s,_n,_p) || l4d2_healthitem(_s,_n,_p) || l4d2_carry(_s,_n,_p))
 
 //---------------
 //----ZOMBIE-----

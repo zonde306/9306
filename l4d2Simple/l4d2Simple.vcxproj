@@ -72,7 +72,7 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);E:\Program Files\dxsdk\Include;$(IncludePath)</IncludePath>
+    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);E:\Program Files\dxsdk\Include;F:\VSProject\l4d2Simple\imgui;$(IncludePath)</IncludePath>
     <LibraryPath>E:\Program Files\dxsdk\Lib\x86;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -80,7 +80,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);E:\Program Files\dxsdk\Include;$(IncludePath)</IncludePath>
+    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);E:\Program Files\dxsdk\Include;F:\VSProject\l4d2Simple\imgui;$(IncludePath)</IncludePath>
     <LibraryPath>E:\Program Files\dxsdk\Lib\x86;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -148,6 +148,13 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="..\imgui\dx9\imgui_impl_dx9.h" />
+    <ClInclude Include="..\imgui\imconfig.h" />
+    <ClInclude Include="..\imgui\imgui.h" />
+    <ClInclude Include="..\imgui\imgui_internal.h" />
+    <ClInclude Include="..\imgui\stb_rect_pack.h" />
+    <ClInclude Include="..\imgui\stb_textedit.h" />
+    <ClInclude Include="..\imgui\stb_truetype.h" />
     <ClInclude Include="d3dfont\D3DFont.h" />
     <ClInclude Include="d3dukmdt.h" />
     <ClInclude Include="d3dumddi.h" />
@@ -200,6 +207,10 @@
     <ClInclude Include="Utils.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\imgui\dx9\imgui_impl_dx9.cpp" />
+    <ClCompile Include="..\imgui\imgui.cpp" />
+    <ClCompile Include="..\imgui\imgui_demo.cpp" />
+    <ClCompile Include="..\imgui\imgui_draw.cpp" />
     <ClCompile Include="d3dfont\D3DFont.cpp" />
     <ClCompile Include="detours\detourxs.cpp" />
     <ClCompile Include="main.cpp" />

@@ -6,7 +6,6 @@ static std::map<std::string, unsigned int> g_offsetList;
 extern CBaseEntity* g_pPlayerResource;
 extern CBaseEntity* g_pGameRulesProxy;
 
-
 #define NETPROP_GET_MAKE(_f,_t,_p,_r)	_r& _f()\
 {\
 	static int offset = g_pNetVars->GetOffset(_t, _p);\
@@ -600,7 +599,7 @@ CBaseHandle* GetPlayerSlot(int player, int slot)
 
 	static int primary = g_pNetVars->GetOffset("DT_TerrorPlayerResource", "m_primaryWeapon");
 	static int grenade = g_pNetVars->GetOffset("DT_TerrorPlayerResource", "m_grenade");
-	static int medkit = g_pNetVars->GetOffset("DT_TerrorPlayerResource", "m_firstAidSlot");
+	static int medickit = g_pNetVars->GetOffset("DT_TerrorPlayerResource", "m_firstAidSlot");
 	static int pills = g_pNetVars->GetOffset("DT_TerrorPlayerResource", "m_pillsSlot");
 
 	switch (slot)
@@ -610,7 +609,7 @@ CBaseHandle* GetPlayerSlot(int player, int slot)
 	case 2:
 		return *(CBaseHandle**)(g_pPlayerResource + grenade + (player * 4));
 	case 3:
-		return *(CBaseHandle**)(g_pPlayerResource + medkit + (player * 4));
+		return *(CBaseHandle**)(g_pPlayerResource + medickit + (player * 4));
 	case 4:
 		return *(CBaseHandle**)(g_pPlayerResource + pills + (player * 4));
 	}

@@ -265,7 +265,10 @@ public:
 	void RenderRect(D3DCOLOR color, int x, int y, int w, int h);
 
 	// 绘制一个圆形（必须在调用 BeginRendering 之后才可以使用）
-	void RenderCircle(D3DCOLOR color, int x, int y, int r, int resolution = 64);
+	void RenderCircle(D3DCOLOR color, int x, int y, int r, size_t resolution = 64);
+
+	// 绘制一个填充圆形
+	void RenderFillCircle(D3DCOLOR color, int x, int y, int r, size_t resolution = 64);
 
 	// 绘制文本（必须在调用 BeginRendering 之后才可以使用）
 	__declspec(deprecated) void RenderText(D3DCOLOR color, int x, int y, bool centered, const char* fmt, ...);
@@ -806,30 +809,38 @@ void DrawManager::AddRect(D3DCOLOR color, int x, int y, int w, int h)
 	m_hasDelayDrawing.unlock();
 }
 
-void DrawManager::RenderCircle(D3DCOLOR color, int x, int y, int r, int resolution)
-{
-	float curPointX;
-	float curPointY;
-	float oldPointX;
-	float oldPointY;
-
-	for (int i = 0; i <= resolution; ++i)
-	{
-		curPointX = (float)(x + r * cos(2 * M_PI * i / resolution));
-		curPointY = (float)(y - r * sin(2 * M_PI * i / resolution));
-		if (i > 0)
-		{
-			RenderLine(color, (int)curPointX, (int)curPointY, (int)oldPointX, (int)oldPointY);
-		}
-		oldPointX = curPointX;
-		oldPointY = curPointY;
-	}
-}
-
 #ifndef M_PI_F
 #define M_PI		3.14159265358979323846
 #define M_PI_F		((float)(M_PI))
 #endif
+
+void DrawManager::RenderCircle(D3DCOLOR color, int x, int y, int r, size_t resolution)
+{
+	float curAngle;
+	float angle = (float)((2.0f * M_PI_F) / resolution);
+	std::vector<D3DVertex> vertices;
+	for (size_t i = 0; i <= resolution; ++i)
+	{
+		curAngle = i * angle;
+		vertices.emplace_back(x + r * cos(curAngle), y - r * sin(curAngle), 0.0f, color);
+	}
+
+	m_pDevice->DrawPrimitiveUP(D3DPT_LINESTRIP, resolution, &(vertices[0]), sizeof(D3DVertex));
+}
+
+void DrawManager::RenderFillCircle(D3DCOLOR color, int x, int y, int r, size_t resolution)
+{
+	float curAngle;
+	float angle = (float)((2.0f * M_PI_F) / resolution);
+	std::vector<D3DVertex> vertices;
+	for (size_t i = 0; i <= resolution; ++i)
+	{
+		curAngle = i * angle;
+		vertices.emplace_back(x + r * cos(curAngle), y - r * sin(curAngle), 0.0f, color);
+	}
+
+	m_pDevice->DrawPrimitiveUP(D3DPT_TRIANGLEFAN, resolution, &(vertices[0]), sizeof(D3DVertex));
+}
 
 void DrawManager::AddCircle(D3DCOLOR color, int x, int y, int r, size_t resolution)
 {

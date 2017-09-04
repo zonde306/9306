@@ -27,6 +27,7 @@
 #include <memory>
 #include <map>
 
+#include <./dx9/imgui_impl_dx9.h>
 #pragma comment(lib, "d3d9")
 #pragma comment(lib, "d3dx9")
 #pragma comment(lib, "dwmapi")
@@ -146,6 +147,43 @@ public:
 
 // 各类接口
 extern CInterfaces g_interface;
+
+namespace Config
+{
+	bool bDrawBox = true;
+	bool bDrawBone = true;
+	bool bDrawName = true;
+	bool bDrawDist = true;
+	bool bDrawAmmo = true;
+	bool bDrawCrosshairs = true;
+
+	bool bBufferSurvivor = false;
+	bool bBufferSpecial = false;
+	bool bBufferCommon = false;
+	bool bBufferWeapon = false;
+	bool bBufferGrenade = true;
+	bool bBufferMedickit = true;
+	bool bBufferCarry = false;
+
+	bool bAimbot = false;
+	bool bSilentAimbot = true;
+	bool bTriggerBot = false;
+	bool bTriggerBotHead = false;
+	bool bAnitFirendlyFire = true;
+
+	bool bBunnyHop = true;
+	bool bAutoStrafe = false;
+	bool bNoRecoil = true;
+	bool bRapidFire = true;
+	bool bCrcCheckBypass = true;
+	bool bCvarFullBright = false;
+	bool bCvarWireframe = false;
+	bool bCvarGameMode = false;
+	bool bCvarCheats = false;
+	bool bThirdPersons = false;
+
+	float fAimbotFov = 30.0f;
+};
 
 #include "./definitions.h"
 #include "./indexes.h"
