@@ -1023,7 +1023,7 @@ void showSpectator()
 				continue;
 
 			int team = player->GetTeam();
-			int mode = player->GetNetProp<int>("m_hObserverTarget", "DT_BasePlayer");
+			int mode = player->GetNetProp<int>("m_iObserverMode", "DT_BasePlayer");
 
 #ifdef USE_PLAYER_INFO
 			g_interface.Engine->GetPlayerInfo(i, &info);
@@ -1035,7 +1035,7 @@ void showSpectator()
 				if (mode != 4 && mode != 5)
 					continue;
 
-				target = (CBaseEntity*)player->GetNetProp<CBaseHandle*>("m_iObserverMode", "DT_BasePlayer");
+				target = (CBaseEntity*)player->GetNetProp<CBaseHandle*>("m_hObserverTarget", "DT_BasePlayer");
 				if (target && (int)target != -1)
 					target = g_interface.ClientEntList->GetClientEntityFromHandle((CBaseHandle*)target);
 
@@ -1066,7 +1066,7 @@ void showSpectator()
 						player->GetIndex(), (mode == 4 ? "watching" : "following"), target->GetIndex());
 #endif
 				}
-				}
+			}
 			else if (team == 2)
 			{
 				// 鐢熻繕鑰
@@ -1087,7 +1087,7 @@ void showSpectator()
 					if (mode != 4 && mode != 5)
 						continue;
 
-					target = (CBaseEntity*)player->GetNetProp<CBaseHandle*>("m_iObserverMode", "DT_BasePlayer");
+					target = (CBaseEntity*)player->GetNetProp<CBaseHandle*>("m_hObserverTarget", "DT_BasePlayer");
 					if (target && (int)target != -1)
 						target = g_interface.ClientEntList->GetClientEntityFromHandle((CBaseHandle*)target);
 
@@ -1118,8 +1118,8 @@ void showSpectator()
 							player->GetIndex(), (mode == 4 ? "watching" : "following"), target->GetIndex());
 #endif
 					}
-					}
-					}
+				}
+			}
 			else if (team == 3)
 			{
 				// 鎰熸煋鑰
@@ -1180,7 +1180,7 @@ void showSpectator()
 					if (mode != 4 && mode != 5)
 						continue;
 
-					target = (CBaseEntity*)player->GetNetProp<CBaseHandle*>("m_iObserverMode", "DT_BasePlayer");
+					target = (CBaseEntity*)player->GetNetProp<CBaseHandle*>("m_hObserverTarget", "DT_BasePlayer");
 					if (target && (int)target != -1)
 						target = g_interface.ClientEntList->GetClientEntityFromHandle((CBaseHandle*)target);
 
@@ -1211,15 +1211,13 @@ void showSpectator()
 							player->GetIndex(), (mode == 4 ? "watching" : "following"), target->GetIndex());
 #endif
 					}
-					}
-					}
 				}
+			}
+		}
 
 		g_interface.Engine->ClientCmd("echo \"========= list end =========\"");
-				}
-
-	std::this_thread::sleep_for(std::chrono::microseconds(1));
-				}
+	}
+}
 
 void bindAlias(int wait)
 {
@@ -1323,7 +1321,7 @@ bool IsValidVictim(CBaseEntity* entity)
 	try
 	{
 		if (entity == nullptr || !(cc = entity->GetClientClass()) || (id = cc->m_ClassID) == ET_WORLD ||
-			!IsValidEntityId(id) || entity->IsDormant())
+			!IsValidVictimId(id) || entity->IsDormant())
 			return false;
 
 		solid = entity->GetNetProp<int>("m_usSolidFlags", "DT_BaseCombatCharacter");
@@ -2571,6 +2569,13 @@ void __fastcall Hooked_PaintTraverse(CPanel* pPanel, void* edx, unsigned int pan
 		// 绘制颜色
 		D3DCOLOR color = 0;
 
+		// 用于格式化字符串
+		std::stringstream ss;
+		ss.sync_with_stdio(false);
+		ss.tie(nullptr);
+		ss.setf(std::ios::fixed);
+		ss.precision(0);
+
 		int aiming = *(int*)(local + m_iCrosshairsId);
 
 		// 当前正在瞄准的目标
@@ -2669,8 +2674,45 @@ void __fastcall Hooked_PaintTraverse(CPanel* pPanel, void* edx, unsigned int pan
 				{
 #endif
 					// 检查 生还者/特感/普感 是否是有效的
-					if (!IsValidVictim(entity))
+					if (!entity->IsAlive())
+					{
+						if (Config::bDrawSpectator)
+						{
+							ss.str("");
+
+							if (IsSurvivor(classId) || IsSpecialInfected(classId))
+							{
+								int obsMode = entity->GetNetProp<int>("m_iObserverMode", "DT_BasePlayer");
+								if (obsMode == OBS_MODE_IN_EYE || obsMode == OBS_MODE_CHASE)
+								{
+									CBaseEntity* obsTarget = (CBaseEntity*)entity->GetNetProp<CBaseHandle*>("m_hObserverTarget", "DT_BasePlayer");
+									if (obsTarget != nullptr)
+										obsTarget = g_interface.ClientEntList->GetClientEntityFromHandle((CBaseHandle*)obsTarget);
+									if (obsTarget != nullptr && (DWORD)obsTarget == (DWORD)local)
+									{
+										player_info_t info;
+										g_interface.Engine->GetPlayerInfo(i, &info);
+
+										if (obsMode == OBS_MODE_IN_EYE)
+											ss << info.name << " [1st]\n";
+										else if (obsMode == OBS_MODE_CHASE)
+											ss << info.name << " [3rd]\n";
+									}
+								}
+							}
+
+							if (!ss.str().empty())
+							{
+								color = (entity->GetTeam() == 2 ? DrawManager::SKYBLUE : DrawManager::RED);
+
+								int width, height;
+								g_interface.Engine->GetScreenSize(width, height);
+								g_pDrawRender->AddText(color, width * 0.75, height * 0.75, false, ss.str().c_str());
+							}
+						}
+
 						continue;
+					}
 #ifdef _DEBUG_OUTPUT_
 				}
 #endif
@@ -2810,7 +2852,7 @@ void __fastcall Hooked_PaintTraverse(CPanel* pPanel, void* edx, unsigned int pan
 				{
 					color = DrawManager::WHITE;
 					studiohdr_t* hdr = g_interface.ModelInfo->GetStudioModel(entity->GetModel());
-					if (hdr != nullptr)
+					if (hdr != nullptr && IsValidVictimId(classId))
 					{
 						Vector parent, child, screenParent, screenChild;
 						for (int i = 0; i < hdr->numbones; ++i)
@@ -2834,20 +2876,14 @@ void __fastcall Hooked_PaintTraverse(CPanel* pPanel, void* edx, unsigned int pan
 
 			if (Config::bDrawName)
 			{
-				// 用于格式化字符串
-				std::stringstream ss;
-
-				// 取消 stream 同步可以加快运行速度
-				ss.sync_with_stdio(false);
-				ss.tie(nullptr);
-
-				// 去除 float 的小数位，因为没必要
-				ss.setf(std::ios::fixed);
-				ss.precision(0);
+				ss.str("");
 
 				// 根据类型决定绘制的内容
 				if (IsSurvivor(classId) || IsSpecialInfected(classId))
 				{
+					player_info_t info;
+					g_interface.Engine->GetPlayerInfo(i, &info);
+					
 					// 检查是否为生还者
 					if (IsSurvivor(classId))
 					{
@@ -2884,8 +2920,8 @@ void __fastcall Hooked_PaintTraverse(CPanel* pPanel, void* edx, unsigned int pan
 						}
 					}
 
-					// 玩家类型
-					ss << GetZombieClassName(entity);
+					// 玩家名字
+					ss << info.name;
 
 					// 显示距离
 					ss << "\n" << (int)dist;
@@ -2921,58 +2957,15 @@ void __fastcall Hooked_PaintTraverse(CPanel* pPanel, void* edx, unsigned int pan
 							}
 						}
 					}
-					/*
 					else
 					{
-					// 感染者技能冷却时间显示
-
-					float serverTime = GetServerTime();
-					ss.precision(1);
-
-					if (classId == ET_TANK)
-					{
-					if (weapon != nullptr)
-					{
-					float primary = weapon->GetNetProp<float>("m_flNextPrimaryAttack", "DT_BaseCombatWeapon");
-					float secondary = weapon->GetNetProp<float>("m_flNextSecondaryAttack", "DT_BaseCombatWeapon");
-
-					ss << "(";
-					if ((primary -= serverTime) > 0.0f)
-					ss << primary;
-					else
-					ss << "ready";
-
-					ss << "/";
-					if ((secondary -= serverTime) > 0.0f)
-					ss << secondary;
-					else
-					ss << "ready";
-
-					ss << ")";
+						if (!info.isBot)
+						{
+							// 如果特感不是机器人的话就显示特感类型
+							// 机器人特感名字就是类型
+							ss << " (" << GetZombieClassName(entity) << ")";
+						}
 					}
-					}
-					else
-					{
-					weapon = (CBaseEntity*)entity->GetNetProp<CBaseHandle*>("m_customAbility", "DT_TerrorPlayer");
-					if (weapon != nullptr)
-					weapon = g_interface.ClientEntList->GetClientEntityFromHandle((CBaseHandle*)weapon);
-					if (weapon != nullptr)
-					{
-					float skill = weapon->GetNetProp2<float>("m_nextActivationTimer", "m_timestamp", "DT_AbilityBase");
-
-					ss << "(";
-					if ((skill -= serverTime) > 0.0f)
-					ss << skill;
-					else
-					ss << "ready";
-
-					ss << ")";
-					}
-					}
-
-					ss.precision(0);
-					}
-					*/
 				}
 
 				if (!ss.str().empty())

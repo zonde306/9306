@@ -159,6 +159,7 @@ namespace Config
 	bool bDrawDist = true;
 	bool bDrawAmmo = true;
 	bool bDrawCrosshairs = true;
+	bool bDrawSpectator = true;
 
 	bool bBufferSurvivor = false;
 	bool bBufferSpecial = false;

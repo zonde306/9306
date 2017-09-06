@@ -244,9 +244,57 @@ public:
 
 	bool IsAlive()
 	{
-		static int offset = g_pNetVars->GetOffset("DT_BasePlayer", "m_lifeState");
-		BYTE lifestate = *(BYTE*)((DWORD)this + offset);
-		return (lifestate == 0);
+		int id = 0, solid = 0, sequence = 0;
+		ClientClass* cc = nullptr;
+
+		try
+		{
+			// 检查是否为一个有效的指向实体的指针
+			if (this->IsDormant() || !(cc = this->GetClientClass()) || (id = cc->m_ClassID) == ET_WORLD)
+				return false;
+
+			solid = this->GetNetProp<int>("m_usSolidFlags", "DT_BaseCombatCharacter");
+			sequence = this->GetNetProp<int>("m_nSequence", "DT_BaseAnimating");
+		}
+		catch (std::exception& e)
+		{
+#ifdef _DEBUG
+			Utils::log("%s (%d) 错误：", __FILE__, __LINE__, e.what());
+#endif
+			return false;
+		}
+
+		if (IsSurvivor(id))
+		{
+			// 生还者只需要检查生命状态 (生还者 0 血也可以活着的)
+			if (this->GetNetProp<byte>("m_lifeState", "DT_BasePlayer") != 0)
+				return false;
+		}
+		else if (IsSpecialInfected(id))
+		{
+			// 感染者检查血量和是否为灵魂状态
+			if (this->GetNetProp<byte>("m_lifeState", "DT_BasePlayer") != 0 ||
+				this->GetNetProp<byte>("m_iHealth", "DT_BasePlayer") < 1 ||
+				this->GetNetProp<byte>("m_isGhost", "DT_TerrorPlayer"))
+				return false;
+
+			// 坦克检查是否处于僵直状态
+			if (id == ET_TANK && sequence > 70)
+				return false;
+		}
+		else if (IsCommonInfected(id))
+		{
+			// 检查普感是否处于死亡动作状态
+			if ((solid & SF_NOT_SOLID) || sequence > 305)
+				return false;
+
+			// 检查普感是否被点燃了 (普感被点燃就是死亡)
+			if (id == ET_INFECTED && this->GetNetProp<byte>("m_bIsBurning", "DT_Infected") != 0)
+				return false;
+		}
+		
+		// 如果不是生还者也不是感染者的话不需要检查是否活着，只要存在就是活着
+		return true;
 	}
 
 	int GetIndex()
