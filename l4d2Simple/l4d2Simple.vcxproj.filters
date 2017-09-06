@@ -1,0 +1,244 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="源文件">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="头文件">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="资源文件">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="头文件\libraries">
+      <UniqueIdentifier>{f54347a1-2aa3-4698-8fc2-71a81a519d4f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="头文件\structs">
+      <UniqueIdentifier>{aeeb2c74-190d-4446-a3f5-d407e543bf35}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="头文件\detours">
+      <UniqueIdentifier>{f74d69ae-99e7-4eb4-b2f6-f5f14a644d39}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="头文件\imgui">
+      <UniqueIdentifier>{3287d3bb-d818-437e-9dbb-41178f9efb30}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="头文件\imgui\dx9">
+      <UniqueIdentifier>{a38b1bfd-8e6c-40a8-bb91-3840b1bdea36}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="libraries\interfaces.h">
+      <Filter>头文件\libraries</Filter>
+    </ClInclude>
+    <ClInclude Include="libraries\math.h">
+      <Filter>头文件\libraries</Filter>
+    </ClInclude>
+    <ClInclude Include="libraries\vmt.h">
+      <Filter>头文件\libraries</Filter>
+    </ClInclude>
+    <ClInclude Include="libraries\xorstr.h">
+      <Filter>头文件\libraries</Filter>
+    </ClInclude>
+    <ClInclude Include="structs\angle.h">
+      <Filter>头文件\structs</Filter>
+    </ClInclude>
+    <ClInclude Include="structs\baseentity.h">
+      <Filter>头文件\structs</Filter>
+    </ClInclude>
+    <ClInclude Include="structs\checksum_md5.h">
+      <Filter>头文件\structs</Filter>
+    </ClInclude>
+    <ClInclude Include="structs\client.h">
+      <Filter>头文件\structs</Filter>
+    </ClInclude>
+    <ClInclude Include="structs\cliententlist.h">
+      <Filter>头文件\structs</Filter>
+    </ClInclude>
+    <ClInclude Include="structs\console.h">
+      <Filter>头文件\structs</Filter>
+    </ClInclude>
+    <ClInclude Include="structs\crc32.h">
+      <Filter>头文件\structs</Filter>
+    </ClInclude>
+    <ClInclude Include="structs\debugoverlay.h">
+      <Filter>头文件\structs</Filter>
+    </ClInclude>
+    <ClInclude Include="structs\engine.h">
+      <Filter>头文件\structs</Filter>
+    </ClInclude>
+    <ClInclude Include="structs\event.h">
+      <Filter>头文件\structs</Filter>
+    </ClInclude>
+    <ClInclude Include="structs\globals.h">
+      <Filter>头文件\structs</Filter>
+    </ClInclude>
+    <ClInclude Include="structs\input.h">
+      <Filter>头文件\structs</Filter>
+    </ClInclude>
+    <ClInclude Include="structs\modelinfo.h">
+      <Filter>头文件\structs</Filter>
+    </ClInclude>
+    <ClInclude Include="structs\panel.h">
+      <Filter>头文件\structs</Filter>
+    </ClInclude>
+    <ClInclude Include="structs\playerinfo.h">
+      <Filter>头文件\structs</Filter>
+    </ClInclude>
+    <ClInclude Include="structs\quaternion.h">
+      <Filter>头文件\structs</Filter>
+    </ClInclude>
+    <ClInclude Include="structs\render.h">
+      <Filter>头文件\structs</Filter>
+    </ClInclude>
+    <ClInclude Include="structs\surface.h">
+      <Filter>头文件\structs</Filter>
+    </ClInclude>
+    <ClInclude Include="structs\trace.h">
+      <Filter>头文件\structs</Filter>
+    </ClInclude>
+    <ClInclude Include="structs\usercmd.h">
+      <Filter>头文件\structs</Filter>
+    </ClInclude>
+    <ClInclude Include="structs\vector.h">
+      <Filter>头文件\structs</Filter>
+    </ClInclude>
+    <ClInclude Include="structs\vmatrix.h">
+      <Filter>头文件\structs</Filter>
+    </ClInclude>
+    <ClInclude Include="definitions.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="main.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="ntdll.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="indexes.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="d3dukmdt.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="d3dumddi.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="detours\detourxs.h">
+      <Filter>头文件\detours</Filter>
+    </ClInclude>
+    <ClInclude Include="structs\handle.h">
+      <Filter>头文件\structs</Filter>
+    </ClInclude>
+    <ClInclude Include="libraries\utl_blockmemory.h">
+      <Filter>头文件\libraries</Filter>
+    </ClInclude>
+    <ClInclude Include="libraries\utl_memory.h">
+      <Filter>头文件\libraries</Filter>
+    </ClInclude>
+    <ClInclude Include="libraries\utl_string.h">
+      <Filter>头文件\libraries</Filter>
+    </ClInclude>
+    <ClInclude Include="libraries\utl_vector.h">
+      <Filter>头文件\libraries</Filter>
+    </ClInclude>
+    <ClInclude Include="libraries\buffer.h">
+      <Filter>头文件\libraries</Filter>
+    </ClInclude>
+    <ClInclude Include="structs\keyvalues.h">
+      <Filter>头文件\structs</Filter>
+    </ClInclude>
+    <ClInclude Include="structs\messages.h">
+      <Filter>头文件\structs</Filter>
+    </ClInclude>
+    <ClInclude Include="libraries\utl_dict.h">
+      <Filter>头文件\libraries</Filter>
+    </ClInclude>
+    <ClInclude Include="libraries\utl_map.h">
+      <Filter>头文件\libraries</Filter>
+    </ClInclude>
+    <ClInclude Include="libraries\utl_btree.h">
+      <Filter>头文件\libraries</Filter>
+    </ClInclude>
+    <ClInclude Include="libraries\utl_fixedmemory.h">
+      <Filter>头文件\libraries</Filter>
+    </ClInclude>
+    <ClInclude Include="libraries\util_blockmemory.h">
+      <Filter>头文件\libraries</Filter>
+    </ClInclude>
+    <ClInclude Include="d3dfont\D3DFont.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="structs\sound.h">
+      <Filter>头文件\structs</Filter>
+    </ClInclude>
+    <ClInclude Include="structs\clientstate.h">
+      <Filter>头文件\structs</Filter>
+    </ClInclude>
+    <ClInclude Include="..\imgui\imconfig.h">
+      <Filter>头文件\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\imgui\imgui.h">
+      <Filter>头文件\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\imgui\imgui_internal.h">
+      <Filter>头文件\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\imgui\stb_rect_pack.h">
+      <Filter>头文件\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\imgui\stb_textedit.h">
+      <Filter>头文件\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\imgui\stb_truetype.h">
+      <Filter>头文件\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\imgui\dx9\imgui_impl_dx9.h">
+      <Filter>头文件\imgui\dx9</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="structs\checksum_md5.cpp">
+      <Filter>头文件\structs</Filter>
+    </ClCompile>
+    <ClCompile Include="main.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="detours\detourxs.cpp">
+      <Filter>头文件\detours</Filter>
+    </ClCompile>
+    <ClCompile Include="d3dfont\D3DFont.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="..\imgui\imgui.cpp">
+      <Filter>头文件\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\imgui\imgui_demo.cpp">
+      <Filter>头文件\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\imgui\imgui_draw.cpp">
+      <Filter>头文件\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\imgui\dx9\imgui_impl_dx9.cpp">
+      <Filter>头文件\imgui\dx9</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="detours\hook.def">
+      <Filter>头文件\detours</Filter>
+    </None>
+    <None Include="detours\LDE64x64.asm">
+      <Filter>头文件\detours</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="detours\LDE64.asm">
+      <Filter>源文件</Filter>
+    </CustomBuild>
+  </ItemGroup>
+</Project>
