@@ -94,7 +94,7 @@ class CPrediction;
 class IGameMovement;
 class CDebugOverlay;
 class IGameEventManager2;
-class IInputInternal;
+class IInputSystem;
 class CModelRender;
 class CRenderView;
 class CMoveHelper;
@@ -123,7 +123,7 @@ public:
 	IGameMovement* GameMovement;
 	CDebugOverlay* DebugOverlay;
 	IGameEventManager2* GameEvent;
-	IInputInternal* InputSystem;
+	IInputSystem* InputSystem;
 	CModelRender* ModelRender;
 	CRenderView* RenderView;
 	CMoveHelper* MoveHelper;

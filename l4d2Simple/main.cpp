@@ -1,26 +1,26 @@
-#include "main.h"
+ï»¿#include "main.h"
 
 #define USE_PLAYER_INFO
 #define USE_CVAR_CHANGE
 // #define USE_D3D_DRAW
 
-// D3D µÄº¯Êı jmp ¹Ò¹³
+// D3D çš„å‡½æ•° jmp æŒ‚é’©
 static std::unique_ptr<DetourXS> g_pDetourReset, g_pDetourPresent, g_pDetourEndScene,
 g_pDetourDrawIndexedPrimitive, g_pDetourCreateQuery, g_pDetourCL_Move, g_pDetourDebugger;
 
 std::unique_ptr<CNetVars> g_pNetVars;
 CInterfaces g_interface;
 
-// D3D Device Ğé±í¹Ò¹³
+// D3D Device è™šè¡¨æŒ‚é’©
 static std::unique_ptr<CVMTHookManager> g_pVMTDevice;
 
-// µ±Ç° dll ÎÄ¼şÊµÀı
+// å½“å‰ dll æ–‡ä»¶å®ä¾‹
 HINSTANCE g_hMyInstance;
 
-// D3D EndScene »æÖÆ¹¤¾ß
+// D3D EndScene ç»˜åˆ¶å·¥å…·
 static std::unique_ptr<DrawManager> g_pDrawRender;
 
-// D3D9 Device ¹³×Ó
+// D3D9 Device é’©å­
 static std::unique_ptr<D3D9Hooker> g_pDeviceHooker;
 
 DWORD WINAPI StartCheat(LPVOID params);
@@ -32,67 +32,67 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved)
 		g_hMyInstance = module;
 		DisableThreadLibraryCalls(module);
 
-		// »ñÈ¡ËùÓĞ½Ó¿Ú
+		// è·å–æ‰€æœ‰æ¥å£
 		g_interface.GetInterfaces();
 
-		// ³õÊ¼»¯ NetProp ±í
+		// åˆå§‹åŒ– NetProp è¡¨
 		g_pNetVars = std::make_unique<CNetVars>();
 
-		// seÒì³£²¶»ñÆ÷
+		// seå¼‚å¸¸æ•è·å™¨
 		_set_se_translator([](unsigned int expCode, EXCEPTION_POINTERS* pExp) -> void
 		{
 			std::stringstream expInfo;
 			switch (expCode)
 			{
 			case EXCEPTION_ACCESS_VIOLATION:
-				expInfo << "[SE] ·ÃÎÊ³åÍ»£ºIP 0x" << std::setiosflags(std::ios::hex | std::ios::uppercase) <<
-					pExp->ExceptionRecord->ExceptionAddress << " ÀàĞÍ£º" <<
-					(pExp->ExceptionRecord->ExceptionInformation[0] ? "Ğ´Èë" : "¶ÁÈ¡") << " µØÖ·£º0x" <<
+				expInfo << "[SE] è®¿é—®å†²çªï¼šIP 0x" << std::setiosflags(std::ios::hex | std::ios::uppercase) <<
+					pExp->ExceptionRecord->ExceptionAddress << " ç±»å‹ï¼š" <<
+					(pExp->ExceptionRecord->ExceptionInformation[0] ? "å†™å…¥" : "è¯»å–") << " åœ°å€ï¼š0x" <<
 					pExp->ExceptionRecord->ExceptionInformation[1];
 				break;
 			case EXCEPTION_INT_DIVIDE_BY_ZERO:
-				expInfo << "[SE] int ³ıÊı²»ÄÜÎª 0";
+				expInfo << "[SE] int é™¤æ•°ä¸èƒ½ä¸º 0";
 				break;
 			case EXCEPTION_FLT_DIVIDE_BY_ZERO:
-				expInfo << "[SE] float ³ıÊı²»ÄÜÎª 0.0";
+				expInfo << "[SE] float é™¤æ•°ä¸èƒ½ä¸º 0.0";
 				break;
 			case EXCEPTION_ILLEGAL_INSTRUCTION:
-				expInfo << "[SE] ÎŞĞ§µÄÖ¸Áî";
+				expInfo << "[SE] æ— æ•ˆçš„æŒ‡ä»¤";
 				break;
 			case EXCEPTION_PRIV_INSTRUCTION:
-				expInfo << "[SE] ÎŞ·¨·ÃÎÊË½ÓĞµÄÖ¸Áî";
+				expInfo << "[SE] æ— æ³•è®¿é—®ç§æœ‰çš„æŒ‡ä»¤";
 				break;
 			case EXCEPTION_STACK_OVERFLOW:
-				expInfo << "[SE] Õ»Òç³ö";
+				expInfo << "[SE] æ ˆæº¢å‡º";
 				break;
 			default:
-				expInfo << "[SE] Î´ÖªÒì³£";
+				expInfo << "[SE] æœªçŸ¥å¼‚å¸¸";
 			}
 
 			Utils::log(expInfo.str().c_str());
 			throw std::exception(expInfo.str().c_str());
 		});
 
-		// Òì³£²¶»ñÆ÷´ø²ÎÊı
+		// å¼‚å¸¸æ•è·å™¨å¸¦å‚æ•°
 		_set_invalid_parameter_handler([](const wchar_t* expression, const wchar_t* function,
 			const wchar_t* file, unsigned int line, uintptr_t pReserved) -> void
 		{
 			std::wstringstream expInfo;
 #ifndef _DEBUG
-			expInfo << L"ÇëÊ¹ÓÃ DEBUG Ä£Ê½±àÒëÒÔ½øĞĞµ÷ÊÔ";
+			expInfo << L"è¯·ä½¿ç”¨ DEBUG æ¨¡å¼ç¼–è¯‘ä»¥è¿›è¡Œè°ƒè¯•";
 #else
-			expInfo << L"[IP] ÆÕÍ¨Òì³££º" << std::endl << L"\tĞÅÏ¢£º" << expression << std::endl <<
-				L"\tÎÄ¼ş£º" << file << L" (" << line << L")" << std::endl << L"\tº¯Êı£º" << function;
+			expInfo << L"[IP] æ™®é€šå¼‚å¸¸ï¼š" << std::endl << L"\tä¿¡æ¯ï¼š" << expression << std::endl <<
+				L"\tæ–‡ä»¶ï¼š" << file << L" (" << line << L")" << std::endl << L"\tå‡½æ•°ï¼š" << function;
 #endif
 			Utils::log(expInfo.str().c_str());
 			throw std::exception(Utils::w2c(expInfo.str()).c_str());
 		});
 
-		// Ğéº¯Êıµ÷ÓÃÒì³£²¶»ñ
+		// è™šå‡½æ•°è°ƒç”¨å¼‚å¸¸æ•è·
 		_set_purecall_handler([]() -> void
 		{
-			Utils::log("Î´ÖªĞéº¯Êıµ÷ÓÃÒì³£");
-			throw std::exception("Î´ÖªĞéº¯Êıµ÷ÓÃÒì³£");
+			Utils::log("æœªçŸ¥è™šå‡½æ•°è°ƒç”¨å¼‚å¸¸");
+			throw std::exception("æœªçŸ¥è™šå‡½æ•°è°ƒç”¨å¼‚å¸¸");
 		});
 
 		CreateThread(NULL, NULL, StartCheat, module, NULL, NULL);
@@ -109,7 +109,7 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved)
 
 		try
 		{
-			// µ½ÕâÀïÊ±¿ÉÄÜÊÇÒòÎªÖ÷¶¯ÍË³öÓÎÏ·£¬ÄÚ´æÒÑ¾­ÊÍ·ÅµôÁË
+			// åˆ°è¿™é‡Œæ—¶å¯èƒ½æ˜¯å› ä¸ºä¸»åŠ¨é€€å‡ºæ¸¸æˆï¼Œå†…å­˜å·²ç»é‡Šæ”¾æ‰äº†
 			VMTHOOK_DESTORY(g_interface.ClientModeHook);
 			VMTHOOK_DESTORY(g_interface.PanelHook);
 			VMTHOOK_DESTORY(g_interface.ClientHook);
@@ -199,40 +199,40 @@ FnDrawModelExecute oDrawModelExecute;
 
 // -------------------------------- General Function --------------------------------
 typedef void(__cdecl* FnConColorMsg)(class Color const&, char const*, ...);
-static FnConColorMsg PrintToConsoleColor;	// ´òÓ¡ĞÅÏ¢µ½¿ØÖÆÌ¨£¨Ö§³ÖÑÕÉ«£©
+static FnConColorMsg PrintToConsoleColor;	// æ‰“å°ä¿¡æ¯åˆ°æ§åˆ¶å°ï¼ˆæ”¯æŒé¢œè‰²ï¼‰
 
 typedef void(__cdecl* FnConMsg)(char const*, ...);
-static FnConMsg PrintToConsole;				// ´òÓ¡ĞÅÏ¢µ½¿ØÖÆÌ¨
+static FnConMsg PrintToConsole;				// æ‰“å°ä¿¡æ¯åˆ°æ§åˆ¶å°
 
 typedef void(__cdecl* FnCL_Move)(float, bool);
 void __stdcall Hooked_CL_Move(float, bool);
-FnCL_Move oCL_Move;							// Íæ¼ÒÊı¾İ´¦Àí
+FnCL_Move oCL_Move;							// ç©å®¶æ•°æ®å¤„ç†
 
 typedef void(__cdecl* FnSharedRandomFloat)(const char*, float, float, int);
-FnSharedRandomFloat SharedRandomFloat;		// Ëæ»úÊı
+FnSharedRandomFloat SharedRandomFloat;		// éšæœºæ•°
 
 typedef int(__stdcall* FnTraceLine)(void* ebp, void* esi, const Vector&, const Vector&, unsigned int mask,
 	const IHandleEntity*, int, trace_t*);
-FnTraceLine UTIL_TraceRay;					// ¹âÏß¸ú×Ù
+FnTraceLine UTIL_TraceRay;					// å…‰çº¿è·Ÿè¸ª
 
 typedef const char*(__cdecl* FnWeaponIdToAlias)(unsigned int);
-FnWeaponIdToAlias WeaponIdToAlias;			// »ñÈ¡ÎäÆ÷µÄÃû×Ö
+FnWeaponIdToAlias WeaponIdToAlias;			// è·å–æ­¦å™¨çš„åå­—
 
 typedef bool(__thiscall* FnUserMessagesDispatch)(void*, int, bf_read&);
-FnUserMessagesDispatch DispatchUserMessage;	// ÓÃ»§ÏûÏ¢
+FnUserMessagesDispatch DispatchUserMessage;	// ç”¨æˆ·æ¶ˆæ¯
 
 typedef bool(__cdecl* FnIsInDebugSession)();
 bool __cdecl Hooked_IsInDebugSession();
 FnIsInDebugSession oPlat_IsInDebugSession;
 
 typedef void*(__thiscall* FnGetWpnData)(CBaseEntity*);
-FnGetWpnData g_pCallGetWpnData;				// »ñÈ¡ÎäÆ÷Êı¾İ (²»ÊÇĞéº¯Êı)
+FnGetWpnData g_pCallGetWpnData;				// è·å–æ­¦å™¨æ•°æ® (ä¸æ˜¯è™šå‡½æ•°)
 
 typedef void(__thiscall* FnStartDrawing)(CSurface*);
-FnStartDrawing PaintStartDrawing;			// ¿ªÊ¼»æÖÆ (ÔÚ CEngineVGui::Paint Àï»æÖÆ±ØĞëÏÈµ÷ÓÃÕâ¸ö)
+FnStartDrawing PaintStartDrawing;			// å¼€å§‹ç»˜åˆ¶ (åœ¨ CEngineVGui::Paint é‡Œç»˜åˆ¶å¿…é¡»å…ˆè°ƒç”¨è¿™ä¸ª)
 
 typedef void(__thiscall* FnFinishDrawing)(CSurface*);
-FnFinishDrawing PaintFinishDrawing;			// Íê³É»æÖÆ (ÔÚ CEngineVGui::Paint Àï»æÖÆ½áÊøÊ±±ØĞëµ÷ÓÃÕâ¸ö)
+FnFinishDrawing PaintFinishDrawing;			// å®Œæˆç»˜åˆ¶ (åœ¨ CEngineVGui::Paint é‡Œç»˜åˆ¶ç»“æŸæ—¶å¿…é¡»è°ƒç”¨è¿™ä¸ª)
 
 // -------------------------------- Cheats Function --------------------------------
 void thirdPerson(bool);
@@ -240,19 +240,19 @@ void showSpectator();
 void bindAlias(int);
 
 // -------------------------------- Golbals Variable --------------------------------
-static int g_iCurrentAiming = 0;										// µ±Ç°ÕıÔÚÃé×¼µÄÍæ¼ÒµÄ ID
-static bool g_bNewFrame = false;										// ÏÖÔÚÊÇ·ñÔËĞĞÔÚĞÂµÄÒ»Ö¡
-static bool* g_pbSendPacket;											// Êı¾İ°üÊÇ·ñ·¢ËÍµ½·şÎñÆ÷
-static int g_iSpeedMultiple = 5;										// ¼ÓËÙ±¶Êı
-static CUserCmd* g_pUserCommands;										// ±¾µØÍæ¼Òµ±Ç°°´¼ü
-std::map<std::string, ConVar*> g_conVar;								// ¿ØÖÆÌ¨±äÁ¿
-static float g_fAimbotFieldOfView = 30.0f;								// ×Ô¶¯Ãé×¼½Ç¶È
-CBaseEntity* g_pCurrentAimbot;											// µ±Ç°µÄ×Ô¶¯Ãé×¼Ä¿±ê
-CBaseEntity* g_pCurrentAiming;											// µ±Ç°ÕıÔÚÃé×¼µÄÄ¿±ê
-int g_iCurrentHitbox;													// µ±Ç°ÕıÔÚÃé×¼µÄµĞÈËµÄ Hitbox
-CBaseEntity* g_pGameRulesProxy;											// ÓÎÏ·¹æÔòÊµÌå£¬ÔÚÕâÀï»áÓĞÒ»Ğ©ÓĞÓÃµÄ¶«Î÷
-CBaseEntity* g_pPlayerResource;											// Íæ¼Ò×ÊÔ´£¬¿ÉÒÔÓÃÀ´»ñÈ¡Ä³Ğ©¶«Î÷
-static DWORD g_iClientBase, g_iEngineBase, g_iMaterialModules;			// ÓĞÓÃµÄ DLL ÎÄ¼şµØÖ·
+static int g_iCurrentAiming = 0;										// å½“å‰æ­£åœ¨ç„å‡†çš„ç©å®¶çš„ ID
+static bool g_bNewFrame = false;										// ç°åœ¨æ˜¯å¦è¿è¡Œåœ¨æ–°çš„ä¸€å¸§
+static bool* g_pbSendPacket;											// æ•°æ®åŒ…æ˜¯å¦å‘é€åˆ°æœåŠ¡å™¨
+static int g_iSpeedMultiple = 5;										// åŠ é€Ÿå€æ•°
+static CUserCmd* g_pUserCommands;										// æœ¬åœ°ç©å®¶å½“å‰æŒ‰é”®
+std::map<std::string, ConVar*> g_conVar;								// æ§åˆ¶å°å˜é‡
+static float g_fAimbotFieldOfView = 30.0f;								// è‡ªåŠ¨ç„å‡†è§’åº¦
+CBaseEntity* g_pCurrentAimbot;											// å½“å‰çš„è‡ªåŠ¨ç„å‡†ç›®æ ‡
+CBaseEntity* g_pCurrentAiming;											// å½“å‰æ­£åœ¨ç„å‡†çš„ç›®æ ‡
+int g_iCurrentHitbox;													// å½“å‰æ­£åœ¨ç„å‡†çš„æ•Œäººçš„ Hitbox
+CBaseEntity* g_pGameRulesProxy;											// æ¸¸æˆè§„åˆ™å®ä½“ï¼Œåœ¨è¿™é‡Œä¼šæœ‰ä¸€äº›æœ‰ç”¨çš„ä¸œè¥¿
+CBaseEntity* g_pPlayerResource;											// ç©å®¶èµ„æºï¼Œå¯ä»¥ç”¨æ¥è·å–æŸäº›ä¸œè¥¿
+static DWORD g_iClientBase, g_iEngineBase, g_iMaterialModules;			// æœ‰ç”¨çš„ DLL æ–‡ä»¶åœ°å€
 
 std::string GetZombieClassName(CBaseEntity* player);
 bool IsValidVictim(CBaseEntity* entity);
@@ -289,7 +289,7 @@ DWORD WINAPI StartCheat(LPVOID params)
 	Utils::log("UserMessages 0x%X", (DWORD)g_interface.UserMessage);
 	Utils::log("MoveHelper 0x%X", (DWORD)g_interface.MoveHelper);
 
-	// Õâ¸öºÃÏñÊÇ²»ÕıÈ·µÄ...
+	// è¿™ä¸ªå¥½åƒæ˜¯ä¸æ­£ç¡®çš„...
 	g_interface.MoveHelper = nullptr;
 
 	if ((oCL_Move = (FnCL_Move)Utils::FindPattern("engine.dll",
@@ -458,7 +458,7 @@ DWORD WINAPI StartCheat(LPVOID params)
 
 		if (oPlat_IsInDebugSession)
 		{
-			// ÆÁ±Îµ÷ÊÔÆ÷¼ì²é£¬ÒòÎª¼ì²éµ½µ÷ÊÔÆ÷¾Í»á×Ô¶¯¹Ø±ÕÓÎÏ·µÄ
+			// å±è”½è°ƒè¯•å™¨æ£€æŸ¥ï¼Œå› ä¸ºæ£€æŸ¥åˆ°è°ƒè¯•å™¨å°±ä¼šè‡ªåŠ¨å…³é—­æ¸¸æˆçš„
 			g_pDetourDebugger = std::make_unique<DetourXS>(oPlat_IsInDebugSession, Hooked_IsInDebugSession);
 		}
 	}
@@ -504,7 +504,7 @@ DWORD WINAPI StartCheat(LPVOID params)
 #endif
 	}
 
-	// ³õÊ¼»¯ ImGui
+	// åˆå§‹åŒ– ImGui
 	while ((g_hwGameWindow = FindWindowA(nullptr, "Left 4 Dead 2")) == nullptr)
 		std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
@@ -513,14 +513,14 @@ DWORD WINAPI StartCheat(LPVOID params)
 	g_pDeviceHooker = std::make_unique<D3D9Hooker>();
 	g_pDeviceHooker->StartDeviceHook([&](IDirect3D9* pD3D, IDirect3DDevice9* pDeivce, DWORD* pVMT) -> void
 	{
-		// Ğéº¯Êı±íĞŞ¸ÄÌø×ª
+		// è™šå‡½æ•°è¡¨ä¿®æ”¹è·³è½¬
 		g_pDetourReset = std::make_unique<DetourXS>((void*)pVMT[16], Hooked_Reset);
 		g_pDetourPresent = std::make_unique<DetourXS>((void*)pVMT[17], Hooked_Present);
 		g_pDetourEndScene = std::make_unique<DetourXS>((void*)pVMT[42], Hooked_EndScene);
 		g_pDetourDrawIndexedPrimitive = std::make_unique<DetourXS>((void*)pVMT[82], Hooked_DrawIndexedPrimitive);
 		g_pDetourCreateQuery = std::make_unique<DetourXS>((void*)pVMT[118], Hooked_CreateQuery);
 
-		// »ñÈ¡Ô­º¯Êı
+		// è·å–åŸå‡½æ•°
 		oReset = (FnReset)g_pDetourReset->GetTrampoline();
 		oPresent = (FnPresent)g_pDetourPresent->GetTrampoline();
 		oEndScene = (FnEndScene)g_pDetourEndScene->GetTrampoline();
@@ -534,13 +534,13 @@ DWORD WINAPI StartCheat(LPVOID params)
 		Utils::log("Trampoline oCreateQuery = 0x%X", (DWORD)oCreateQuery);
 	});
 
-	// Ö»ÊÇÎªÁË±£ÏÕÆğ¼û¶øÒÑ
+	// åªæ˜¯ä¸ºäº†ä¿é™©èµ·è§è€Œå·²
 	g_pDeviceHooker->GetDevice() = nullptr;
 
-	// °´¼ü°ó¶¨
+	// æŒ‰é”®ç»‘å®š
 	bindAlias(45);
 
-	// ÊÂ¼ş¼àÌıÆ÷
+	// äº‹ä»¶ç›‘å¬å™¨
 	if (g_interface.GameEvent)
 	{
 		class EventListener : public IGameEventListener2
@@ -551,12 +551,12 @@ DWORD WINAPI StartCheat(LPVOID params)
 				const char* eventName = event->GetName();
 				if (_strcmpi(eventName, "player_death") == 0)
 				{
-					// ÊÜº¦Õß£¨ËÀÕß£©
+					// å—å®³è€…ï¼ˆæ­»è€…ï¼‰
 					int victim = g_interface.Engine->GetPlayerForUserID(event->GetInt("userid"));
 					if (victim <= 0)
 						victim = event->GetInt("entityid");
 
-					// ¹¥»÷Õß£¨»÷É±Õß£©
+					// æ”»å‡»è€…ï¼ˆå‡»æ€è€…ï¼‰
 					int attacker = g_interface.Engine->GetPlayerForUserID(event->GetInt("attacker"));
 					if (attacker <= 0)
 						attacker = event->GetInt("attackerentid");
@@ -812,16 +812,16 @@ DWORD WINAPI StartCheat(LPVOID params)
 				}
 				else if (_strcmpi(eventName, "friendly_fire") == 0)
 				{
-					// ÊÜº¦Õß
+					// å—å®³è€…
 					int victim = g_interface.Engine->GetPlayerForUserID(event->GetInt("userid"));
 
-					// ¹¥»÷Õß
+					// æ”»å‡»è€…
 					int attacker = g_interface.Engine->GetPlayerForUserID(event->GetInt("attacker"));
 
-					// ÊÇË­µÄ´í
+					// æ˜¯è°çš„é”™
 					int guilty = g_interface.Engine->GetPlayerForUserID(event->GetInt("guilty"));
 
-					// ÉËº¦ÀàĞÍ
+					// ä¼¤å®³ç±»å‹
 					// int damageType = event->GetInt("type");
 
 					if (victim <= 0 || attacker <= 0)
@@ -863,10 +863,10 @@ DWORD WINAPI StartCheat(LPVOID params)
 				}
 				else if (_strcmpi(eventName, "tank_killed") == 0)
 				{
-					// ÊÜº¦Õß
+					// å—å®³è€…
 					int victim = g_interface.Engine->GetPlayerForUserID(event->GetInt("userid"));
 
-					// ¹¥»÷Õß
+					// æ”»å‡»è€…
 					int attacker = g_interface.Engine->GetPlayerForUserID(event->GetInt("attacker"));
 
 					if (victim <= 0)
@@ -913,7 +913,7 @@ DWORD WINAPI StartCheat(LPVOID params)
 			}
 		};
 
-		// ×¢²áÊÂ¼ş¼àÌıÆ÷
+		// æ³¨å†Œäº‹ä»¶ç›‘å¬å™¨
 		EventListener* listener = new EventListener();
 		g_interface.GameEvent->AddListener(listener, "player_spawn", false);
 		g_interface.GameEvent->AddListener(listener, "player_death", false);
@@ -943,17 +943,17 @@ DWORD WINAPI StartCheat(LPVOID params)
 
 void ResetDeviceHook(IDirect3DDevice9* device)
 {
-	// ´¢´æÓÎÏ·Ê¹ÓÃµÄ IDirect3DDevice9 ¶ÔÏó
+	// å‚¨å­˜æ¸¸æˆä½¿ç”¨çš„ IDirect3DDevice9 å¯¹è±¡
 	g_pDeviceHooker->GetDevice() = device;
 
-	// ½«ĞŞ¸ÄµÄ Jump »¹Ô­
+	// å°†ä¿®æ”¹çš„ Jump è¿˜åŸ
 	DETOURXS_DESTORY(g_pDetourReset);
 	DETOURXS_DESTORY(g_pDetourPresent);
 	DETOURXS_DESTORY(g_pDetourEndScene);
 	DETOURXS_DESTORY(g_pDetourDrawIndexedPrimitive);
 	DETOURXS_DESTORY(g_pDetourCreateQuery);
 
-	// Ê¹ÓÃ VMT À´ Hook
+	// ä½¿ç”¨ VMT æ¥ Hook
 	g_pVMTDevice = std::make_unique<CVMTHookManager>(device);
 	oReset = g_pVMTDevice->SetupHook(16, Hooked_Reset);
 	oPresent = g_pVMTDevice->SetupHook(17, Hooked_Present);
@@ -962,7 +962,7 @@ void ResetDeviceHook(IDirect3DDevice9* device)
 	oCreateQuery = g_pVMTDevice->SetupHook(118, Hooked_CreateQuery);
 	g_pVMTDevice->HookTable(true);
 
-	// ³õÊ¼»¯»æÍ¼
+	// åˆå§‹åŒ–ç»˜å›¾
 	g_pDrawRender = std::make_unique<DrawManager>(device);
 
 	DWORD d3d9 = Utils::GetModuleBase("d3d9.dll");
@@ -986,14 +986,14 @@ void thirdPerson(bool active)
 
 		if (active)
 		{
-			// µÚÈıÈË³Æ
+			// ç¬¬ä¸‰äººç§°
 			local->SetNetProp<int>("m_hObserverTarget", 0, "DT_BasePlayer");
 			local->SetNetProp<int>("m_iObserverMode", 1, "DT_BasePlayer");
 			local->SetNetProp<int>("m_bDrawViewmodel", 0, "DT_BasePlayer");
 		}
 		else
 		{
-			// µÚÒ»ÈË³Æ
+			// ç¬¬ä¸€äººç§°
 			local->SetNetProp<int>("m_hObserverTarget", -1, "DT_BasePlayer");
 			local->SetNetProp<int>("m_iObserverMode", 0, "DT_BasePlayer");
 			local->SetNetProp<int>("m_bDrawViewmodel", 1, "DT_BasePlayer");
@@ -1031,7 +1031,7 @@ void showSpectator()
 
 			if (team == 1)
 			{
-				// è§‚å¯Ÿè€
+				// ç‘™å‚šç™‚é‘°
 				if (mode != 4 && mode != 5)
 					continue;
 
@@ -1044,7 +1044,7 @@ void showSpectator()
 
 				if ((DWORD)target == (DWORD)local)
 				{
-					// æ­£åœ¨è§‚å¯Ÿæœ¬åœ°ç©å®¶
+					// å§ï½…æ¹ªç‘™å‚šç™‚éˆî„€æ¹´éœâ•î†
 #ifdef USE_PLAYER_INFO
 					g_interface.Engine->ClientCmd("echo \"[spectator] player %s %s you\"",
 						info.name, (mode == 4 ? "watching" : "following"));
@@ -1055,7 +1055,7 @@ void showSpectator()
 				}
 				else
 				{
-					// æ­£åœ¨è§‚å¯Ÿå…¶ä»–ç©å®¶
+					// å§ï½…æ¹ªç‘™å‚šç™‚éæœµç²¬éœâ•î†
 #ifdef USE_PLAYER_INFO
 					player_info_t other;
 					g_interface.Engine->GetPlayerInfo(target->GetIndex(), &other);
@@ -1069,10 +1069,10 @@ void showSpectator()
 			}
 			else if (team == 2)
 			{
-				// ç”Ÿè¿˜è€
+				// é¢ç†»ç¹•é‘°
 				if (player->IsAlive())
 				{
-					// æ´»ç€
+					// å¨²è¤æ½ƒ
 #ifdef USE_PLAYER_INFO
 					g_interface.Engine->ClientCmd("echo \"[survivor] player %s is alive (%d + %.0f)\"",
 						info.name, player->GetHealth(), player->GetNetProp<float>("m_healthBuffer", "DT_TerrorPlayer"));
@@ -1083,7 +1083,7 @@ void showSpectator()
 				}
 				else
 				{
-					// æ­»äº¡
+					// å§è®³éª¸
 					if (mode != 4 && mode != 5)
 						continue;
 
@@ -1096,7 +1096,7 @@ void showSpectator()
 
 					if ((DWORD)target == (DWORD)local)
 					{
-						// æ­£åœ¨è§‚å¯Ÿæœ¬åœ°ç©å®¶
+						// å§ï½…æ¹ªç‘™å‚šç™‚éˆî„€æ¹´éœâ•î†
 #ifdef USE_PLAYER_INFO
 						g_interface.Engine->ClientCmd("echo \"[survivor] player %s %s you\"",
 							info.name, (mode == 4 ? "watching" : "following"));
@@ -1107,7 +1107,7 @@ void showSpectator()
 					}
 					else
 					{
-						// æ­£åœ¨è§‚å¯Ÿå…¶ä»–ç©å®¶
+						// å§ï½…æ¹ªç‘™å‚šç™‚éæœµç²¬éœâ•î†
 #ifdef USE_PLAYER_INFO
 						player_info_t other;
 						g_interface.Engine->GetPlayerInfo(target->GetIndex(), &other);
@@ -1122,7 +1122,7 @@ void showSpectator()
 			}
 			else if (team == 3)
 			{
-				// æ„ŸæŸ“è€
+				// é°ç†¸ç…‹é‘°
 				int zombie = player->GetNetProp<int>("m_zombieClass", "DT_TerrorPlayer");
 				char zombieName[32];
 				switch (zombie)
@@ -1154,7 +1154,7 @@ void showSpectator()
 
 				if (player->IsAlive())
 				{
-					// æ´»ç€
+					// å¨²è¤æ½ƒ
 #ifdef USE_PLAYER_INFO
 					g_interface.Engine->ClientCmd("echo \"[infected] player %s is %s (%d)\"",
 						info.name, zombieName, player->GetHealth());
@@ -1165,7 +1165,7 @@ void showSpectator()
 				}
 				else if (player->GetNetProp<byte>("m_isGhost", "DT_TerrorPlayer"))
 				{
-					// å¹½çµçŠ¶æ€
+					// éªç•Œä¼’é˜èˆµâ‚¬
 #ifdef USE_PLAYER_INFO
 					g_interface.Engine->ClientCmd("echo \"[infected] player %s is ghost %s (%d)\"",
 						info.name, zombieName, player->GetHealth());
@@ -1176,7 +1176,7 @@ void showSpectator()
 				}
 				else
 				{
-					// æ­»äº¡
+					// å§è®³éª¸
 					if (mode != 4 && mode != 5)
 						continue;
 
@@ -1189,7 +1189,7 @@ void showSpectator()
 
 					if ((DWORD)target == (DWORD)local)
 					{
-						// æ­£åœ¨è§‚å¯Ÿæœ¬åœ°ç©å®¶
+						// å§ï½…æ¹ªç‘™å‚šç™‚éˆî„€æ¹´éœâ•î†
 #ifdef USE_PLAYER_INFO
 						g_interface.Engine->ClientCmd("echo \"[infected] player %s %s you\"",
 							info.name, (mode == 4 ? "watching" : "following"));
@@ -1200,7 +1200,7 @@ void showSpectator()
 					}
 					else
 					{
-						// æ­£åœ¨è§‚å¯Ÿå…¶ä»–ç©å®¶
+						// å§ï½…æ¹ªç‘™å‚šç™‚éæœµç²¬éœâ•î†
 #ifdef USE_PLAYER_INFO
 						player_info_t other;
 						g_interface.Engine->GetPlayerInfo(target->GetIndex(), &other);
@@ -1312,7 +1312,7 @@ void bindAlias(int wait)
 
 static CMoveData g_predMoveData;
 
-// ¼ì²é¸ÃÊµÌåÊÇ·ñÎªÉú»¹Õß/ÌØ¸Ğ/ÆÕ¸Ğ/Witch
+// æ£€æŸ¥è¯¥å®ä½“æ˜¯å¦ä¸ºç”Ÿè¿˜è€…/ç‰¹æ„Ÿ/æ™®æ„Ÿ/Witch
 bool IsValidVictim(CBaseEntity* entity)
 {
 	int id = 0, solid = 0, sequence = 0;
@@ -1330,8 +1330,8 @@ bool IsValidVictim(CBaseEntity* entity)
 	catch (...)
 	{
 #ifdef _DEBUG
-		Utils::log("%s (%d) ¾¯¸æ£ºÖ¸Õë 0x%X ²¢²»ÊÇÊµÌå£¡", __FILE__, __LINE__, (DWORD)entity);
-		throw std::exception("IsValidVictim ·¢ÉúÁË´íÎó");
+		Utils::log("%s (%d) è­¦å‘Šï¼šæŒ‡é’ˆ 0x%X å¹¶ä¸æ˜¯å®ä½“ï¼", __FILE__, __LINE__, (DWORD)entity);
+		throw std::exception("IsValidVictim å‘ç”Ÿäº†é”™è¯¯");
 #endif
 		return false;
 	}
@@ -1366,7 +1366,7 @@ bool IsValidVictim(CBaseEntity* entity)
 			return false;
 		}
 
-		// ÆÕ¸ĞÕıÔÚÈ¼ÉÕ
+		// æ™®æ„Ÿæ­£åœ¨ç‡ƒçƒ§
 		if (id == ET_INFECTED && entity->GetNetProp<byte>("m_bIsBurning", "DT_Infected") != 0)
 			return false;
 	}
@@ -1393,7 +1393,7 @@ bool IsValidVictim(CBaseEntity* entity)
 	return true;
 }
 
-// »ñÈ¡ÊµÌåµÄÀàĞÍ
+// è·å–å®ä½“çš„ç±»å‹
 std::string GetZombieClassName(CBaseEntity* player)
 {
 	if (player == nullptr || player->IsDormant())
@@ -1411,38 +1411,38 @@ std::string GetZombieClassName(CBaseEntity* player)
 			return "female";
 			*/
 		case 11:
-			// ·À»ğ CEDA ÈËÔ±
+			// é˜²ç« CEDA äººå‘˜
 			return "ceda";
 		case 12:
-			// ÄàÈË
+			// æ³¥äºº
 			return "mud";
 		case 13:
-			// ĞŞÂ·¹¤ÈË
+			// ä¿®è·¯å·¥äºº
 			return "roadcrew";
 		case 14:
-			// ±»¸ĞÈ¾µÄĞÒ´æÕß
+			// è¢«æ„ŸæŸ“çš„å¹¸å­˜è€…
 			return "fallen";
 		case 15:
-			// ·À±©¾¯²ì
+			// é˜²æš´è­¦å¯Ÿ
 			return "riot";
 		case 16:
-			// Ğ¡³ó
+			// å°ä¸‘
 			return "clown";
 		case 17:
-			// Èü³µÊÖ¼ªÃ×
+			// èµ›è½¦æ‰‹å‰ç±³
 			return "jimmy";
 		}
 
-		// ³£¼û¸ĞÈ¾Õß
+		// å¸¸è§æ„ŸæŸ“è€…
 		return "infected";
 	}
 	if (player->GetClientClass()->m_ClassID == ET_WITCH)
 	{
-		// ĞÂÄï Witch
+		// æ–°å¨˜ Witch
 		if (player->GetNetProp<int>("m_Gender", "DT_Infected") == 19)
 			return "bride";
 
-		// ÆÕÍ¨ Witch
+		// æ™®é€š Witch
 		return "witch";
 	}
 
@@ -1452,61 +1452,61 @@ std::string GetZombieClassName(CBaseEntity* player)
 	switch (zombie)
 	{
 	case ZC_SMOKER:
-		// ÉàÍ·
+		// èˆŒå¤´
 		return "smoker";
 	case ZC_BOOMER:
-		// ÅÖ×Ó
+		// èƒ–å­
 		return "boomer";
 	case ZC_HUNTER:
-		// ÁÔÈË
+		// çŒäºº
 		return "hunter";
 	case ZC_SPITTER:
-		// ¿ÚË®
+		// å£æ°´
 		return "spitter";
 	case ZC_JOCKEY:
-		// ºï
+		// çŒ´
 		return "jockey";
 	case ZC_CHARGER:
-		// Å£
+		// ç‰›
 		return "charger";
 	case ZC_TANK:
-		// ¿Ë
+		// å…‹
 		return "tank";
 	case ZC_SURVIVORBOT:
 		switch (character)
 		{
 		case 0:
-			// Î÷×°
+			// è¥¿è£…
 			return "nick";
 		case 1:
-			// ºÚÃÃ
+			// é»‘å¦¹
 			return "rochelle";
 		case 2:
-			// ºÚÅÖ
+			// é»‘èƒ–
 			return "coach";
 		case 3:
-			// Ã±×Ó
+			// å¸½å­
 			return "ellis";
 		case 4:
-			// ÀÏÍ·
+			// è€å¤´
 			return "bill";
 		case 5:
-			// Å®ÈË
+			// å¥³äºº
 			return "zoey";
 		case 6:
-			// Âí¼×
+			// é©¬ç”²
 			return "francis";
 		case 7:
-			// ¹âÍ·
+			// å…‰å¤´
 			return "louis";
 		}
 	}
 
-	// ²»ÖªµÀ
+	// ä¸çŸ¥é“
 	return "unknown";
 }
 
-// ¸ù¾İ¹ÇÍ·»ñÈ¡Í·²¿Î»ÖÃ
+// æ ¹æ®éª¨å¤´è·å–å¤´éƒ¨ä½ç½®
 Vector GetHeadPosition(CBaseEntity* player)
 {
 	Vector position;
@@ -1562,7 +1562,7 @@ Vector GetHeadPosition(CBaseEntity* player)
 	return position;
 }
 
-// ¸ù¾İ»÷ÖĞºĞ»ñÈ¡Í·²¿Î»ÖÃ
+// æ ¹æ®å‡»ä¸­ç›’è·å–å¤´éƒ¨ä½ç½®
 Vector GetHeadHitboxPosition(CBaseEntity* entity)
 {
 	Vector position;
@@ -1582,7 +1582,7 @@ Vector GetHeadHitboxPosition(CBaseEntity* entity)
 	}
 	catch (...)
 	{
-		Utils::log("%s (%d): Î´ÖªÒì³£ | 0x%X", __FILE__, __LINE__, (DWORD)entity);
+		Utils::log("%s (%d): æœªçŸ¥å¼‚å¸¸ | 0x%X", __FILE__, __LINE__, (DWORD)entity);
 		return position;
 	}
 #endif
@@ -1619,13 +1619,13 @@ Vector GetHeadHitboxPosition(CBaseEntity* entity)
 	return position;
 }
 
-// ËÙ¶ÈÔ¤²â
+// é€Ÿåº¦é¢„æµ‹
 inline Vector VelocityExtrapolate(CBaseEntity* player, const Vector& aimpos)
 {
 	return aimpos + (player->GetVelocity() * g_interface.Globals->interval_per_tick);
 }
 
-// »ñÈ¡µ±Ç°ÕıÔÚÃé×¼µÄµĞÈË
+// è·å–å½“å‰æ­£åœ¨ç„å‡†çš„æ•Œäºº
 CBaseEntity* GetAimingTarget(int* hitbox = nullptr)
 {
 	CBaseEntity* client = GetLocalClient();
@@ -1638,7 +1638,7 @@ CBaseEntity* GetAimingTarget(int* hitbox = nullptr)
 
 	Vector src = client->GetEyePosition(), dst;
 
-	// ËÙ¶ÈÔ¤²â£¬·ÀÖ¹ÒÆ¶¯Ê±²»¾«×¼
+	// é€Ÿåº¦é¢„æµ‹ï¼Œé˜²æ­¢ç§»åŠ¨æ—¶ä¸ç²¾å‡†
 	src = VelocityExtrapolate(client, src);
 
 	filter.pSkip1 = client;
@@ -1660,7 +1660,14 @@ CBaseEntity* GetAimingTarget(int* hitbox = nullptr)
 		(DWORD)client, src.x, src.y, src.z, dst.x, dst.y, dst.z);
 #endif
 
-	g_interface.Trace->TraceRay(ray, MASK_SHOT, &filter, &trace);
+	__try
+	{
+		g_interface.Trace->TraceRay(ray, MASK_SHOT, &filter, &trace);
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER)
+	{
+		return nullptr;
+	}
 
 #ifdef _DEBUG_OUTPUT
 	Utils::log("TraceRay: entity = 0x%X | hitbox = %d | bone = %d | hitGroup = %d | fraction = %.2f | classId = %d",
@@ -1668,7 +1675,7 @@ CBaseEntity* GetAimingTarget(int* hitbox = nullptr)
 		(trace.m_pEnt != nullptr ? trace.m_pEnt->GetClientClass()->m_ClassID : -1));
 #endif
 
-	// ¼ì²éÊÇ·ñÃüÖĞÁËÓÎÏ·ÊÀ½ç
+	// æ£€æŸ¥æ˜¯å¦å‘½ä¸­äº†æ¸¸æˆä¸–ç•Œ
 	if (trace.m_pEnt == nullptr || trace.m_pEnt->IsDormant() ||
 		trace.m_pEnt->GetClientClass()->m_ClassID == ET_WORLD)
 	{
@@ -1682,7 +1689,7 @@ CBaseEntity* GetAimingTarget(int* hitbox = nullptr)
 		return nullptr;
 	}
 
-	// ¼ì²éÊÇ·ñÃüÖĞÁËÒ»¸ö¿ÉÒÔ¹¥»÷µÄÎïÌå
+	// æ£€æŸ¥æ˜¯å¦å‘½ä¸­äº†ä¸€ä¸ªå¯ä»¥æ”»å‡»çš„ç‰©ä½“
 	if (trace.hitbox == 0)
 	{
 #ifdef _DEBUG_OUTPUT
@@ -1701,7 +1708,7 @@ CBaseEntity* GetAimingTarget(int* hitbox = nullptr)
 	return trace.m_pEnt;
 }
 
-// ¼ì²é±¾µØÍæ¼ÒÊÇ·ñ¿ÉÒÔ¿´¼ûÄ³¸öÊµÌå
+// æ£€æŸ¥æœ¬åœ°ç©å®¶æ˜¯å¦å¯ä»¥çœ‹è§æŸä¸ªå®ä½“
 bool IsTargetVisible(CBaseEntity* entity, Vector end, Vector start)
 {
 #ifdef _DEBUG
@@ -1719,7 +1726,7 @@ bool IsTargetVisible(CBaseEntity* entity, Vector end, Vector start)
 	}
 	catch (...)
 	{
-		Utils::log("%s (%d): Î´ÖªÒì³£ | 0x%X", __FILE__, __LINE__, (DWORD)entity);
+		Utils::log("%s (%d): æœªçŸ¥å¼‚å¸¸ | 0x%X", __FILE__, __LINE__, (DWORD)entity);
 		return false;
 	}
 #endif
@@ -1740,9 +1747,22 @@ bool IsTargetVisible(CBaseEntity* entity, Vector end, Vector start)
 		end = GetHeadHitboxPosition(entity);
 
 	ray.Init(start, end);
-	g_interface.Trace->TraceRay(ray, MASK_SHOT, &filter, &trace);
 
-	// ¼ì²éÊÇ·ñÎªÖ¸¶¨Ä¿±ê
+	try
+	{
+		g_interface.Trace->TraceRay(ray, MASK_SHOT, &filter, &trace);
+	}
+	catch(std::exception& e)
+	{
+		Utils::log("%s (%d): %s", __FILE__, __LINE__, e.what());
+		return false;
+	}
+	catch (...)
+	{
+		return false;
+	}
+
+	// æ£€æŸ¥æ˜¯å¦ä¸ºæŒ‡å®šç›®æ ‡
 	if ((DWORD)trace.m_pEnt != (DWORD)entity || trace.hitbox <= 0)
 		return false;
 
@@ -1816,102 +1836,76 @@ HRESULT WINAPI Hooked_Present(IDirect3DDevice9* device, const RECT* source, cons
 	g_pDrawRender->BeginImGuiRender();
 	ImGui::GetIO().MouseDrawCursor = g_bIsShowMenu;
 
-	// »æÖÆ²Ëµ¥
+	// ç»˜åˆ¶èœå•
 	if (g_bIsShowMenu)
 	{
-		// »æÖÆÒ»¸ö´°¿Ú
-		ImGui::Begin("L4D2Simple", &g_bIsShowMenu, ImVec2(300, 250), 0.75f);
+		// ç»˜åˆ¶ä¸€ä¸ªçª—å£
+		ImGui::Begin(u8"L4D2Simple", &g_bIsShowMenu, ImVec2(300, 250), 0.75f);
 		{
-			// »æÖÆ
-			if (ImGui::CollapsingHeader("Draw"))
+			// ç»˜åˆ¶
+			if (ImGui::CollapsingHeader(u8"Draw"))
 			{
-				ImGui::Checkbox("2D Box", &Config::bDrawBox);
-				ImGui::Checkbox("Bone Box", &Config::bDrawBone);
-				ImGui::Checkbox("Name", &Config::bDrawName);
-				ImGui::Checkbox("Distance", &Config::bDrawDist);
-				ImGui::Checkbox("Ammo", &Config::bDrawAmmo);
-				ImGui::Checkbox("Crosshairs", &Config::bDrawAmmo);
+				ImGui::Checkbox(u8"2D Box", &Config::bDrawBox);
+				ImGui::Checkbox(u8"Bone Box", &Config::bDrawBone);
+				ImGui::Checkbox(u8"Name", &Config::bDrawName);
+				ImGui::Checkbox(u8"Distance", &Config::bDrawDist);
+				ImGui::Checkbox(u8"Ammo", &Config::bDrawAmmo);
+				ImGui::Checkbox(u8"Crosshairs", &Config::bDrawAmmo);
 			}
 
-			// Z Öá
-			if (ImGui::CollapsingHeader("DirextX ZBuffer"))
+			// Z è½´
+			if (ImGui::CollapsingHeader(u8"DirextX ZBuffer"))
 			{
-				ImGui::Checkbox("Survivor", &Config::bBufferSurvivor);
-				ImGui::Checkbox("Special Infected", &Config::bBufferSpecial);
-				ImGui::Checkbox("Common Infected", &Config::bBufferCommon);
-				ImGui::Checkbox("Grenade", &Config::bBufferGrenade);
-				ImGui::Checkbox("Medickit", &Config::bBufferMedickit);
-				ImGui::Checkbox("Guns", &Config::bBufferWeapon);
-				ImGui::Checkbox("Carry", &Config::bBufferCarry);
+				ImGui::Checkbox(u8"Survivor", &Config::bBufferSurvivor);
+				ImGui::Checkbox(u8"Special Infected", &Config::bBufferSpecial);
+				ImGui::Checkbox(u8"Common Infected", &Config::bBufferCommon);
+				ImGui::Checkbox(u8"Grenade", &Config::bBufferGrenade);
+				ImGui::Checkbox(u8"Medickit", &Config::bBufferMedickit);
+				ImGui::Checkbox(u8"Guns", &Config::bBufferWeapon);
+				ImGui::Checkbox(u8"Carry", &Config::bBufferCarry);
 			}
 
-			// Ãé×¼
+			// ç„å‡†
 			if (ImGui::CollapsingHeader("Aiming"))
 			{
-				ImGui::Checkbox("Aimbot", &Config::bAimbot);
-				ImGui::SliderFloat("Aimbot FOV", &Config::fAimbotFov, 1.0f, 360.0f);
-				ImGui::Checkbox("Silent Aimbot", &Config::bSilentAimbot);
-				ImGui::Checkbox("Trigger Bot", &Config::bTriggerBot);
-				ImGui::Checkbox("Trigger Bot Only Head", &Config::bTriggerBotHead);
-				ImGui::Checkbox("Do not Fire Firendly", &Config::bAnitFirendlyFire);
+				ImGui::Checkbox(u8"Aimbot", &Config::bAimbot);
+				ImGui::SliderFloat(u8"Aimbot FOV", &Config::fAimbotFov, 1.0f, 360.0f);
+				ImGui::Checkbox(u8"Silent Aimbot", &Config::bSilentAimbot);
+				ImGui::Checkbox(u8"Trigger Bot", &Config::bTriggerBot);
+				ImGui::Checkbox(u8"Trigger Bot Only Head", &Config::bTriggerBotHead);
+				ImGui::Checkbox(u8"Do not Fire Firendly", &Config::bAnitFirendlyFire);
 			}
 
-			// ÆäËû
-			if (ImGui::CollapsingHeader("Misc"))
+			// å…¶ä»–
+			if (ImGui::CollapsingHeader(u8"Misc"))
 			{
-				ImGui::Checkbox("Bunny Hop", &Config::bBunnyHop);
-				ImGui::Checkbox("Auto Strafe", &Config::bAutoStrafe);
-				ImGui::Checkbox("No Recoil", &Config::bNoRecoil);
-				ImGui::Checkbox("Rapid Fire", &Config::bRapidFire);
-				ImGui::Checkbox("CRC Check Bypass", &Config::bCrcCheckBypass);
-				ImGui::Checkbox("Full Bright", &Config::bCvarFullBright);
-				ImGui::Checkbox("Wireframe", &Config::bCvarWireframe);
-				ImGui::Checkbox("Game Mode Change", &Config::bCvarGameMode);
-				ImGui::Checkbox("Third Person", &Config::bThirdPersons);
+				ImGui::Checkbox(u8"Bunny Hop", &Config::bBunnyHop);
+				ImGui::Checkbox(u8"Auto Strafe", &Config::bAutoStrafe);
+				ImGui::Checkbox(u8"No Recoil", &Config::bNoRecoil);
+				ImGui::Checkbox(u8"Rapid Fire", &Config::bRapidFire);
+				ImGui::Checkbox(u8"CRC Check Bypass", &Config::bCrcCheckBypass);
+				ImGui::Checkbox(u8"Full Bright", &Config::bCvarFullBright);
+				ImGui::Checkbox(u8"Wireframe", &Config::bCvarWireframe);
+				ImGui::Checkbox(u8"Game Mode Change", &Config::bCvarGameMode);
+				ImGui::Checkbox(u8"Third Person", &Config::bThirdPersons);
 			}
 		}
-		ImGui::End();	// Íê³ÉÒ»¸ö´°¿ÚµÄ»æÖÆ
+		ImGui::End();	// å®Œæˆä¸€ä¸ªçª—å£çš„ç»˜åˆ¶
 	}
-
-	g_pDrawRender->FinishImGuiRender();
-
-	return oPresent(device, source, dest, window, region);
-}
-
-HRESULT WINAPI Hooked_EndScene(IDirect3DDevice9* device)
-{
-	static bool showHint = true;
-	if (showHint)
-	{
-		showHint = false;
-		if ((DWORD)g_pDeviceHooker->GetDevice() == (DWORD)device)
-			Utils::log("Hooked_EndScene success");
-	}
-
-	if (g_pDeviceHooker->GetDevice() == nullptr)
-	{
-		ResetDeviceHook(device);
-		showHint = true;
-	}
-
-	if (!g_pDrawRender)
-		g_pDrawRender = std::make_unique<DrawManager>(device);
-
-	// ±¸·İÖ®Ç°»æÖÆÉèÖÃ
-	g_pDrawRender->BeginRendering();
 
 #ifdef USE_D3D_DRAW
-
-	CBaseEntity* local = GetLocalClient();
-	if (g_interface.Engine->IsInGame() && local != nullptr)
 	{
-		// Ä¿Ç°×îĞ¡¾àÀë
+		CBaseEntity* local = GetLocalClient();
+		if (local == nullptr || !g_interface.Engine->IsInGame())
+			goto finish_draw;
+
+		// ç›®å‰æœ€å°è·ç¦»
 		float distmin = 65535.0f;
 
-		// µ±Ç°¶ÓÎé
+		// å½“å‰é˜Ÿä¼
 		int team = local->GetTeam();
 
-		// µ±Ç°ÊÇ·ñÓĞ×Ô¶¯Ãé×¼µÄÄ¿±ê
+		// å½“å‰æ˜¯å¦æœ‰è‡ªåŠ¨ç„å‡†çš„ç›®æ ‡
 		bool targetSelected = false;
 		bool specialSelected = false;
 
@@ -1930,7 +1924,7 @@ HRESULT WINAPI Hooked_EndScene(IDirect3DDevice9* device)
 		}
 		catch (...)
 		{
-			Utils::log("%s (%d): Î´ÖªÒì³£ | 0x%X", __FILE__, __LINE__, (DWORD)g_pCurrentAimbot);
+			Utils::log("%s (%d): æœªçŸ¥å¼‚å¸¸ | 0x%X", __FILE__, __LINE__, (DWORD)g_pCurrentAimbot);
 			targetSelected = false;
 			g_pCurrentAimbot = nullptr;
 		}
@@ -1945,15 +1939,22 @@ HRESULT WINAPI Hooked_EndScene(IDirect3DDevice9* device)
 		Vector myEyeOrigin = local->GetEyePosition();
 		Vector myOrigin = local->GetAbsOrigin();
 
-		// Ò»°ãÆÕ¸ĞÊµÌåË÷ÒıÉÏÏŞ 512 ¾Í¹»ÁË£¬Ì«´ó»á¿¨µÄ
+		// ä¸€èˆ¬æ™®æ„Ÿå®ä½“ç´¢å¼•ä¸Šé™ 512 å°±å¤Ÿäº†ï¼Œå¤ªå¤§ä¼šå¡çš„
 		int maxEntity = g_interface.ClientEntList->GetHighestEntityIndex();
 
-		// »æÖÆÑÕÉ«
+		// ç»˜åˆ¶é¢œè‰²
 		D3DCOLOR color = 0;
+
+		// ç”¨äºæ ¼å¼åŒ–å­—ç¬¦ä¸²
+		std::stringstream ss;
+		ss.sync_with_stdio(false);
+		ss.tie(nullptr);
+		ss.setf(std::ios::fixed);
+		ss.precision(0);
 
 		int aiming = *(int*)(local + m_iCrosshairsId);
 
-		// µ±Ç°ÕıÔÚÃé×¼µÄÄ¿±ê
+		// å½“å‰æ­£åœ¨ç„å‡†çš„ç›®æ ‡
 		CBaseEntity* target = (aiming > 0 ? g_interface.ClientEntList->GetClientEntity(aiming) : GetAimingTarget(&g_iCurrentHitbox));
 
 #ifdef _DEBUG
@@ -1962,6 +1963,8 @@ HRESULT WINAPI Hooked_EndScene(IDirect3DDevice9* device)
 #endif
 			if (!IsValidVictim(target))
 				target = nullptr;
+
+			g_pCurrentAiming = target;
 #ifdef _DEBUG
 		}
 		catch (std::exception e)
@@ -1971,12 +1974,11 @@ HRESULT WINAPI Hooked_EndScene(IDirect3DDevice9* device)
 		}
 		catch (...)
 		{
-			Utils::log("%s (%d): Î´ÖªÒì³£ | 0x%X", __FILE__, __LINE__, (DWORD)target);
+			Utils::log("%s (%d): æœªçŸ¥å¼‚å¸¸ | 0x%X", __FILE__, __LINE__, (DWORD)target);
 			target = nullptr;
 		}
 #endif
 
-		// »æÖÆ×¼ĞÇ
 		if (Config::bDrawCrosshairs)
 		{
 			int width, height;
@@ -1997,23 +1999,11 @@ HRESULT WINAPI Hooked_EndScene(IDirect3DDevice9* device)
 			width /= 2;
 			height /= 2;
 
-			/*
-			if (g_conVar["c_thirdpersonshoulder"] != nullptr &&
-			g_conVar["c_thirdpersonshoulder"]->GetInt() > 0)
-			{
-				// ÉÏÏÂÆ«ÒÆ
-				height += g_conVar["c_thirdpersonshoulderheight"]->GetInt();
-
-				// ×óÓÒÆ«ÒÆ
-				width += g_conVar["c_thirdpersonshoulderoffset"]->GetInt();
-			}
-			*/
-
 			g_pDrawRender->AddLine(color, width - 10, height, width + 10, height);
 			g_pDrawRender->AddLine(color, width, height - 10, width, height + 10);
 		}
 
-		// 0 Îª worldspawn£¬Ã»ÓĞÒâÒå
+		// 0 ä¸º worldspawnï¼Œæ²¡æœ‰æ„ä¹‰
 		for (int i = 1; i <= maxEntity; ++i)
 		{
 			CBaseEntity* entity = g_interface.ClientEntList->GetClientEntity(i);
@@ -2044,9 +2034,46 @@ HRESULT WINAPI Hooked_EndScene(IDirect3DDevice9* device)
 				if (IsSurvivor(classId) || IsSpecialInfected(classId) || IsCommonInfected(classId))
 				{
 #endif
-					// ¼ì²é Éú»¹Õß/ÌØ¸Ğ/ÆÕ¸Ğ ÊÇ·ñÊÇÓĞĞ§µÄ
-					if (!IsValidVictim(entity))
+					// æ£€æŸ¥ ç”Ÿè¿˜è€…/ç‰¹æ„Ÿ/æ™®æ„Ÿ æ˜¯å¦æ˜¯æœ‰æ•ˆçš„
+					if (!entity->IsAlive())
+					{
+						if (Config::bDrawSpectator)
+						{
+							ss.str("");
+
+							if (IsSurvivor(classId) || IsSpecialInfected(classId))
+							{
+								int obsMode = entity->GetNetProp<int>("m_iObserverMode", "DT_BasePlayer");
+								if (obsMode == OBS_MODE_IN_EYE || obsMode == OBS_MODE_CHASE)
+								{
+									CBaseEntity* obsTarget = (CBaseEntity*)entity->GetNetProp<CBaseHandle*>("m_hObserverTarget", "DT_BasePlayer");
+									if (obsTarget != nullptr)
+										obsTarget = g_interface.ClientEntList->GetClientEntityFromHandle((CBaseHandle*)obsTarget);
+									if (obsTarget != nullptr && (DWORD)obsTarget == (DWORD)local)
+									{
+										player_info_t info;
+										g_interface.Engine->GetPlayerInfo(i, &info);
+
+										if (obsMode == OBS_MODE_IN_EYE)
+											ss << info.name << " [1st]" << std::endl;
+										else if (obsMode == OBS_MODE_CHASE)
+											ss << info.name << " [3rd]" << std::endl;
+									}
+								}
+							}
+
+							if (!ss.str().empty())
+							{
+								color = (entity->GetTeam() == 2 ? DrawManager::SKYBLUE : DrawManager::RED);
+
+								int width, height;
+								g_interface.Engine->GetScreenSize(width, height);
+								g_pDrawRender->AddText(color, width * 0.75, height * 0.75, false, ss.str().c_str());
+							}
+						}
+
 						continue;
+					}
 #ifdef _DEBUG_OUTPUT_
 				}
 #endif
@@ -2058,37 +2085,37 @@ HRESULT WINAPI Hooked_EndScene(IDirect3DDevice9* device)
 			}
 			catch (...)
 			{
-				Utils::log("%s (%d): Î´ÖªÒì³£ -> 0x%X", __FILE__, __LINE__, (DWORD)entity);
+				Utils::log("%s (%d): æœªçŸ¥å¼‚å¸¸ -> 0x%X", __FILE__, __LINE__, (DWORD)entity);
 				continue;
 			}
 
 			Vector head, foot, headbox, origin;
 
-			// Ä¿±ê½ÅÏÂµÄÎ»ÖÃ
+			// ç›®æ ‡è„šä¸‹çš„ä½ç½®
 			origin = (IsSurvivor(classId) || IsSpecialInfected(classId) ?
-				entity->GetAbsOrigin() :		// Íæ¼Ò×¨ÓÃ£¬ÆäËûÊµÌåÊÇÃ»ÓĞµÄ
+				entity->GetAbsOrigin() :		// ç©å®¶ä¸“ç”¨ï¼Œå…¶ä»–å®ä½“æ˜¯æ²¡æœ‰çš„
 				entity->GetNetProp<Vector>("m_vecOrigin", "DT_BaseCombatCharacter"));
 
-			// Ä¿±êµÄÍ·²¿µÄÎ»ÖÃ
+			// ç›®æ ‡çš„å¤´éƒ¨çš„ä½ç½®
 			headbox = (IsSurvivor(classId) || IsSpecialInfected(classId) || IsCommonInfected(classId) ?
 				GetHeadHitboxPosition(entity) : origin);
 
-			// ¼ì²éÄ¿±êÊÇ·ñÔÚÆÁÄ»ÄÚ
+			// æ£€æŸ¥ç›®æ ‡æ˜¯å¦åœ¨å±å¹•å†…
 			if (!headbox.IsValid() || !WorldToScreen(headbox, head) ||
 				!WorldToScreen(origin, foot))
 				continue;
 
-			// Ä¿±êÊÇ·ñ¿É¼û
+			// ç›®æ ‡æ˜¯å¦å¯è§
 			bool visible = IsTargetVisible(entity, headbox, myEyeOrigin);
 
-			// Ä¿±êÓë×Ô¼ºµÄ¾àÀë
+			// ç›®æ ‡ä¸è‡ªå·±çš„è·ç¦»
 			float dist = myOrigin.DistTo(origin);
 
-			// »ñÈ¡·½¿òµÄ´óĞ¡
+			// è·å–æ–¹æ¡†çš„å¤§å°
 			float height = fabs(head.y - foot.y);
 			float width = height * 0.65f;
 
-			// ¸øÍæ¼Ò»æÖÆÒ»¸ö¿ò
+			// ç»™ç©å®¶ç»˜åˆ¶ä¸€ä¸ªæ¡†
 			if (Config::bDrawBox)
 			{
 				if (IsSurvivor(classId) || IsSpecialInfected(classId))
@@ -2098,32 +2125,34 @@ HRESULT WINAPI Hooked_EndScene(IDirect3DDevice9* device)
 					{
 						if (entity->GetNetProp<byte>("m_bIsOnThirdStrike", "DT_TerrorPlayer") != 0)
 						{
-							// ºÚ°××´Ì¬ - °×É«
+							// é»‘ç™½çŠ¶æ€ - ç™½è‰²
 							color = DrawManager::WHITE;
 						}
 						else if (IsControlled(entity))
 						{
-							// ±»¿Ø - ³ÈÉ«
+							// è¢«æ§ - æ©™è‰²
 							color = DrawManager::ORANGE;
 						}
 						else if (IsIncapacitated(entity))
 						{
-							// µ¹µØ¹Ò±ß - »ÆÉ«
+							// å€’åœ°æŒ‚è¾¹ - é»„è‰²
 							color = DrawManager::YELLOW;
 						}
 					}
 					else if (IsSpecialInfected(classId) && IsGhostInfected(entity) && IsPlayerGhost(i))
 					{
-						// ÓÄÁé×´Ì¬ - ×ÏÉ«
+						// å¹½çµçŠ¶æ€ - ç´«è‰²
 						color = DrawManager::PURPLE;
 					}
 
-					// »æÖÆÒ»¸ö¿ò
-					g_pDrawRender->AddRect(color, foot.x - width / 2, foot.y, width, -height);
+					// ç»˜åˆ¶ä¸€ä¸ªæ¡†ï¼ˆè™½ç„¶è¿™ä¸ªæ¡†åªæœ‰ä¸Šä¸‹ä¸¤æ¡çº¿ï¼‰
+
+					// g_pDrawRender->AddRect(color, foot.x - width / 2, foot.y, width, -height);
+					g_pDrawRender->AddCorner(color, foot.x - width / 2, foot.y, width, -height);
 				}
 				else if (IsCommonInfected(classId))
 				{
-					// ÕâÖ»ÊÇÆÕ¸Ğ¶øÒÑ£¬Ì«Ô¶ÁËÃ»±ØÒªÏÔÊ¾³öÀ´
+					// è¿™åªæ˜¯æ™®æ„Ÿè€Œå·²ï¼Œå¤ªè¿œäº†æ²¡å¿…è¦æ˜¾ç¤ºå‡ºæ¥
 					if (dist > 3000.0f)
 						continue;
 
@@ -2135,7 +2164,8 @@ HRESULT WINAPI Hooked_EndScene(IDirect3DDevice9* device)
 					if (classId == ET_WITCH)
 						color = DrawManager::PINK;
 
-					// »­Ò»¸öĞ¡·½ĞÎ£¬ÒÔ±ê¼ÇÎªÍ·²¿
+					// ç”»ä¸€ä¸ªå°æ–¹å½¢ï¼Œä»¥æ ‡è®°ä¸ºå¤´éƒ¨
+
 					if (visible)
 						g_pDrawRender->AddFillCircle(color, head.x, head.y, size, 8);
 					else
@@ -2143,25 +2173,25 @@ HRESULT WINAPI Hooked_EndScene(IDirect3DDevice9* device)
 				}
 				else
 				{
-					// ÆäËû¶«Î÷
+					// å…¶ä»–ä¸œè¥¿
 					if (dist > 1000.0f)
 						continue;
 
 					if (classId == ET_TankRock)
 					{
-						// Tank µÄÊ¯Í·
+						// Tank çš„çŸ³å¤´
 						g_pDrawRender->AddCircle(DrawManager::PURPLE, foot.x, foot.y, 9, 8);
 					}
 					else if (classId == ET_WeaponFirstAidKit || classId == ET_WeaponDefibrillator ||
 						classId == ET_WeaponPainPills || classId == ET_WeaponPainPills)
 					{
-						// Ò½ÁÆÆ·
+						// åŒ»ç–—å“
 						g_pDrawRender->AddFillRect(DrawManager::DARKORANGE, foot.x, foot.y, 2, 8);
 					}
 					else if (classId == ET_WeaponPipeBomb || classId == ET_WeaponMolotov ||
 						classId == ET_WeaponVomitjar)
 					{
-						// Í¶ÖÀÎäÆ÷
+						// æŠ•æ·æ­¦å™¨
 						g_pDrawRender->AddFillRect(DrawManager::DARKGRAY, foot.x, foot.y, 2, 8);
 					}
 				}
@@ -2174,7 +2204,7 @@ HRESULT WINAPI Hooked_EndScene(IDirect3DDevice9* device)
 				{
 					color = DrawManager::WHITE;
 					studiohdr_t* hdr = g_interface.ModelInfo->GetStudioModel(entity->GetModel());
-					if (hdr != nullptr)
+					if (hdr != nullptr && IsValidVictimId(classId))
 					{
 						Vector parent, child, screenParent, screenChild;
 						for (int i = 0; i < hdr->numbones; ++i)
@@ -2188,7 +2218,6 @@ HRESULT WINAPI Hooked_EndScene(IDirect3DDevice9* device)
 							if (child.IsValid() && parent.IsValid() &&
 								WorldToScreen(parent, screenParent) && WorldToScreen(child, screenChild))
 							{
-								// °ÑËùÓĞµÄ¹Ç÷ÀÓÃÏßÁ¬½ÓÆğÀ´
 								g_pDrawRender->AddLine(color, screenParent.x, screenParent.y,
 									screenChild.x, screenChild.y);
 							}
@@ -2199,38 +2228,32 @@ HRESULT WINAPI Hooked_EndScene(IDirect3DDevice9* device)
 
 			if (Config::bDrawName)
 			{
-				// ÓÃÓÚ¸ñÊ½»¯×Ö·û´®
-				std::stringstream ss;
+				ss.str("");
 
-				// È¡Ïû stream Í¬²½¿ÉÒÔ¼Ó¿ìÔËĞĞËÙ¶È
-				ss.sync_with_stdio(false);
-				ss.tie(nullptr);
-
-				// È¥³ı float µÄĞ¡ÊıÎ»£¬ÒòÎªÃ»±ØÒª
-				ss.setf(std::ios::fixed);
-				ss.precision(0);
-
-				// ¸ù¾İÀàĞÍ¾ö¶¨»æÖÆµÄÄÚÈİ
+				// æ ¹æ®ç±»å‹å†³å®šç»˜åˆ¶çš„å†…å®¹
 				if (IsSurvivor(classId) || IsSpecialInfected(classId))
 				{
-					// ¼ì²éÊÇ·ñÎªÉú»¹Õß
+					player_info_t info;
+					g_interface.Engine->GetPlayerInfo(i, &info);
+
+					// æ£€æŸ¥æ˜¯å¦ä¸ºç”Ÿè¿˜è€…
 					if (IsSurvivor(classId))
 					{
 						if (IsIncapacitated(entity))
 						{
-							// µ¹µØÊ±Ö»ÓĞÆÕÍ¨ÑªÁ¿
+							// å€’åœ°æ—¶åªæœ‰æ™®é€šè¡€é‡
 							ss << "[" << entity->GetHealth() << " + incap] ";
 						}
 						else if (IsControlled(entity))
 						{
-							// Íæ¼Ò±»¿ØÁË
+							// ç©å®¶è¢«æ§äº†
 							ss << "[" << (int)(entity->GetHealth() +
 								entity->GetNetProp<float>("m_healthBuffer", "DT_TerrorPlayer")) <<
 								" + grabbed] ";
 						}
 						else
 						{
-							// Éú»¹ÕßÏÔÊ¾ÑªÁ¿£¬ÁÙÊ±ÑªÁ¿
+							// ç”Ÿè¿˜è€…æ˜¾ç¤ºè¡€é‡ï¼Œä¸´æ—¶è¡€é‡
 							ss << "[" << entity->GetHealth() << " + " << std::setprecision(0) <<
 								(int)(entity->GetNetProp<float>("m_healthBuffer", "DT_TerrorPlayer")) << "] ";
 						}
@@ -2239,27 +2262,27 @@ HRESULT WINAPI Hooked_EndScene(IDirect3DDevice9* device)
 					{
 						if (IsPlayerGhost(i) && IsGhostInfected(entity))
 						{
-							// ÓÄÁé×´Ì¬µÄÌØ¸Ğ
+							// å¹½çµçŠ¶æ€çš„ç‰¹æ„Ÿ
 							ss << "[" << entity->GetHealth() << " ghost] ";
 						}
 						else
 						{
-							// ·ÇÉú»¹ÕßÖ»ÏÔÊ¾ÑªÁ¿¾ÍºÃÁË
+							// éç”Ÿè¿˜è€…åªæ˜¾ç¤ºè¡€é‡å°±å¥½äº†
 							ss << "[" << entity->GetHealth() << "] ";
 						}
 					}
 
-					// Íæ¼ÒÀàĞÍ
-					ss << GetZombieClassName(entity);
+					// ç©å®¶åå­—
+					ss << info.name;
 
-					// ÏÔÊ¾¾àÀë
-					ss << "\n" << (int)dist;
+					// æ˜¾ç¤ºè·ç¦»
+					ss << std::endl << (int)dist;
 
 					CBaseEntity* weapon = (CBaseEntity*)entity->GetActiveWeapon();
 					if (weapon != nullptr)
 						weapon = g_interface.ClientEntList->GetClientEntityFromHandle((CBaseHandle*)weapon);
 
-					// ¸øÉú»¹ÕßÏÔÊ¾µ¯Ò©
+					// ç»™ç”Ÿè¿˜è€…æ˜¾ç¤ºå¼¹è¯
 					if (IsSurvivor(classId))
 					{
 						if (Config::bDrawAmmo && weapon != nullptr)
@@ -2268,17 +2291,17 @@ HRESULT WINAPI Hooked_EndScene(IDirect3DDevice9* device)
 							int clip = weapon->GetNetProp<int>("m_iClip1", "DT_BaseCombatWeapon");
 							byte reloading = weapon->GetNetProp<byte>("m_bInReload", "DT_BaseCombatWeapon");
 
-							// ÏÔÊ¾µ¯Ò©ºÍµ¯¼Ğ
+							// æ˜¾ç¤ºå¼¹è¯å’Œå¼¹å¤¹
 							if (ammoType > 0 && clip > -1)
 							{
 								if (reloading != 0)
 								{
-									// ÕıÔÚ»»×Óµ¯
+									// æ­£åœ¨æ¢å­å¼¹
 									ss << " (reloading)";
 								}
 								else
 								{
-									// Ã»ÓĞ»»×Óµ¯
+									// æ²¡æœ‰æ¢å­å¼¹
 									ss << " (" << clip << "/" <<
 										entity->GetNetProp<int>("m_iAmmo", "DT_TerrorPlayer", (size_t)ammoType) <<
 										")";
@@ -2286,58 +2309,15 @@ HRESULT WINAPI Hooked_EndScene(IDirect3DDevice9* device)
 							}
 						}
 					}
-					/*
 					else
 					{
-					// ¸ĞÈ¾Õß¼¼ÄÜÀäÈ´Ê±¼äÏÔÊ¾
-
-					float serverTime = GetServerTime();
-					ss.precision(1);
-
-					if (classId == ET_TANK)
-					{
-					if (weapon != nullptr)
-					{
-					float primary = weapon->GetNetProp<float>("m_flNextPrimaryAttack", "DT_BaseCombatWeapon");
-					float secondary = weapon->GetNetProp<float>("m_flNextSecondaryAttack", "DT_BaseCombatWeapon");
-
-					ss << "(";
-					if ((primary -= serverTime) > 0.0f)
-					ss << primary;
-					else
-					ss << "ready";
-
-					ss << "/";
-					if ((secondary -= serverTime) > 0.0f)
-					ss << secondary;
-					else
-					ss << "ready";
-
-					ss << ")";
+						if (!info.isBot)
+						{
+							// å¦‚æœç‰¹æ„Ÿä¸æ˜¯æœºå™¨äººçš„è¯å°±æ˜¾ç¤ºç‰¹æ„Ÿç±»å‹
+							// æœºå™¨äººç‰¹æ„Ÿåå­—å°±æ˜¯ç±»å‹
+							ss << " (" << GetZombieClassName(entity) << ")";
+						}
 					}
-					}
-					else
-					{
-					weapon = (CBaseEntity*)entity->GetNetProp<CBaseHandle*>("m_customAbility", "DT_TerrorPlayer");
-					if (weapon != nullptr)
-					weapon = g_interface.ClientEntList->GetClientEntityFromHandle((CBaseHandle*)weapon);
-					if (weapon != nullptr)
-					{
-					float skill = weapon->GetNetProp2<float>("m_nextActivationTimer", "m_timestamp", "DT_AbilityBase");
-
-					ss << "(";
-					if ((skill -= serverTime) > 0.0f)
-					ss << skill;
-					else
-					ss << "ready";
-
-					ss << ")";
-					}
-					}
-
-					ss.precision(0);
-					}
-					*/
 				}
 
 				if (!ss.str().empty())
@@ -2347,16 +2327,16 @@ HRESULT WINAPI Hooked_EndScene(IDirect3DDevice9* device)
 				}
 			}
 
-			// ×Ô¶¯Ãé×¼Ñ°ÕÒÄ¿±ê
+			// è‡ªåŠ¨ç„å‡†å¯»æ‰¾ç›®æ ‡
 			if (Config::bAimbot && (!targetSelected || !(g_pUserCommands->buttons & IN_ATTACK)) &&
 				((team == 2 && (IsSpecialInfected(classId) || classId == ET_INFECTED)) ||
 				(team == 3 && IsSurvivor(classId))))
 			{
-				// ÒÑ¾­Ñ¡Ôñ¹ıÄ¿±êÁË£¬²¢ÇÒÕâÊÇÒ»¸ö²»ÖØÒªµÄµĞÈË
+				// å·²ç»é€‰æ‹©è¿‡ç›®æ ‡äº†ï¼Œå¹¶ä¸”è¿™æ˜¯ä¸€ä¸ªä¸é‡è¦çš„æ•Œäºº
 				if (classId == ET_INFECTED && specialSelected)
 					continue;
 
-				// Ñ¡ÔñÒ»¸ö×î½Ó½üµÄÌØ¸Ğ£¬ÒòÎªÌØ¸ĞÔ½½ü¶ÔÍæ¼ÒÀ´ËµÔ½Î£ÏÕ
+				// é€‰æ‹©ä¸€ä¸ªæœ€æ¥è¿‘çš„ç‰¹æ„Ÿï¼Œå› ä¸ºç‰¹æ„Ÿè¶Šè¿‘å¯¹ç©å®¶æ¥è¯´è¶Šå±é™©
 				if (entity->GetTeam() != team && dist < distmin && visible &&
 					GetAnglesFieldOfView(myViewAngles, CalculateAim(myEyeOrigin, headbox)) <=
 					Config::fAimbotFov)
@@ -2369,15 +2349,40 @@ HRESULT WINAPI Hooked_EndScene(IDirect3DDevice9* device)
 				}
 			}
 		}
+	}
+finish_draw:
+#endif
 
-		g_pCurrentAiming = target;
+	g_pDrawRender->FinishImGuiRender();
+
+	return oPresent(device, source, dest, window, region);
+}
+
+HRESULT WINAPI Hooked_EndScene(IDirect3DDevice9* device)
+{
+	static bool showHint = true;
+	if (showHint)
+	{
+		showHint = false;
+		if ((DWORD)g_pDeviceHooker->GetDevice() == (DWORD)device)
+			Utils::log("Hooked_EndScene success");
 	}
 
-#endif
+	if (g_pDeviceHooker->GetDevice() == nullptr)
+	{
+		ResetDeviceHook(device);
+		showHint = true;
+	}
+
+	if (!g_pDrawRender)
+		g_pDrawRender = std::make_unique<DrawManager>(device);
+
+	// å¤‡ä»½ä¹‹å‰ç»˜åˆ¶è®¾ç½®
+	g_pDrawRender->BeginRendering();
 
 	g_bNewFrame = true;
 
-	// »¹Ô­±¸·İµÄÉèÖÃ
+	// è¿˜åŸå¤‡ä»½çš„è®¾ç½®
 	g_pDrawRender->EndRendering();
 
 	return oEndScene(device);
@@ -2444,7 +2449,7 @@ HRESULT WINAPI Hooked_CreateQuery(IDirect3DDevice9* device, D3DQUERYTYPE type, I
 		showHint = true;
 	}
 
-	/*	²»ÒªÆôÓÃÕâ¸ö£¬»áµ¼ÖÂÆÁÄ»±äºÚµÄ
+	/*	ä¸è¦å¯ç”¨è¿™ä¸ªï¼Œä¼šå¯¼è‡´å±å¹•å˜é»‘çš„
 	if (type == D3DQUERYTYPE_OCCLUSION)
 	type = D3DQUERYTYPE_TIMESTAMP;
 	*/
@@ -2453,7 +2458,7 @@ HRESULT WINAPI Hooked_CreateQuery(IDirect3DDevice9* device, D3DQUERYTYPE type, I
 }
 
 // -------------------------------- Game Hooked Function --------------------------------
-void __fastcall Hooked_PaintTraverse(CPanel* pPanel, void* edx, unsigned int panel, bool forcePaint, bool allowForce)
+void __fastcall Hooked_PaintTraverse(CPanel* pPanel, void* _edx, unsigned int panel, bool forcePaint, bool allowForce)
 {
 	static bool showHint = true;
 	if (showHint)
@@ -2490,528 +2495,493 @@ void __fastcall Hooked_PaintTraverse(CPanel* pPanel, void* edx, unsigned int pan
 		g_interface.Surface->SetFontGlyphSet(font, "arial", FontSize, FW_DONTCARE, 0, 0, 0x200);
 	}
 
-	/*	Panel Tree
-		MatSystemTopPanel
-			staticPanel
-				GameUI Background Panel
-				staticClientDLLToolsPanel
-				FocusOverlayPanel
-				staticClientDLLPanel
-					Fullscene Root Panel
-						CBaseViewport
-							HudScriptedMode
-							HudCloseCaption
-	*/
-
-	// Ã¿Ò»Ö¡µ÷ÓÃ 1 ´Î
+	// æ¯ä¸€å¸§è°ƒç”¨ 2 æ¬¡
 	if (FocusOverlayPanel > 0 && panel == FocusOverlayPanel)
 	{
-		// ²»½¨ÒéÔÚÕâÀï»æÖÆ£¬ÒòÎªÕâ¸ö²¢²»ÊÇÈ«ÆÁÄ»µÄ
-	}
-
-	// Ã¿Ò»Ö¡µ÷ ºÜ¶à´Î ÔÚÕâÀï²»ÄÜ×öÏûºÄ½Ï´óµÄÊÂÇé
-	if (MatSystemTopPanel > 0 && panel == MatSystemTopPanel)
-	{
-		// ÔÚÕâÀï»æÖÆ»áµ¼ÖÂÓÎÏ·Àï fps ·Ç³£µÍ£¬Òò´Ë±ØĞëÒª×ö³öÏŞÖÆ
+		// ä¸å»ºè®®åœ¨è¿™é‡Œç»˜åˆ¶ï¼Œå› ä¸ºè¿™ä¸ªå¹¶ä¸æ˜¯å…¨å±å¹•çš„
 #ifndef USE_D3D_DRAW
-		if (!g_bNewFrame)
-			goto finish_draw;
-
-		g_bNewFrame = false;
-
-		CBaseEntity* local = GetLocalClient();
-		if (local == nullptr || !g_interface.Engine->IsInGame())
-			goto finish_draw;
-
-		// Ä¿Ç°×îĞ¡¾àÀë
-		float distmin = 65535.0f;
-
-		// µ±Ç°¶ÓÎé
-		int team = local->GetTeam();
-
-		// µ±Ç°ÊÇ·ñÓĞ×Ô¶¯Ãé×¼µÄÄ¿±ê
-		bool targetSelected = false;
-		bool specialSelected = false;
-
-#ifdef _DEBUG
-		try
+		static bool bIgnoreTick = false;
+		if(!bIgnoreTick)
 		{
-#endif
-			targetSelected = IsValidVictim(g_pCurrentAimbot);
-#ifdef _DEBUG
-		}
-		catch (std::exception e)
-		{
-			Utils::log("%s (%d): %s | 0x%X", __FILE__, __LINE__, e.what(), (DWORD)g_pCurrentAimbot);
-			targetSelected = false;
-			g_pCurrentAimbot = nullptr;
-		}
-		catch (...)
-		{
-			Utils::log("%s (%d): Î´ÖªÒì³£ | 0x%X", __FILE__, __LINE__, (DWORD)g_pCurrentAimbot);
-			targetSelected = false;
-			g_pCurrentAimbot = nullptr;
-		}
-#endif
-
-		if (!targetSelected || !(GetAsyncKeyState(VK_LBUTTON) & 0x8000))
-			g_pCurrentAimbot = nullptr;
-
-		Vector myViewAngles;
-		g_interface.Engine->GetViewAngles(myViewAngles);
-
-		Vector myEyeOrigin = local->GetEyePosition();
-		Vector myOrigin = local->GetAbsOrigin();
-
-		// Ò»°ãÆÕ¸ĞÊµÌåË÷ÒıÉÏÏŞ 512 ¾Í¹»ÁË£¬Ì«´ó»á¿¨µÄ
-		int maxEntity = g_interface.ClientEntList->GetHighestEntityIndex();
-
-		// »æÖÆÑÕÉ«
-		D3DCOLOR color = 0;
-
-		// ÓÃÓÚ¸ñÊ½»¯×Ö·û´®
-		std::stringstream ss;
-		ss.sync_with_stdio(false);
-		ss.tie(nullptr);
-		ss.setf(std::ios::fixed);
-		ss.precision(0);
-
-		int aiming = *(int*)(local + m_iCrosshairsId);
-
-		// µ±Ç°ÕıÔÚÃé×¼µÄÄ¿±ê
-		CBaseEntity* target = (aiming > 0 ? g_interface.ClientEntList->GetClientEntity(aiming) : GetAimingTarget(&g_iCurrentHitbox));
-
-#ifdef _DEBUG
-		try
-		{
-#endif
-			if (!IsValidVictim(target))
-				target = nullptr;
-#ifdef _DEBUG
-		}
-		catch (std::exception e)
-		{
-			Utils::log("%s (%d): %s | 0x%X", __FILE__, __LINE__, e.what(), (DWORD)target);
-			target = nullptr;
-		}
-		catch (...)
-		{
-			Utils::log("%s (%d): Î´ÖªÒì³£ | 0x%X", __FILE__, __LINE__, (DWORD)target);
-			target = nullptr;
-		}
-#endif
-
-		if (Config::bDrawCrosshairs)
-		{
-			int width, height;
-			g_interface.Engine->GetScreenSize(width, height);
-
-			int classId = (target == nullptr ? ET_INVALID : target->GetClientClass()->m_ClassID);
-			if (classId == ET_INVALID)
-				color = DrawManager::LAWNGREEN;
-			else if (target->GetTeam() == local->GetTeam())
-				color = DrawManager::BLUE;
-			else if (classId == ET_INFECTED)
-				color = DrawManager::ORANGE;
-			else if (classId == ET_WITCH)
-				color = DrawManager::PINK;
-			else
-				color = DrawManager::RED;
-
 			/*
-			g_interface.Surface->drawCrosshair(width / 2, height / 2,
-			(color & 0xFF0000) >> 16, (color & 0xFF00) >> 8, color & 0xFF);
+			if (!g_bNewFrame)
+				goto finish_draw;
+
+			g_bNewFrame = false;
 			*/
 
-			width /= 2;
-			height /= 2;
+			CBaseEntity* local = GetLocalClient();
+			if (local == nullptr || !g_interface.Engine->IsInGame())
+				goto finish_draw;
 
-			/*
-			if (g_conVar["c_thirdpersonshoulder"] != nullptr &&
-			g_conVar["c_thirdpersonshoulder"]->GetInt() > 0)
-			{
-			// ÉÏÏÂÆ«ÒÆ
-			height += g_conVar["c_thirdpersonshoulderheight"]->GetInt();
+			// ç›®å‰æœ€å°è·ç¦»
+			float distmin = 65535.0f;
 
-			// ×óÓÒÆ«ÒÆ
-			width += g_conVar["c_thirdpersonshoulderoffset"]->GetInt();
-			}
-			*/
+			// å½“å‰é˜Ÿä¼
+			int team = local->GetTeam();
 
-			g_pDrawRender->AddLine(color, width - 10, height, width + 10, height);
-			g_pDrawRender->AddLine(color, width, height - 10, width, height + 10);
-		}
+			// å½“å‰æ˜¯å¦æœ‰è‡ªåŠ¨ç„å‡†çš„ç›®æ ‡
+			bool targetSelected = false;
+			bool specialSelected = false;
 
-		// 0 Îª worldspawn£¬Ã»ÓĞÒâÒå
-		for (int i = 1; i <= maxEntity; ++i)
-		{
-			CBaseEntity* entity = g_interface.ClientEntList->GetClientEntity(i);
-			int classId = ET_INVALID;
-
+#ifdef _DEBUG
 			try
 			{
-				if (entity == nullptr || entity->IsDormant() || (DWORD)entity == (DWORD)local)
-					continue;
-
-				classId = entity->GetClientClass()->m_ClassID;
-				if (g_pGameRulesProxy == nullptr && classId == ET_TerrorGameRulesProxy)
-				{
-					g_pGameRulesProxy = entity;
-					Utils::log("TerrorGameRulesProxy Entity found 0x%X", (DWORD)g_pGameRulesProxy);
-				}
-
-				if (g_pPlayerResource == nullptr && classId == ET_TerrorPlayerResource)
-				{
-					g_pPlayerResource = entity;
-					Utils::log("TerrorPlayerResource Entity found 0x%X", (DWORD)g_pPlayerResource);
-				}
-
-				if ((DWORD)g_pCurrentAiming == (DWORD)entity)
-					g_iCurrentAiming = i;
-
-#ifdef _DEBUG_OUTPUT_
-				if (IsSurvivor(classId) || IsSpecialInfected(classId) || IsCommonInfected(classId))
-				{
 #endif
-					// ¼ì²é Éú»¹Õß/ÌØ¸Ğ/ÆÕ¸Ğ ÊÇ·ñÊÇÓĞĞ§µÄ
-					if (!entity->IsAlive())
-					{
-						if (Config::bDrawSpectator)
-						{
-							ss.str("");
-
-							if (IsSurvivor(classId) || IsSpecialInfected(classId))
-							{
-								int obsMode = entity->GetNetProp<int>("m_iObserverMode", "DT_BasePlayer");
-								if (obsMode == OBS_MODE_IN_EYE || obsMode == OBS_MODE_CHASE)
-								{
-									CBaseEntity* obsTarget = (CBaseEntity*)entity->GetNetProp<CBaseHandle*>("m_hObserverTarget", "DT_BasePlayer");
-									if (obsTarget != nullptr)
-										obsTarget = g_interface.ClientEntList->GetClientEntityFromHandle((CBaseHandle*)obsTarget);
-									if (obsTarget != nullptr && (DWORD)obsTarget == (DWORD)local)
-									{
-										player_info_t info;
-										g_interface.Engine->GetPlayerInfo(i, &info);
-
-										if (obsMode == OBS_MODE_IN_EYE)
-											ss << info.name << " [1st]\n";
-										else if (obsMode == OBS_MODE_CHASE)
-											ss << info.name << " [3rd]\n";
-									}
-								}
-							}
-
-							if (!ss.str().empty())
-							{
-								color = (entity->GetTeam() == 2 ? DrawManager::SKYBLUE : DrawManager::RED);
-
-								int width, height;
-								g_interface.Engine->GetScreenSize(width, height);
-								g_pDrawRender->AddText(color, width * 0.75, height * 0.75, false, ss.str().c_str());
-							}
-						}
-
-						continue;
-					}
-#ifdef _DEBUG_OUTPUT_
-				}
-#endif
+				targetSelected = IsValidVictim(g_pCurrentAimbot);
+#ifdef _DEBUG
 			}
 			catch (std::exception e)
 			{
-				Utils::log("%s (%d): %s", __FILE__, __LINE__, e.what());
-				continue;
+				Utils::log("%s (%d): %s | 0x%X", __FILE__, __LINE__, e.what(), (DWORD)g_pCurrentAimbot);
+				targetSelected = false;
+				g_pCurrentAimbot = nullptr;
 			}
 			catch (...)
 			{
-				Utils::log("%s (%d): Î´ÖªÒì³£ -> 0x%X", __FILE__, __LINE__, (DWORD)entity);
-				continue;
+				Utils::log("%s (%d): æœªçŸ¥å¼‚å¸¸ | 0x%X", __FILE__, __LINE__, (DWORD)g_pCurrentAimbot);
+				targetSelected = false;
+				g_pCurrentAimbot = nullptr;
 			}
+#endif
 
-			Vector head, foot, headbox, origin;
+			if (!targetSelected || !(GetAsyncKeyState(VK_LBUTTON) & 0x8000))
+				g_pCurrentAimbot = nullptr;
 
-			// Ä¿±ê½ÅÏÂµÄÎ»ÖÃ
-			origin = (IsSurvivor(classId) || IsSpecialInfected(classId) ?
-				entity->GetAbsOrigin() :		// Íæ¼Ò×¨ÓÃ£¬ÆäËûÊµÌåÊÇÃ»ÓĞµÄ
-				entity->GetNetProp<Vector>("m_vecOrigin", "DT_BaseCombatCharacter"));
+			Vector myViewAngles;
+			g_interface.Engine->GetViewAngles(myViewAngles);
 
-			// Ä¿±êµÄÍ·²¿µÄÎ»ÖÃ
-			headbox = (IsSurvivor(classId) || IsSpecialInfected(classId) || IsCommonInfected(classId) ?
-				GetHeadHitboxPosition(entity) : origin);
+			Vector myEyeOrigin = local->GetEyePosition();
+			Vector myOrigin = local->GetAbsOrigin();
 
-			// ¼ì²éÄ¿±êÊÇ·ñÔÚÆÁÄ»ÄÚ
-			if (!headbox.IsValid() || !WorldToScreen(headbox, head) ||
-				!WorldToScreen(origin, foot))
-				continue;
+			// ä¸€èˆ¬æ™®æ„Ÿå®ä½“ç´¢å¼•ä¸Šé™ 512 å°±å¤Ÿäº†ï¼Œå¤ªå¤§ä¼šå¡çš„
+			int maxEntity = g_interface.ClientEntList->GetHighestEntityIndex();
 
-			// Ä¿±êÊÇ·ñ¿É¼û
-			bool visible = IsTargetVisible(entity, headbox, myEyeOrigin);
+			// ç»˜åˆ¶é¢œè‰²
+			D3DCOLOR color = 0;
 
-			// Ä¿±êÓë×Ô¼ºµÄ¾àÀë
-			float dist = myOrigin.DistTo(origin);
+			// ç”¨äºæ ¼å¼åŒ–å­—ç¬¦ä¸²
+			std::stringstream ss;
+			ss.sync_with_stdio(false);
+			ss.tie(nullptr);
+			ss.setf(std::ios::fixed);
+			ss.precision(0);
 
-			// »ñÈ¡·½¿òµÄ´óĞ¡
-			float height = fabs(head.y - foot.y);
-			float width = height * 0.65f;
-
-			// ¸øÍæ¼Ò»æÖÆÒ»¸ö¿ò
-			if (Config::bDrawBox)
+			if (Config::bDrawCrosshairs)
 			{
-				if (IsSurvivor(classId) || IsSpecialInfected(classId))
-				{
-					color = (entity->GetTeam() == team ? DrawManager::BLUE : DrawManager::RED);
-					if (IsSurvivor(classId))
-					{
-						if (entity->GetNetProp<byte>("m_bIsOnThirdStrike", "DT_TerrorPlayer") != 0)
-						{
-							// ºÚ°××´Ì¬ - °×É«
-							color = DrawManager::WHITE;
-						}
-						else if (IsControlled(entity))
-						{
-							// ±»¿Ø - ³ÈÉ«
-							color = DrawManager::ORANGE;
-						}
-						else if (IsIncapacitated(entity))
-						{
-							// µ¹µØ¹Ò±ß - »ÆÉ«
-							color = DrawManager::YELLOW;
-						}
-					}
-					else if (IsSpecialInfected(classId) && IsGhostInfected(entity) && IsPlayerGhost(i))
-					{
-						// ÓÄÁé×´Ì¬ - ×ÏÉ«
-						color = DrawManager::PURPLE;
-					}
+				int width, height;
+				g_interface.Engine->GetScreenSize(width, height);
 
-					// »æÖÆÒ»¸ö¿ò£¨ËäÈ»Õâ¸ö¿òÖ»ÓĞÉÏÏÂÁ½ÌõÏß£©
-					/*
-					g_interface.Surface->drawBox(foot.x - width / 2, foot.y, width, -height, 1,
-					(color & 0xFF0000) >> 16, (color & 0xFF00) >> 8, color & 0xFF,
-					(color & 0xFF000000) >> 24);
-					*/
-
-					g_pDrawRender->AddRect(color, foot.x - width / 2, foot.y, width, -height);
-				}
-				else if (IsCommonInfected(classId))
-				{
-					// ÕâÖ»ÊÇÆÕ¸Ğ¶øÒÑ£¬Ì«Ô¶ÁËÃ»±ØÒªÏÔÊ¾³öÀ´
-					if (dist > 3000.0f)
-						continue;
-
-					int size = 2;
-					if (dist < 1000.0f)
-						size = 4;
-
-					color = DrawManager::GREEN;
-					if (classId == ET_WITCH)
-						color = DrawManager::PINK;
-
-					// »­Ò»¸öĞ¡·½ĞÎ£¬ÒÔ±ê¼ÇÎªÍ·²¿
-					/*
-					g_cInterfaces.Surface->FillRGBA(head.x, head.y, size, size,
-					(color & 0xFF0000) >> 16, (color & 0xFF00) >> 8, color & 0xFF,
-					(color & 0xFF000000) >> 24);
-					*/
-
-					if (visible)
-						g_pDrawRender->AddFillCircle(color, head.x, head.y, size, 8);
-					else
-						g_pDrawRender->AddCircle(color, head.x, head.y, size, 8);
-				}
+				int classId = (!IsValidVictim(g_pCurrentAiming) ? ET_INVALID : g_pCurrentAiming->GetClientClass()->m_ClassID);
+				if (classId == ET_INVALID)
+					color = DrawManager::LAWNGREEN;
+				else if (g_pCurrentAiming->GetTeam() == local->GetTeam())
+					color = DrawManager::BLUE;
+				else if (classId == ET_INFECTED)
+					color = DrawManager::ORANGE;
+				else if (classId == ET_WITCH)
+					color = DrawManager::PINK;
 				else
+					color = DrawManager::RED;
+
+				/*
+				g_interface.Surface->drawCrosshair(width / 2, height / 2,
+				(color & 0xFF0000) >> 16, (color & 0xFF00) >> 8, color & 0xFF);
+				*/
+
+				width /= 2;
+				height /= 2;
+
+				/*
+				if (g_conVar["c_thirdpersonshoulder"] != nullptr &&
+				g_conVar["c_thirdpersonshoulder"]->GetInt() > 0)
 				{
-					// ÆäËû¶«Î÷
-					if (dist > 1000.0f)
+				// ä¸Šä¸‹åç§»
+				height += g_conVar["c_thirdpersonshoulderheight"]->GetInt();
+
+				// å·¦å³åç§»
+				width += g_conVar["c_thirdpersonshoulderoffset"]->GetInt();
+				}
+				*/
+
+				g_pDrawRender->AddLine(color, width - 10, height, width + 10, height);
+				g_pDrawRender->AddLine(color, width, height - 10, width, height + 10);
+			}
+
+			// 0 ä¸º worldspawnï¼Œæ²¡æœ‰æ„ä¹‰
+			for (int i = 1; i <= maxEntity; ++i)
+			{
+				CBaseEntity* entity = g_interface.ClientEntList->GetClientEntity(i);
+				int classId = ET_INVALID;
+
+				try
+				{
+					if (entity == nullptr || entity->IsDormant() || (DWORD)entity == (DWORD)local)
 						continue;
 
-					if (classId == ET_TankRock)
+					classId = entity->GetClientClass()->m_ClassID;
+					if (g_pGameRulesProxy == nullptr && classId == ET_TerrorGameRulesProxy)
 					{
-						// Tank µÄÊ¯Í·
-						g_pDrawRender->AddCircle(DrawManager::PURPLE, foot.x, foot.y, 9, 8);
+						g_pGameRulesProxy = entity;
+						Utils::log("TerrorGameRulesProxy Entity found 0x%X", (DWORD)g_pGameRulesProxy);
 					}
-					else if (classId == ET_WeaponFirstAidKit || classId == ET_WeaponDefibrillator ||
-						classId == ET_WeaponPainPills || classId == ET_WeaponPainPills)
-					{
-						// Ò½ÁÆÆ·
-						g_pDrawRender->AddFillRect(DrawManager::DARKORANGE, foot.x, foot.y, 2, 8);
-					}
-					else if (classId == ET_WeaponPipeBomb || classId == ET_WeaponMolotov ||
-						classId == ET_WeaponVomitjar)
-					{
-						// Í¶ÖÀÎäÆ÷
-						g_pDrawRender->AddFillRect(DrawManager::DARKGRAY, foot.x, foot.y, 2, 8);
-					}
-				}
-			}
 
-			if (Config::bDrawBone)
-			{
-				if ((team == 2 && entity->GetTeam() == 3) || (team == 3 && entity->GetTeam() == 2) ||
-					(IsCommonInfected(classId) && dist < 1500.0f))
-				{
-					color = DrawManager::WHITE;
-					studiohdr_t* hdr = g_interface.ModelInfo->GetStudioModel(entity->GetModel());
-					if (hdr != nullptr && IsValidVictimId(classId))
+					if (g_pPlayerResource == nullptr && classId == ET_TerrorPlayerResource)
 					{
-						Vector parent, child, screenParent, screenChild;
-						for (int i = 0; i < hdr->numbones; ++i)
+						g_pPlayerResource = entity;
+						Utils::log("TerrorPlayerResource Entity found 0x%X", (DWORD)g_pPlayerResource);
+					}
+
+					if ((DWORD)g_pCurrentAiming == (DWORD)entity)
+						g_iCurrentAiming = i;
+
+#ifdef _DEBUG_OUTPUT_
+					if (IsSurvivor(classId) || IsSpecialInfected(classId) || IsCommonInfected(classId))
+					{
+#endif
+						// æ£€æŸ¥ ç”Ÿè¿˜è€…/ç‰¹æ„Ÿ/æ™®æ„Ÿ æ˜¯å¦æ˜¯æœ‰æ•ˆçš„
+						if (!entity->IsAlive())
 						{
-							mstudiobone_t* bone = hdr->pBone(i);
-							if (bone == nullptr || !(bone->flags & 0x100) || bone->parent == -1)
-								continue;
-
-							child = entity->GetBonePosition(i);
-							parent = entity->GetBonePosition(bone->parent);
-							if (child.IsValid() && parent.IsValid() &&
-								WorldToScreen(parent, screenParent) && WorldToScreen(child, screenChild))
+							if (Config::bDrawSpectator)
 							{
-								g_pDrawRender->AddLine(color, screenParent.x, screenParent.y,
-									screenChild.x, screenChild.y);
-							}
-						}
-					}
-				}
-			}
+								ss.str("");
 
-			if (Config::bDrawName)
-			{
-				ss.str("");
-
-				// ¸ù¾İÀàĞÍ¾ö¶¨»æÖÆµÄÄÚÈİ
-				if (IsSurvivor(classId) || IsSpecialInfected(classId))
-				{
-					player_info_t info;
-					g_interface.Engine->GetPlayerInfo(i, &info);
-					
-					// ¼ì²éÊÇ·ñÎªÉú»¹Õß
-					if (IsSurvivor(classId))
-					{
-						if (IsIncapacitated(entity))
-						{
-							// µ¹µØÊ±Ö»ÓĞÆÕÍ¨ÑªÁ¿
-							ss << "[" << entity->GetHealth() << " + incap] ";
-						}
-						else if (IsControlled(entity))
-						{
-							// Íæ¼Ò±»¿ØÁË
-							ss << "[" << (int)(entity->GetHealth() +
-								entity->GetNetProp<float>("m_healthBuffer", "DT_TerrorPlayer")) <<
-								" + grabbed] ";
-						}
-						else
-						{
-							// Éú»¹ÕßÏÔÊ¾ÑªÁ¿£¬ÁÙÊ±ÑªÁ¿
-							ss << "[" << entity->GetHealth() << " + " << std::setprecision(0) <<
-								(int)(entity->GetNetProp<float>("m_healthBuffer", "DT_TerrorPlayer")) << "] ";
-						}
-					}
-					else
-					{
-						if (IsPlayerGhost(i) && IsGhostInfected(entity))
-						{
-							// ÓÄÁé×´Ì¬µÄÌØ¸Ğ
-							ss << "[" << entity->GetHealth() << " ghost] ";
-						}
-						else
-						{
-							// ·ÇÉú»¹ÕßÖ»ÏÔÊ¾ÑªÁ¿¾ÍºÃÁË
-							ss << "[" << entity->GetHealth() << "] ";
-						}
-					}
-
-					// Íæ¼ÒÃû×Ö
-					ss << info.name;
-
-					// ÏÔÊ¾¾àÀë
-					ss << "\n" << (int)dist;
-
-					CBaseEntity* weapon = (CBaseEntity*)entity->GetActiveWeapon();
-					if (weapon != nullptr)
-						weapon = g_interface.ClientEntList->GetClientEntityFromHandle((CBaseHandle*)weapon);
-
-					// ¸øÉú»¹ÕßÏÔÊ¾µ¯Ò©
-					if (IsSurvivor(classId))
-					{
-						if (Config::bDrawAmmo && weapon != nullptr)
-						{
-							int ammoType = weapon->GetNetProp<int>("m_iPrimaryAmmoType", "DT_BaseCombatWeapon");
-							int clip = weapon->GetNetProp<int>("m_iClip1", "DT_BaseCombatWeapon");
-							byte reloading = weapon->GetNetProp<byte>("m_bInReload", "DT_BaseCombatWeapon");
-
-							// ÏÔÊ¾µ¯Ò©ºÍµ¯¼Ğ
-							if (ammoType > 0 && clip > -1)
-							{
-								if (reloading != 0)
+								if (IsSurvivor(classId) || IsSpecialInfected(classId))
 								{
-									// ÕıÔÚ»»×Óµ¯
-									ss << " (reloading)";
+									int obsMode = entity->GetNetProp<int>("m_iObserverMode", "DT_BasePlayer");
+									if (obsMode == OBS_MODE_IN_EYE || obsMode == OBS_MODE_CHASE)
+									{
+										CBaseEntity* obsTarget = (CBaseEntity*)entity->GetNetProp<CBaseHandle*>("m_hObserverTarget", "DT_BasePlayer");
+										if (obsTarget != nullptr)
+											obsTarget = g_interface.ClientEntList->GetClientEntityFromHandle((CBaseHandle*)obsTarget);
+										if (obsTarget != nullptr && (DWORD)obsTarget == (DWORD)local)
+										{
+											player_info_t info;
+											g_interface.Engine->GetPlayerInfo(i, &info);
+
+											if (obsMode == OBS_MODE_IN_EYE)
+												ss << info.name << " [1st]" << std::endl;
+											else if (obsMode == OBS_MODE_CHASE)
+												ss << info.name << " [3rd]" << std::endl;
+										}
+									}
 								}
-								else
+
+								if (!ss.str().empty())
 								{
-									// Ã»ÓĞ»»×Óµ¯
-									ss << " (" << clip << "/" <<
-										entity->GetNetProp<int>("m_iAmmo", "DT_TerrorPlayer", (size_t)ammoType) <<
-										")";
+									color = (entity->GetTeam() == 2 ? DrawManager::SKYBLUE : DrawManager::RED);
+
+									int width, height;
+									g_interface.Engine->GetScreenSize(width, height);
+									g_pDrawRender->AddText(color, width * 0.75, height * 0.75, false, ss.str().c_str());
 								}
 							}
-						}
-					}
-					else
-					{
-						if (!info.isBot)
-						{
-							// Èç¹ûÌØ¸Ğ²»ÊÇ»úÆ÷ÈËµÄ»°¾ÍÏÔÊ¾ÌØ¸ĞÀàĞÍ
-							// »úÆ÷ÈËÌØ¸ĞÃû×Ö¾ÍÊÇÀàĞÍ
-							ss << " (" << GetZombieClassName(entity) << ")";
-						}
-					}
-				}
 
-				if (!ss.str().empty())
+							continue;
+						}
+#ifdef _DEBUG_OUTPUT_
+					}
+#endif
+				}
+				catch (std::exception e)
 				{
-					color = (visible ? DrawManager::LAWNGREEN : DrawManager::GREEN);
-
-					/*
-					g_interface.Surface->drawString(foot.x - width / 2, head.y + FontSize,
-					(color & 0xFF0000) >> 16, (color & 0xFF00) >> 8, color & 0xFF,
-					font, Utils::c2w(ss.str()).c_str());
-					*/
-
-					g_pDrawRender->AddText(color, foot.x, head.y, true, ss.str().c_str());
+					Utils::log("%s (%d): %s", __FILE__, __LINE__, e.what());
+					continue;
 				}
-			}
+				catch (...)
+				{
+					Utils::log("%s (%d): æœªçŸ¥å¼‚å¸¸ -> 0x%X", __FILE__, __LINE__, (DWORD)entity);
+					continue;
+				}
 
-			// ×Ô¶¯Ãé×¼Ñ°ÕÒÄ¿±ê
-			if (Config::bAimbot && (!targetSelected || !(g_pUserCommands->buttons & IN_ATTACK)) &&
-				((team == 2 && (IsSpecialInfected(classId) || classId == ET_INFECTED)) ||
-				(team == 3 && IsSurvivor(classId))))
-			{
-				// ÒÑ¾­Ñ¡Ôñ¹ıÄ¿±êÁË£¬²¢ÇÒÕâÊÇÒ»¸ö²»ÖØÒªµÄµĞÈË
-				if (classId == ET_INFECTED && specialSelected)
+				Vector head, foot, headbox, origin;
+
+				// ç›®æ ‡è„šä¸‹çš„ä½ç½®
+				origin = (IsSurvivor(classId) || IsSpecialInfected(classId) ?
+					entity->GetAbsOrigin() :		// ç©å®¶ä¸“ç”¨ï¼Œå…¶ä»–å®ä½“æ˜¯æ²¡æœ‰çš„
+					entity->GetNetProp<Vector>("m_vecOrigin", "DT_BaseCombatCharacter"));
+
+				// ç›®æ ‡çš„å¤´éƒ¨çš„ä½ç½®
+				headbox = (IsSurvivor(classId) || IsSpecialInfected(classId) || IsCommonInfected(classId) ?
+					GetHeadHitboxPosition(entity) : origin);
+
+				// æ£€æŸ¥ç›®æ ‡æ˜¯å¦åœ¨å±å¹•å†…
+				if (!headbox.IsValid() || !WorldToScreen(headbox, head) ||
+					!WorldToScreen(origin, foot))
 					continue;
 
-				// Ñ¡ÔñÒ»¸ö×î½Ó½üµÄÌØ¸Ğ£¬ÒòÎªÌØ¸ĞÔ½½ü¶ÔÍæ¼ÒÀ´ËµÔ½Î£ÏÕ
-				if (entity->GetTeam() != team && dist < distmin && visible &&
-					GetAnglesFieldOfView(myViewAngles, CalculateAim(myEyeOrigin, headbox)) <=
-					Config::fAimbotFov)
-				{
-					g_pCurrentAimbot = entity;
-					distmin = dist;
+				// ç›®æ ‡æ˜¯å¦å¯è§
+				bool visible = IsTargetVisible(entity, headbox, myEyeOrigin);
 
-					if (IsSpecialInfected(classId))
-						specialSelected = true;
+				// ç›®æ ‡ä¸è‡ªå·±çš„è·ç¦»
+				float dist = myOrigin.DistTo(origin);
+
+				// è·å–æ–¹æ¡†çš„å¤§å°
+				float height = fabs(head.y - foot.y);
+				float width = height * 0.65f;
+
+				// ç»™ç©å®¶ç»˜åˆ¶ä¸€ä¸ªæ¡†
+				if (Config::bDrawBox)
+				{
+					if (IsSurvivor(classId) || IsSpecialInfected(classId))
+					{
+						color = (entity->GetTeam() == team ? DrawManager::BLUE : DrawManager::RED);
+						if (IsSurvivor(classId))
+						{
+							if (entity->GetNetProp<byte>("m_bIsOnThirdStrike", "DT_TerrorPlayer") != 0)
+							{
+								// é»‘ç™½çŠ¶æ€ - ç™½è‰²
+								color = DrawManager::WHITE;
+							}
+							else if (IsControlled(entity))
+							{
+								// è¢«æ§ - æ©™è‰²
+								color = DrawManager::ORANGE;
+							}
+							else if (IsIncapacitated(entity))
+							{
+								// å€’åœ°æŒ‚è¾¹ - é»„è‰²
+								color = DrawManager::YELLOW;
+							}
+						}
+						else if (IsSpecialInfected(classId) && IsGhostInfected(entity) && IsPlayerGhost(i))
+						{
+							// å¹½çµçŠ¶æ€ - ç´«è‰²
+							color = DrawManager::PURPLE;
+						}
+
+						// ç»˜åˆ¶ä¸€ä¸ªæ¡†ï¼ˆè™½ç„¶è¿™ä¸ªæ¡†åªæœ‰ä¸Šä¸‹ä¸¤æ¡çº¿ï¼‰
+						/*
+						g_interface.Surface->drawBox(foot.x - width / 2, foot.y, width, -height, 1,
+						(color & 0xFF0000) >> 16, (color & 0xFF00) >> 8, color & 0xFF,
+						(color & 0xFF000000) >> 24);
+						*/
+
+						// g_pDrawRender->AddRect(color, foot.x - width / 2, foot.y, width, -height);
+						g_pDrawRender->AddCorner(color, foot.x - width / 2, foot.y, width, -height);
+					}
+					else if (IsCommonInfected(classId))
+					{
+						// è¿™åªæ˜¯æ™®æ„Ÿè€Œå·²ï¼Œå¤ªè¿œäº†æ²¡å¿…è¦æ˜¾ç¤ºå‡ºæ¥
+						if (dist > 3000.0f)
+							continue;
+
+						int size = 2;
+						if (dist < 1000.0f)
+							size = 4;
+
+						color = DrawManager::GREEN;
+						if (classId == ET_WITCH)
+							color = DrawManager::PINK;
+
+						// ç”»ä¸€ä¸ªå°æ–¹å½¢ï¼Œä»¥æ ‡è®°ä¸ºå¤´éƒ¨
+						/*
+						g_cInterfaces.Surface->FillRGBA(head.x, head.y, size, size,
+						(color & 0xFF0000) >> 16, (color & 0xFF00) >> 8, color & 0xFF,
+						(color & 0xFF000000) >> 24);
+						*/
+
+						if (visible)
+							g_pDrawRender->AddFillCircle(color, head.x, head.y, size, 8);
+						else
+							g_pDrawRender->AddCircle(color, head.x, head.y, size, 8);
+					}
+					else
+					{
+						// å…¶ä»–ä¸œè¥¿
+						if (dist > 1000.0f)
+							continue;
+
+						if (classId == ET_TankRock)
+						{
+							// Tank çš„çŸ³å¤´
+							g_pDrawRender->AddCircle(DrawManager::PURPLE, foot.x, foot.y, 9, 8);
+						}
+						else if (classId == ET_WeaponFirstAidKit || classId == ET_WeaponDefibrillator ||
+							classId == ET_WeaponPainPills || classId == ET_WeaponPainPills)
+						{
+							// åŒ»ç–—å“
+							g_pDrawRender->AddFillRect(DrawManager::DARKORANGE, foot.x, foot.y, 2, 8);
+						}
+						else if (classId == ET_WeaponPipeBomb || classId == ET_WeaponMolotov ||
+							classId == ET_WeaponVomitjar)
+						{
+							// æŠ•æ·æ­¦å™¨
+							g_pDrawRender->AddFillRect(DrawManager::DARKGRAY, foot.x, foot.y, 2, 8);
+						}
+					}
+				}
+
+				if (Config::bDrawBone)
+				{
+					if ((team == 2 && entity->GetTeam() == 3) || (team == 3 && entity->GetTeam() == 2) ||
+						(IsCommonInfected(classId) && dist < 1500.0f))
+					{
+						color = DrawManager::WHITE;
+						studiohdr_t* hdr = g_interface.ModelInfo->GetStudioModel(entity->GetModel());
+						if (hdr != nullptr && IsValidVictimId(classId))
+						{
+							Vector parent, child, screenParent, screenChild;
+							for (int i = 0; i < hdr->numbones; ++i)
+							{
+								mstudiobone_t* bone = hdr->pBone(i);
+								if (bone == nullptr || !(bone->flags & 0x100) || bone->parent == -1)
+									continue;
+
+								child = entity->GetBonePosition(i);
+								parent = entity->GetBonePosition(bone->parent);
+								if (child.IsValid() && parent.IsValid() &&
+									WorldToScreen(parent, screenParent) && WorldToScreen(child, screenChild))
+								{
+									g_pDrawRender->AddLine(color, screenParent.x, screenParent.y,
+										screenChild.x, screenChild.y);
+								}
+							}
+						}
+					}
+				}
+
+				if (Config::bDrawName)
+				{
+					ss.str("");
+
+					// æ ¹æ®ç±»å‹å†³å®šç»˜åˆ¶çš„å†…å®¹
+					if (IsSurvivor(classId) || IsSpecialInfected(classId))
+					{
+						player_info_t info;
+						g_interface.Engine->GetPlayerInfo(i, &info);
+
+						// æ£€æŸ¥æ˜¯å¦ä¸ºç”Ÿè¿˜è€…
+						if (IsSurvivor(classId))
+						{
+							if (IsIncapacitated(entity))
+							{
+								// å€’åœ°æ—¶åªæœ‰æ™®é€šè¡€é‡
+								ss << "[" << entity->GetHealth() << " + incap] ";
+							}
+							else if (IsControlled(entity))
+							{
+								// ç©å®¶è¢«æ§äº†
+								ss << "[" << (int)(entity->GetHealth() +
+									entity->GetNetProp<float>("m_healthBuffer", "DT_TerrorPlayer")) <<
+									" + grabbed] ";
+							}
+							else
+							{
+								// ç”Ÿè¿˜è€…æ˜¾ç¤ºè¡€é‡ï¼Œä¸´æ—¶è¡€é‡
+								ss << "[" << entity->GetHealth() << " + " << std::setprecision(0) <<
+									(int)(entity->GetNetProp<float>("m_healthBuffer", "DT_TerrorPlayer")) << "] ";
+							}
+						}
+						else
+						{
+							if (IsPlayerGhost(i) && IsGhostInfected(entity))
+							{
+								// å¹½çµçŠ¶æ€çš„ç‰¹æ„Ÿ
+								ss << "[" << entity->GetHealth() << " ghost] ";
+							}
+							else
+							{
+								// éç”Ÿè¿˜è€…åªæ˜¾ç¤ºè¡€é‡å°±å¥½äº†
+								ss << "[" << entity->GetHealth() << "] ";
+							}
+						}
+
+						// ç©å®¶åå­—
+						ss << info.name;
+
+						// æ˜¾ç¤ºè·ç¦»
+						ss << std::endl << (int)dist;
+
+						CBaseEntity* weapon = (CBaseEntity*)entity->GetActiveWeapon();
+						if (weapon != nullptr)
+							weapon = g_interface.ClientEntList->GetClientEntityFromHandle((CBaseHandle*)weapon);
+
+						// ç»™ç”Ÿè¿˜è€…æ˜¾ç¤ºå¼¹è¯
+						if (IsSurvivor(classId))
+						{
+							if (Config::bDrawAmmo && weapon != nullptr)
+							{
+								int ammoType = weapon->GetNetProp<int>("m_iPrimaryAmmoType", "DT_BaseCombatWeapon");
+								int clip = weapon->GetNetProp<int>("m_iClip1", "DT_BaseCombatWeapon");
+								byte reloading = weapon->GetNetProp<byte>("m_bInReload", "DT_BaseCombatWeapon");
+
+								// æ˜¾ç¤ºå¼¹è¯å’Œå¼¹å¤¹
+								if (ammoType > 0 && clip > -1)
+								{
+									if (reloading != 0)
+									{
+										// æ­£åœ¨æ¢å­å¼¹
+										ss << " (reloading)";
+									}
+									else
+									{
+										// æ²¡æœ‰æ¢å­å¼¹
+										ss << " (" << clip << "/" <<
+											entity->GetNetProp<int>("m_iAmmo", "DT_TerrorPlayer", (size_t)ammoType) <<
+											")";
+									}
+								}
+							}
+						}
+						else
+						{
+							if (!info.isBot)
+							{
+								// å¦‚æœç‰¹æ„Ÿä¸æ˜¯æœºå™¨äººçš„è¯å°±æ˜¾ç¤ºç‰¹æ„Ÿç±»å‹
+								// æœºå™¨äººç‰¹æ„Ÿåå­—å°±æ˜¯ç±»å‹
+								ss << " (" << GetZombieClassName(entity) << ")";
+							}
+						}
+					}
+
+					if (!ss.str().empty())
+					{
+						color = (visible ? DrawManager::LAWNGREEN : DrawManager::GREEN);
+
+						/*
+						g_interface.Surface->drawString(foot.x - width / 2, head.y + FontSize,
+						(color & 0xFF0000) >> 16, (color & 0xFF00) >> 8, color & 0xFF,
+						font, Utils::c2w(ss.str()).c_str());
+						*/
+
+						g_pDrawRender->AddText(color, foot.x, head.y, true, ss.str().c_str());
+					}
+				}
+
+				// è‡ªåŠ¨ç„å‡†å¯»æ‰¾ç›®æ ‡
+				if (Config::bAimbot && (!targetSelected || !(g_pUserCommands->buttons & IN_ATTACK)) &&
+					((team == 2 && (IsSpecialInfected(classId) || classId == ET_INFECTED)) ||
+					(team == 3 && IsSurvivor(classId))))
+				{
+					// å·²ç»é€‰æ‹©è¿‡ç›®æ ‡äº†ï¼Œå¹¶ä¸”è¿™æ˜¯ä¸€ä¸ªä¸é‡è¦çš„æ•Œäºº
+					if (classId == ET_INFECTED && specialSelected)
+						continue;
+
+					// é€‰æ‹©ä¸€ä¸ªæœ€æ¥è¿‘çš„ç‰¹æ„Ÿï¼Œå› ä¸ºç‰¹æ„Ÿè¶Šè¿‘å¯¹ç©å®¶æ¥è¯´è¶Šå±é™©
+					if (entity->GetTeam() != team && dist < distmin && visible &&
+						GetAnglesFieldOfView(myViewAngles, CalculateAim(myEyeOrigin, headbox)) <=
+						Config::fAimbotFov)
+					{
+						g_pCurrentAimbot = entity;
+						distmin = dist;
+
+						if (IsSpecialInfected(classId))
+							specialSelected = true;
+					}
 				}
 			}
 		}
-
-		g_pCurrentAiming = target;
+	finish_draw:
+		bIgnoreTick = !bIgnoreTick;
 #endif
-
 	}
 
-finish_draw:
-	__asm nop;
+	// æ¯ä¸€å¸§è°ƒ å¾ˆå¤šæ¬¡ åœ¨è¿™é‡Œä¸èƒ½åšæ¶ˆè€—è¾ƒå¤§çš„äº‹æƒ…
+	if (MatSystemTopPanel > 0 && panel == MatSystemTopPanel)
+	{
+		// åœ¨è¿™é‡Œç»˜åˆ¶ä¼šå¯¼è‡´æ¸¸æˆé‡Œ fps éå¸¸ä½ï¼Œå› æ­¤å¿…é¡»è¦åšå‡ºé™åˆ¶
+	}
 }
 
 static bool* bSendPacket;
@@ -3058,7 +3028,7 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 	int weaponId = (weapon != nullptr ? weapon->GetWeaponID() : 0);
 	int flags = client->GetNetProp<int>("m_fFlags", "DT_BasePlayer");
 
-	// ×Ô¶¯Á¬Ìø
+	// è‡ªåŠ¨è¿è·³
 	if (Config::bBunnyHop && (GetAsyncKeyState(VK_SPACE) & 0x8000))
 	{
 		static bool lastJump = false;
@@ -3088,7 +3058,7 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 			shouldFake = false;
 		}
 
-		// Á¬Ìø×Ô¶¯Ğı×ª
+		// è¿è·³è‡ªåŠ¨æ—‹è½¬
 		if (Config::bAutoStrafe && !(flags & FL_ONGROUND))
 		{
 			if (pCmd->mousedx < 0)
@@ -3099,38 +3069,62 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 		}
 	}
 
-	// ÒıÇæÔ¤²â±¸·İ
+	// å¼•æ“é¢„æµ‹å¤‡ä»½
 	float oldCurtime = g_interface.Globals->curtime;
 	float oldFrametime = g_interface.Globals->frametime;
 
-	// ÒıÇæÔ¤²â
+	// å¼•æ“é¢„æµ‹
 	if (g_interface.MoveHelper)
 	{
-		// ÉèÖÃĞèÒªÔ¤²âµÄÊ±¼ä£¨Ö¡£©
+		// è®¾ç½®éœ€è¦é¢„æµ‹çš„æ—¶é—´ï¼ˆå¸§ï¼‰
 		g_interface.Globals->curtime = serverTime;
 		g_interface.Globals->frametime = g_interface.Globals->interval_per_tick;
 
-		// ¿ªÊ¼¼ì²é´íÎó
+		// å¼€å§‹æ£€æŸ¥é”™è¯¯
 		g_interface.GameMovement->StartTrackPredictionErrors(client);
 
-		// Çå¿ÕÔ¤²â½á¹ûµÄÊı¾İ
+		// æ¸…ç©ºé¢„æµ‹ç»“æœçš„æ•°æ®
 		ZeroMemory(&g_predMoveData, sizeof(CMoveData));
 
-		// ÉèÖÃĞèÒªÔ¤²âµÄÍæ¼Ò
+		// è®¾ç½®éœ€è¦é¢„æµ‹çš„ç©å®¶
 		g_interface.MoveHelper->SetHost(client);
 
-		// ¿ªÊ¼Ô¤²â
+		// å¼€å§‹é¢„æµ‹
 		g_interface.Prediction->SetupMove(client, pCmd, g_interface.MoveHelper, &g_predMoveData);
 		g_interface.GameMovement->ProcessMovement(client, &g_predMoveData);
 		g_interface.Prediction->FinishMove(client, pCmd, &g_predMoveData);
 	}
 
-	// ×Ô¶¯Ãé×¼
+	// å½“å‰æ­£åœ¨ç„å‡†çš„ç›®æ ‡
+	int aiming = *(int*)(client + m_iCrosshairsId);
+	g_pCurrentAiming = (aiming > 0 ? g_interface.ClientEntList->GetClientEntity(aiming) : GetAimingTarget(&g_iCurrentHitbox));
+
+#ifdef _DEBUG
+	try
+	{
+#endif
+		if (!IsValidVictim(g_pCurrentAiming))
+			g_pCurrentAiming = nullptr;
+#ifdef _DEBUG
+	}
+	catch (std::exception e)
+	{
+		Utils::log("%s (%d): %s | 0x%X", __FILE__, __LINE__, e.what(), (DWORD)g_pCurrentAiming);
+		g_pCurrentAiming = nullptr;
+	}
+	catch (...)
+	{
+		Utils::log("%s (%d): æœªçŸ¥å¼‚å¸¸ | 0x%X", __FILE__, __LINE__, (DWORD)g_pCurrentAiming);
+		g_pCurrentAiming = nullptr;
+	}
+#endif
+
+	// è‡ªåŠ¨ç„å‡†
 	if (Config::bAimbot && weapon != nullptr && (GetAsyncKeyState(VK_LBUTTON) & 0x8000))
 	{
 		Vector myOrigin = client->GetEyePosition(), myAngles = pCmd->viewangles;
 
-		// ×Ô¶¯Ãé×¼Êı¾İ±¸·İ
+		// è‡ªåŠ¨ç„å‡†æ•°æ®å¤‡ä»½
 		static QAngle oldViewAngles;
 		static float oldSidemove;
 		static float oldForwardmove;
@@ -3138,10 +3132,10 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 
 		bool runAimbot = false;
 
-		// Ä¿±êÔÚÁíÒ»¸öµØ·½Ñ¡Ôñ
+		// ç›®æ ‡åœ¨å¦ä¸€ä¸ªåœ°æ–¹é€‰æ‹©
 		if (g_pCurrentAimbot != nullptr && IsGunWeapon(weaponId) && nextAttack <= serverTime)
 		{
-			// ç›®æ ‡ä½ç½®
+			// é©î†½çˆ£æµ£å¶‡ç–†
 			Vector position;
 			try
 			{
@@ -3152,11 +3146,11 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 				if (g_pCurrentAimbot->GetClientClass()->m_ClassID == ET_INFECTED)
 					goto end_aimbot;
 
-				// è·å–éª¨éª¼ä½ç½®å¤±è´¥
+				// é‘¾å³°å½‡æ¥ ã„©î€›æµ£å¶‡ç–†æ¾¶è¾«è§¦
 				position = g_pCurrentAimbot->GetEyePosition();
 				Utils::log("CBasePlayer::SetupBone error");
 
-				// æ ¹æ®ä¸åŒçš„æƒ…å†µç¡®å®šé«˜åº
+				// éè§„åµæ¶“å¶…æ‚“é¨å‹¬å„éç”µâ€˜ç€¹æ°¶ç®æ´
 				int zombieClass = g_pCurrentAimbot->GetNetProp<int>("m_zombieClass", "DT_TerrorPlayer");
 				if (zombieClass == ZC_JOCKEY)
 					position.z = g_pCurrentAimbot->GetAbsOrigin().z + 30.0f;
@@ -3166,20 +3160,23 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 
 			if (position.IsValid())
 			{
-				// ±¸·İÔ­Êı¾İ
-				oldViewAngles = pCmd->viewangles;
-				oldSidemove = pCmd->sidemove;
-				oldForwardmove = pCmd->fowardmove;
-				oldUpmove = pCmd->upmove;
+				// å¤‡ä»½åŸæ•°æ®
+				if (!oldViewAngles.IsValid())
+				{
+					oldViewAngles = pCmd->viewangles;
+					oldSidemove = pCmd->sidemove;
+					oldForwardmove = pCmd->fowardmove;
+					oldUpmove = pCmd->upmove;
+				}
 
-				// Òş²Ø×Ô¶¯Ãé×¼
+				// éšè—è‡ªåŠ¨ç„å‡†
 				runAimbot = true;
 
-				// ËÙ¶ÈÔ¤²â
+				// é€Ÿåº¦é¢„æµ‹
 				myOrigin = VelocityExtrapolate(client, myOrigin);
 				position = VelocityExtrapolate(g_pCurrentAimbot, position);
 
-				// ½«×¼ĞÇ×ªµ½µĞÈËÍ·²¿
+				// å°†å‡†æ˜Ÿè½¬åˆ°æ•Œäººå¤´éƒ¨
 				pCmd->viewangles = CalculateAim(myOrigin, position);
 			}
 		}
@@ -3197,20 +3194,22 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 		{
 			if (!runAimbot)
 			{
-				// »¹Ô­½Ç¶È
+				// è¿˜åŸè§’åº¦
 				*bSendPacket = true;
 
 				if (oldViewAngles.IsValid())
 				{
 					pCmd->viewangles = oldViewAngles;
-					// pCmd->sidemove = oldSidemove;
-					// pCmd->fowardmove = oldForwardmove;
-					// pCmd->upmove = oldUpmove;
+					pCmd->sidemove = oldSidemove;
+					pCmd->fowardmove = oldForwardmove;
+					pCmd->upmove = oldUpmove;
 				}
+
+				oldViewAngles.Invalidate();
 			}
 			else
 			{
-				// ĞŞ¸Ä½Ç¶È
+				// ä¿®æ”¹è§’åº¦
 				*bSendPacket = false;
 			}
 		}
@@ -3218,7 +3217,7 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 
 end_aimbot:
 
-	// ×Ô¶¯¿ªÇ¹
+	// è‡ªåŠ¨å¼€æª
 	if (Config::bTriggerBot && !(pCmd->buttons & IN_USE) && IsGunWeapon(weaponId))
 	{
 #ifdef _DEBUG_OUTPUT
@@ -3249,7 +3248,7 @@ end_aimbot:
 		}
 		catch (...)
 		{
-			Utils::log("%s (%d): Î´ÖªÒì³£ | 0x%X", __FILE__, __LINE__, (DWORD)g_pCurrentAiming);
+			Utils::log("%s (%d): æœªçŸ¥å¼‚å¸¸ | 0x%X", __FILE__, __LINE__, (DWORD)g_pCurrentAiming);
 			g_pCurrentAiming = nullptr;
 			goto end_trigger_bot;
 		}
@@ -3259,27 +3258,27 @@ end_aimbot:
 			(g_iCurrentHitbox < HITBOX_COMMON_1 || g_iCurrentHitbox > HITBOX_COMMON_4))
 			goto end_trigger_bot;
 
-		if (g_pCurrentAiming->GetTeam() != myTeam && classId != ET_WITCH &&					// ²»¹¥»÷¶ÓÓÑºÍ Witch
-			g_pCurrentAiming->GetTeam() != 4 && (!IsSpecialInfected(classId) ||				// ²»¹¥»÷ L4D1 Éú»¹Õß(ÒòÎªËûÃÇÊÇÎŞµĞµÄ)
-				!IsPlayerGhost(g_iCurrentAiming) || !IsGhostInfected(g_pCurrentAiming)) &&	// ²»¹¥»÷ÓÄÁé×´Ì¬µÄÌØ¸Ğ
-				(myTeam == 2 || classId != ET_INFECTED))									// ÌØ¸Ğ¶ÓÎé²»¹¥»÷ÆÕ¸Ğ
+		if (g_pCurrentAiming->GetTeam() != myTeam && classId != ET_WITCH &&					// ä¸æ”»å‡»é˜Ÿå‹å’Œ Witch
+			g_pCurrentAiming->GetTeam() != 4 && (!IsSpecialInfected(classId) ||				// ä¸æ”»å‡» L4D1 ç”Ÿè¿˜è€…(å› ä¸ºä»–ä»¬æ˜¯æ— æ•Œçš„)
+				!IsPlayerGhost(g_iCurrentAiming) || !IsGhostInfected(g_pCurrentAiming)) &&	// ä¸æ”»å‡»å¹½çµçŠ¶æ€çš„ç‰¹æ„Ÿ
+				(myTeam == 2 || classId != ET_INFECTED))									// ç‰¹æ„Ÿé˜Ÿä¼ä¸æ”»å‡»æ™®æ„Ÿ
 			pCmd->buttons |= IN_ATTACK;
 	}
 
 end_trigger_bot:
 
-	// ÔÚ¿ªÇ¹Ç°¼ì²é£¬·ÀÖ¹¹¥»÷¶ÓÓÑ
+	// åœ¨å¼€æªå‰æ£€æŸ¥ï¼Œé˜²æ­¢æ”»å‡»é˜Ÿå‹
 	if (Config::bAnitFirendlyFire && (pCmd->buttons & IN_ATTACK) && IsGunWeapon(weaponId) && myTeam == 2)
 	{
 		if (IsValidVictim(g_pCurrentAiming) &&
 			g_pCurrentAiming->GetTeam() == myTeam && !IsNeedRescue(g_pCurrentAiming))
 		{
-			// È¡Ïû¿ªÇ¹
+			// å–æ¶ˆå¼€æª
 			pCmd->buttons &= ~IN_ATTACK;
 		}
 	}
 
-	// ºó×øÁ¦¼ì²â
+	// åååŠ›æ£€æµ‹
 	if (Config::bNoRecoil)
 	{
 		Vector punch = client->GetLocalNetProp<Vector>("m_vecPunchAngle");
@@ -3291,19 +3290,19 @@ end_trigger_bot:
 		pCmd->viewangles -= punch * 2.0f;
 	}
 
-	// ÒıÇæÔ¤²â
+	// å¼•æ“é¢„æµ‹
 	if (g_interface.MoveHelper)
 	{
-		// ½áÊøÔ¤²â
+		// ç»“æŸé¢„æµ‹
 		// g_interface.Prediction->FinishMove(client, pCmd, &g_predMoveData);
 		g_interface.GameMovement->FinishTrackPredictionErrors(client);
 		g_interface.MoveHelper->SetHost(nullptr);
 
-		// »¹Ô­±¸·İ
+		// è¿˜åŸå¤‡ä»½
 		g_interface.Globals->curtime = oldCurtime;
 		g_interface.Globals->frametime = oldFrametime;
 
-		// ĞŞ¸´Ò»Ğ©´íÎó
+		// ä¿®å¤ä¸€äº›é”™è¯¯
 		client->SetNetProp("m_fFlags", flags, "DT_BasePlayer");
 
 		static bool showPred = true;
@@ -3314,7 +3313,7 @@ end_trigger_bot:
 		}
 	}
 
-	// ÊÖÇ¹Á¬Éä / Hunter Á¬ĞøÆË
+	// æ‰‹æªè¿å°„ / Hunter è¿ç»­æ‰‘
 	if (Config::bRapidFire && weapon != nullptr && (pCmd->buttons & IN_ATTACK))
 	{
 		static bool ignoreButton = true;
@@ -3325,12 +3324,12 @@ end_trigger_bot:
 		}
 		else
 		{
-			// ºöÂÔÒ»´Î×èÖ¹¿ªÇ¹
+			// å¿½ç•¥ä¸€æ¬¡é˜»æ­¢å¼€æª
 			ignoreButton = false;
 		}
 	}
 
-	// ½üÕ½ÎäÆ÷¿ìËÙ¹¥»÷
+	// è¿‘æˆ˜æ­¦å™¨å¿«é€Ÿæ”»å‡»
 	if (myTeam == 2 && GetAsyncKeyState(VK_XBUTTON2) & 0x8000)
 	{
 		static enum FastMeleeStatus
@@ -3346,7 +3345,7 @@ end_trigger_bot:
 		case FMS_None:
 			if (weaponId == Weapon_Melee && nextAttack <= serverTime)
 			{
-				// ½üÕ½ÎäÆ÷¹¥»÷
+				// è¿‘æˆ˜æ­¦å™¨æ”»å‡»
 				pCmd->buttons |= IN_ATTACK;
 				fms = FMS_Primary;
 			}
@@ -3356,7 +3355,7 @@ end_trigger_bot:
 		case FMS_Primary:
 			if (weaponId == Weapon_Melee && nextAttack > serverTime)
 			{
-				// ÔÚ¹¥»÷Ö®ºóÇĞ»»µ½Ö÷ÎäÆ÷
+				// åœ¨æ”»å‡»ä¹‹ååˆ‡æ¢åˆ°ä¸»æ­¦å™¨
 				g_interface.Engine->ClientCmd("slot1");
 				fms = FMS_Secondary;
 			}
@@ -3366,7 +3365,7 @@ end_trigger_bot:
 		case FMS_Secondary:
 			if (weaponId != Weapon_Melee)
 			{
-				// ÔÚÖ÷ÎäÆ÷Ê±ÇĞ»»µ½½üÕ½ÎäÆ÷
+				// åœ¨ä¸»æ­¦å™¨æ—¶åˆ‡æ¢åˆ°è¿‘æˆ˜æ­¦å™¨
 				g_interface.Engine->ClientCmd("slot2");
 				fms = FMS_None;
 			}
@@ -3384,15 +3383,15 @@ end_trigger_bot:
 		}
 	}
 
-	// ĞŞ¸´½Ç¶È²»ÕıÈ·
+	// ä¿®å¤è§’åº¦ä¸æ­£ç¡®
 	ClampAngles(pCmd->viewangles);
 	AngleNormalize(pCmd->viewangles);
 
-	// ·¢ËÍµ½·şÎñÆ÷
+	// å‘é€åˆ°æœåŠ¡å™¨
 	pVerifiedCmd->m_cmd = *pCmd;
 	pVerifiedCmd->m_crc = pCmd->GetChecksum();
 
-	// ½«µ±Ç°°´Å¥±£´æµ½È«¾Ö±äÁ¿£¬ÓÃÓÚ¼ì²éÒ»Ğ©¶«Î÷
+	// å°†å½“å‰æŒ‰é’®ä¿å­˜åˆ°å…¨å±€å˜é‡ï¼Œç”¨äºæ£€æŸ¥ä¸€äº›ä¸œè¥¿
 	g_pUserCommands = pCmd;
 }
 
@@ -3416,14 +3415,14 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 			velocity = client->GetLocalNetProp<Vector>("m_vecPunchAngleVel");
 		}
 
-		// ÔÚÕâÀï¿ÉÒÔÊ¹ÓÃ DebugOverlay À´½øĞĞ 3D »æÖÆ
+		// åœ¨è¿™é‡Œå¯ä»¥ä½¿ç”¨ DebugOverlay æ¥è¿›è¡Œ 3D ç»˜åˆ¶
 	}
 
 	oFrameStageNotify(stage);
 
 	if (Config::bNoRecoil && client != nullptr && client->IsAlive() && punch.IsValid() && velocity.IsValid())
 	{
-		// È¥³ıÆÁÄ»»Î¶¯
+		// å»é™¤å±å¹•æ™ƒåŠ¨
 		client->SetLocalNetProp("m_vecPunchAngle", punch);
 		client->SetLocalNetProp("m_vecPunchAngleVel", velocity);
 	}
@@ -3432,7 +3431,7 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 	time_t currentTime = time(NULL);
 	if (nextUpdate <= currentTime)
 	{
-		// ¼ÆÊ±£¬ÓÃÓÚÃ¿¸ô 1 Ãë´¥·¢Ò»´Î
+		// è®¡æ—¶ï¼Œç”¨äºæ¯éš” 1 ç§’è§¦å‘ä¸€æ¬¡
 		nextUpdate = currentTime + 1;
 		static DWORD fmWait = 45;
 		static bool connected = false;
@@ -3441,7 +3440,7 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 		{
 			static bool oldWireframe = false;
 			if (GetAsyncKeyState(VK_INSERT) & 0x01)
-				oldWireframe = !oldWireframe;
+				Config::bCvarWireframe = !Config::bCvarWireframe;
 
 			if (oldWireframe != Config::bCvarWireframe)
 			{
@@ -3490,7 +3489,7 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 
 			static bool oldFullBright = false;
 			if (GetAsyncKeyState(VK_HOME) & 0x01)
-				oldWireframe = !oldWireframe;
+				Config::bCvarFullBright = !Config::bCvarFullBright;
 
 			if (oldFullBright != Config::bCvarFullBright)
 			{
@@ -3524,7 +3523,7 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 
 			static bool oldGameMode = false;
 			if (GetAsyncKeyState(VK_PRIOR) & 0x01)
-				oldWireframe = !oldWireframe;
+				Config::bCvarGameMode = !Config::bCvarGameMode;
 
 			if (oldGameMode != Config::bCvarGameMode)
 			{
@@ -3579,7 +3578,7 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 
 			static bool oldCheats = false;
 			if (GetAsyncKeyState(VK_NEXT) & 0x01)
-				oldWireframe = !oldWireframe;
+				Config::bCvarCheats = !Config::bCvarCheats;
 
 			if (oldCheats != Config::bCvarCheats)
 			{
@@ -3622,13 +3621,13 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 				oldThrid = Config::bThirdPersons;
 			}
 
-			// ÏÔÊ¾È«²¿Íæ¼Ò
+			// æ˜¾ç¤ºå…¨éƒ¨ç©å®¶
 			/*
 			if (GetAsyncKeyState(VK_CAPITAL) & 0x01)
 			showSpectator();
 			*/
 
-			// ´ò¿ª/¹Ø±Õ ×Ô¶¯Á¬ÌøµÄ×Ô¶¯±£³ÖËÙ¶È
+			// æ‰“å¼€/å…³é—­ è‡ªåŠ¨è¿è·³çš„è‡ªåŠ¨ä¿æŒé€Ÿåº¦
 			if (GetAsyncKeyState(VK_F8) & 0x01)
 			{
 				Config::bAutoStrafe = !Config::bAutoStrafe;
@@ -3642,7 +3641,7 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 				}
 			}
 
-			// ´ò¿ª/¹Ø±Õ ×Ô¶¯¿ªÇ¹
+			// æ‰“å¼€/å…³é—­ è‡ªåŠ¨å¼€æª
 			if (GetAsyncKeyState(VK_F9) & 0x01)
 			{
 				Config::bTriggerBot = !Config::bTriggerBot;
@@ -3656,7 +3655,7 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 				}
 			}
 
-			// ´ò¿ª/¹Ø±Õ ×Ô¶¯Ãé×¼
+			// æ‰“å¼€/å…³é—­ è‡ªåŠ¨ç„å‡†
 			if (GetAsyncKeyState(VK_F10) & 0x01)
 			{
 				Config::bAimbot = !Config::bAimbot;
@@ -3670,7 +3669,7 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 				}
 			}
 
-			// ´ò¿ª/¹Ø±Õ ¿Õ¸ñ×Ô¶¯Á¬Ìø
+			// æ‰“å¼€/å…³é—­ ç©ºæ ¼è‡ªåŠ¨è¿è·³
 			if (GetAsyncKeyState(VK_F11) & 0x01)
 			{
 				Config::bBunnyHop = !Config::bBunnyHop;
@@ -3684,7 +3683,7 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 				}
 			}
 
-			// ´ò¿ª/¹Ø±Õ ¾²ÒôÃé×¼
+			// æ‰“å¼€/å…³é—­ é™éŸ³ç„å‡†
 			if (GetAsyncKeyState(VK_F12) & 0x01)
 			{
 				Config::bSilentAimbot = !Config::bSilentAimbot;
@@ -3698,7 +3697,7 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 				}
 			}
 
-			// È¥³ı CRC ÑéÖ¤
+			// å»é™¤ CRC éªŒè¯
 			if (Config::bCrcCheckBypass)
 			{
 #ifdef USE_CVAR_CHANGE
@@ -3792,7 +3791,7 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 		static byte iExitGame = 0;
 		if (GetAsyncKeyState(VK_END) & 0x8000)
 		{
-			// °´×¡ End ¼üÈıÃëÇ¿ÖÆÍË³öÓÎÏ·ÓÎÏ·£¬ÓÃÓÚÓÎÏ·ÎŞÏìÓ¦
+			// æŒ‰ä½ End é”®ä¸‰ç§’å¼ºåˆ¶é€€å‡ºæ¸¸æˆæ¸¸æˆï¼Œç”¨äºæ¸¸æˆæ— å“åº”
 			if (++iExitGame >= 3)
 				ExitProcess(0);
 
@@ -3801,7 +3800,7 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 		}
 		else if (iExitGame != 0)
 		{
-			// °´×¡²»×ã 3 Ãë¾Í·Å¿ªÔòÈ¡Ïû¼ÆÊ±
+			// æŒ‰ä½ä¸è¶³ 3 ç§’å°±æ”¾å¼€åˆ™å–æ¶ˆè®¡æ—¶
 			iExitGame = 0;
 			if (g_pDrawRender != nullptr)
 				g_pDrawRender->PushRenderText(DrawManager::WHITE, "force exit proccess timer stopped");
@@ -3886,29 +3885,29 @@ void __stdcall Hooked_CL_Move(float accumulated_extra_samples, bool bFinalTick)
 
 	auto CL_Move = [&_bl, &_edi](float accumulated_extra_samples, bool bFinalTick) -> void
 	{
-		// ²»Ö§³Ö push byte. ËùÒÔÖ»ÄÜ push word
+		// ä¸æ”¯æŒ push byte. æ‰€ä»¥åªèƒ½ push word
 		WORD wFinalTick = bFinalTick;
 
 		__asm
 		{
-			// ¼Ä´æÆ÷´«²Î
+			// å¯„å­˜å™¨ä¼ å‚
 			mov		bl, _bl
 			mov		edi, _edi
 
-			// ¶ÑÕ»´«²Î
+			// å †æ ˆä¼ å‚
 			push	wFinalTick
 			push	accumulated_extra_samples
 
-			// µ÷ÓÃÔ­º¯Êı(ÆäÊµÊÇ¸ö±Ä´²)
+			// è°ƒç”¨åŸå‡½æ•°(å…¶å®æ˜¯ä¸ªè¹¦åºŠ)
 			call	oCL_Move
 
-			// ÇåÀí¶ÑÕ»
+			// æ¸…ç†å †æ ˆ
 			add		esp, 6
 		};
 	};
 
-	// Ä¬ÈÏµÄ 1 ´Îµ÷ÓÃ£¬Èç¹û²»µ÷ÓÃ»áµ¼ÖÂÓÎÏ·¶³½á
-	// ²ÎÊı bFinalTick Ïàµ±ÓÚ bSendPacket
+	// é»˜è®¤çš„ 1 æ¬¡è°ƒç”¨ï¼Œå¦‚æœä¸è°ƒç”¨ä¼šå¯¼è‡´æ¸¸æˆå†»ç»“
+	// å‚æ•° bFinalTick ç›¸å½“äº bSendPacket
 	CL_Move(accumulated_extra_samples, bFinalTick);
 
 	if (GetAsyncKeyState(VK_CAPITAL) & 0x8000)
@@ -3922,7 +3921,7 @@ void __stdcall Hooked_CL_Move(float accumulated_extra_samples, bool bFinalTick)
 
 		for (int i = 1; i < g_iSpeedMultiple; ++i)
 		{
-			// ¶à´Îµ÷ÓÃËü»áÓĞ¼ÓËÙĞ§¹û
+			// å¤šæ¬¡è°ƒç”¨å®ƒä¼šæœ‰åŠ é€Ÿæ•ˆæœ
 			CL_Move(accumulated_extra_samples, bFinalTick);
 		}
 	}
@@ -3944,8 +3943,8 @@ void __cdecl Hooked_VGUIPaint()
 
 	oVGUIPaint();
 
-	// ÔÚÕâÀï»æÖÆ¶«Î÷£¬Õâ¸ö±È PaintTraverse ¸üºÃ
-	// ÒòÎª PaintTraverse »á½µµÍÓÎÏ·µÄ fps 30~40 ×óÓÒ
+	// åœ¨è¿™é‡Œç»˜åˆ¶ä¸œè¥¿ï¼Œè¿™ä¸ªæ¯” PaintTraverse æ›´å¥½
+	// å› ä¸º PaintTraverse ä¼šé™ä½æ¸¸æˆçš„ fps 30~40 å·¦å³
 }
 
 void __stdcall Hooked_DrawModelExecute(const DrawModelState_t &state,
@@ -3993,7 +3992,7 @@ void __fastcall Hooked_EnginePaint(CEngineVGui *ecx, void *edx, PaintMode_t mode
 	{
 		PaintStartDrawing(g_interface.Surface);
 
-		// ÔÚÕâÀï»æÖÆ¶«Î÷±È PaintTraverse ¸ü¿ì
+		// åœ¨è¿™é‡Œç»˜åˆ¶ä¸œè¥¿æ¯” PaintTraverse æ›´å¿«
 
 		PaintFinishDrawing(g_interface.Surface);
 	}

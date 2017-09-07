@@ -1,6 +1,7 @@
 #pragma once
 #include "../libraries/utl_string.h"
 #include "../libraries/utl_vector.h"
+#include "debugoverlay.h"
 
 class ConVar;
 class IConVar;

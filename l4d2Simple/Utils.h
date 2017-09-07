@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 #include <TlHelp32.h>
 #include "./d3dfont/D3DFont.h"
 #include <mutex>
@@ -128,18 +128,18 @@ public:
 		HWND window = GetDesktopWindow();
 		if (window == nullptr)
 		{
-			Utils::log("%s (%d) ´íÎó£º»ñÈ¡¶¥²ã´°¿ÚÊ§°Ü", __FILE__, __LINE__);
+			Utils::log("%s (%d) é”™è¯¯ï¼šè·å–é¡¶å±‚çª—å£å¤±è´¥", __FILE__, __LINE__);
 			return false;
 		}
 
 		pD3D = Direct3DCreate9(D3D_SDK_VERSION);
 		if (pD3D == nullptr)
 		{
-			Utils::log("%s (%d) ´íÎó£º´´½¨ D3D ¶ÔÏóÊ§°Ü", __FILE__, __LINE__);
+			Utils::log("%s (%d) é”™è¯¯ï¼šåˆ›å»º D3D å¯¹è±¡å¤±è´¥", __FILE__, __LINE__);
 			return false;
 		}
 
-		// ÏÔÊ¾Ä£Ê½
+		// æ˜¾ç¤ºæ¨¡å¼
 		D3DDISPLAYMODE dm;
 		if (FAILED(pD3D->GetAdapterDisplayMode(D3DADAPTER_DEFAULT, &dm)))
 		{
@@ -147,11 +147,11 @@ public:
 				pD3D->Release();
 			pD3D = nullptr;
 
-			Utils::log("%s (%d) ´íÎó£º»ñÈ¡ÏÔÊ¾Ä£Ê½Ê§°Ü", __FILE__, __LINE__);
+			Utils::log("%s (%d) é”™è¯¯ï¼šè·å–æ˜¾ç¤ºæ¨¡å¼å¤±è´¥", __FILE__, __LINE__);
 			return false;
 		}
 
-		// ´´½¨²ÎÊı
+		// åˆ›å»ºå‚æ•°
 		D3DPRESENT_PARAMETERS pp;
 		ZeroMemory(&pp, sizeof(pp));
 		pp.Windowed = TRUE;
@@ -168,15 +168,15 @@ public:
 		if (FAILED(hr))
 		{
 			if (hr == D3DERR_INVALIDCALL)
-				Utils::log("%s (%d) ´íÎó£º²ÎÊı´íÎó£¬Çë¼ì²éÖ¸ÕëÊÇ·ñÓĞĞ§", __FILE__, __LINE__);
+				Utils::log("%s (%d) é”™è¯¯ï¼šå‚æ•°é”™è¯¯ï¼Œè¯·æ£€æŸ¥æŒ‡é’ˆæ˜¯å¦æœ‰æ•ˆ", __FILE__, __LINE__);
 			else if (hr == D3DERR_DEVICELOST)
-				Utils::log("%s (%d) ´íÎó£ºÉè±¸¶ÔÏó¶ªÊ§ÁË", __FILE__, __LINE__);
+				Utils::log("%s (%d) é”™è¯¯ï¼šè®¾å¤‡å¯¹è±¡ä¸¢å¤±äº†", __FILE__, __LINE__);
 			else if (hr == D3DERR_NOTAVAILABLE)
-				Utils::log("%s (%d) ´íÎó£º²»Ö§³ÖÕâ¸ö¹¦ÄÜ", __FILE__, __LINE__);
+				Utils::log("%s (%d) é”™è¯¯ï¼šä¸æ”¯æŒè¿™ä¸ªåŠŸèƒ½", __FILE__, __LINE__);
 			else if (hr == D3DERR_OUTOFVIDEOMEMORY)
-				Utils::log("%s (%d) ´íÎó£ºÄÚ´æ²»×ã", __FILE__, __LINE__);
+				Utils::log("%s (%d) é”™è¯¯ï¼šå†…å­˜ä¸è¶³", __FILE__, __LINE__);
 			else
-				Utils::log("%s (%d) ´íÎó£º·¢ÉúÎ»ÖÃ´íÎó %d", __FILE__, __LINE__, hr);
+				Utils::log("%s (%d) é”™è¯¯ï¼šå‘ç”Ÿä½ç½®é”™è¯¯ %d", __FILE__, __LINE__, hr);
 
 			return false;
 		}
@@ -191,7 +191,7 @@ public:
 			pD3D = nullptr;
 			pDevice = nullptr;
 
-			Utils::log("%s (%d) ´íÎó£º´´½¨Ê§°Ü£¬´íÎóÎ´Öª", __FILE__, __LINE__);
+			Utils::log("%s (%d) é”™è¯¯ï¼šåˆ›å»ºå¤±è´¥ï¼Œé”™è¯¯æœªçŸ¥", __FILE__, __LINE__);
 			return false;
 		}
 
@@ -220,7 +220,7 @@ public:
 		if (pDevice == nullptr && !CreateDevice())
 			return false;
 
-		// Ğéº¯Êı±í
+		// è™šå‡½æ•°è¡¨
 		DWORD* pVMT = *(DWORD**)pDevice;
 		func(pD3D, pDevice, pVMT);
 
@@ -240,50 +240,50 @@ private:
 	bool canRelease;
 };
 
-// ½« D3DCOLOR ×ª»»Îª ImGui µÄÑÕÉ«
-// DirectX µÄÑÕÉ«Îª ARGB¡£ImGui µÄÑÕÉ«Îª ABGR
+// å°† D3DCOLOR è½¬æ¢ä¸º ImGui çš„é¢œè‰²
+// DirectX çš„é¢œè‰²ä¸º ARGBã€‚ImGui çš„é¢œè‰²ä¸º ABGR
 #define D3DCOLOR_IMGUI(_clr)	((_clr & 0xFF000000) | ((_clr & 0x00FF0000) >> 16) | (_clr & 0x0000FF00) | ((_clr & 0x000000FF) << 16))
 
 class DrawManager
 {
 public:
-	DrawManager(IDirect3DDevice9* pDevice, int fontSize = 9);
+	DrawManager(IDirect3DDevice9* pDevice, int fontSize = 14);
 	~DrawManager();
 
-	// ÔÚ Reset Ö®Ç°µ÷ÓÃ
+	// åœ¨ Reset ä¹‹å‰è°ƒç”¨
 	void OnLostDevice();
 
-	// ÔÚ Reset Ö®ºóµ÷ÓÃ
+	// åœ¨ Reset ä¹‹åè°ƒç”¨
 	void OnResetDevice();
 
-	// ÔÚ EndScene Ö®Ç°£¬»æÖÆ¿ªÊ¼Ö®Ç°µ÷ÓÃ
+	// åœ¨ EndScene ä¹‹å‰ï¼Œç»˜åˆ¶å¼€å§‹ä¹‹å‰è°ƒç”¨
 	void BeginRendering();
 
-	// ÔÚ EndScene Ö®Ç°£¬»æÖÆÍê³ÉÖ®ºóµ÷ÓÃ
+	// åœ¨ EndScene ä¹‹å‰ï¼Œç»˜åˆ¶å®Œæˆä¹‹åè°ƒç”¨
 	void EndRendering();
 
-	// »æÖÆÒ»ÌõÏß£¨±ØĞëÔÚµ÷ÓÃ BeginRendering Ö®ºó²Å¿ÉÒÔÊ¹ÓÃ£©
+	// ç»˜åˆ¶ä¸€æ¡çº¿ï¼ˆå¿…é¡»åœ¨è°ƒç”¨ BeginRendering ä¹‹åæ‰å¯ä»¥ä½¿ç”¨ï¼‰
 	void RenderLine(D3DCOLOR color, int x1, int y1, int x2, int y2);
 
-	// »æÖÆÒ»¸ö¾ØĞÎ£¨±ØĞëÔÚµ÷ÓÃ BeginRendering Ö®ºó²Å¿ÉÒÔÊ¹ÓÃ£©
+	// ç»˜åˆ¶ä¸€ä¸ªçŸ©å½¢ï¼ˆå¿…é¡»åœ¨è°ƒç”¨ BeginRendering ä¹‹åæ‰å¯ä»¥ä½¿ç”¨ï¼‰
 	void RenderRect(D3DCOLOR color, int x, int y, int w, int h);
 
-	// »æÖÆÒ»¸öÔ²ĞÎ£¨±ØĞëÔÚµ÷ÓÃ BeginRendering Ö®ºó²Å¿ÉÒÔÊ¹ÓÃ£©
+	// ç»˜åˆ¶ä¸€ä¸ªåœ†å½¢ï¼ˆå¿…é¡»åœ¨è°ƒç”¨ BeginRendering ä¹‹åæ‰å¯ä»¥ä½¿ç”¨ï¼‰
 	void RenderCircle(D3DCOLOR color, int x, int y, int r, size_t resolution = 64);
 
-	// »æÖÆÒ»¸öÌî³äÔ²ĞÎ
+	// ç»˜åˆ¶ä¸€ä¸ªå¡«å……åœ†å½¢
 	void RenderFillCircle(D3DCOLOR color, int x, int y, int r, size_t resolution = 64);
 
-	// ÑÓ³Ù»æÖÆÒ»¸öÖ»ÓĞËÄ¸ö½ÇµÄ¾ØĞÎ
-	void RenderCorner(D3DCOLOR color, int x, int y, int w, int h, size_t length = 5);
+	// å»¶è¿Ÿç»˜åˆ¶ä¸€ä¸ªåªæœ‰å››ä¸ªè§’çš„çŸ©å½¢
+	void RenderCorner(D3DCOLOR color, int x, int y, int w, int h, size_t length = 0);
 
-	// »æÖÆÎÄ±¾£¨±ØĞëÔÚµ÷ÓÃ BeginRendering Ö®ºó²Å¿ÉÒÔÊ¹ÓÃ£©
+	// ç»˜åˆ¶æ–‡æœ¬ï¼ˆå¿…é¡»åœ¨è°ƒç”¨ BeginRendering ä¹‹åæ‰å¯ä»¥ä½¿ç”¨ï¼‰
 	__declspec(deprecated) void RenderText(D3DCOLOR color, int x, int y, bool centered, const char* fmt, ...);
 
-	// »æÖÆÎÄ±¾£¨±ØĞëÔÚµ÷ÓÃ BeginRendering Ö®ºó²Å¿ÉÒÔÊ¹ÓÃ£©
+	// ç»˜åˆ¶æ–‡æœ¬ï¼ˆå¿…é¡»åœ¨è°ƒç”¨ BeginRendering ä¹‹åæ‰å¯ä»¥ä½¿ç”¨ï¼‰
 	__declspec(deprecated) void RenderText(D3DCOLOR color, int x, int y, bool centered, const wchar_t* fmt, ...);
 
-	// »æÖÆÌî³ä¾ØĞÎ£¨±ØĞëÔÚµ÷ÓÃ BeginRendering Ö®ºó²Å¿ÉÒÔÊ¹ÓÃ£©
+	// ç»˜åˆ¶å¡«å……çŸ©å½¢ï¼ˆå¿…é¡»åœ¨è°ƒç”¨ BeginRendering ä¹‹åæ‰å¯ä»¥ä½¿ç”¨ï¼‰
 	void RenderFillRect(D3DCOLOR color, int x, int y, int w, int h);
 
 #ifndef ORIGINAL_CD3DFONT
@@ -294,29 +294,29 @@ public:
 	void DrawString2(float x, float y, D3DCOLOR color, const wchar_t* text, ...);
 #endif
 
-	// ÑÓ³Ù»æÖÆÒ»ÌõÏß
+	// å»¶è¿Ÿç»˜åˆ¶ä¸€æ¡çº¿
 	void AddLine(D3DCOLOR color, int x1, int y1, int x2, int y2);
 
-	// ÑÓ³Ù»æÖÆÒ»¸ö¾ØĞÎ
+	// å»¶è¿Ÿç»˜åˆ¶ä¸€ä¸ªçŸ©å½¢
 	void AddRect(D3DCOLOR color, int x, int y, int w, int h);
 
-	// ÑÓ³Ù»æÖÆÒ»¸öÔ²ĞÎ
+	// å»¶è¿Ÿç»˜åˆ¶ä¸€ä¸ªåœ†å½¢
 	void AddCircle(D3DCOLOR color, int x, int y, int r, size_t resolution = 64);
 
-	// ÑÓ³Ù»æÖÆÒ»¸öÌî³äÔ²ĞÎ
+	// å»¶è¿Ÿç»˜åˆ¶ä¸€ä¸ªå¡«å……åœ†å½¢
 	void AddFillCircle(D3DCOLOR color, int x, int y, int r, size_t resolution = 64);
 
-	// ÑÓ³Ù»æÖÆÎÄ±¾£¨Ö»Ö§³Ö ASCII ¸ñÊ½×Ö·û£©
+	// å»¶è¿Ÿç»˜åˆ¶æ–‡æœ¬ï¼ˆåªæ”¯æŒ ASCII æ ¼å¼å­—ç¬¦ï¼‰
 	void AddText(D3DCOLOR color, int x, int y, bool centered, const char* fmt, ...);
 
-	// ÑÓ³Ù»æÖÆÒ»¸öÌî³ä¾ØĞÎ
+	// å»¶è¿Ÿç»˜åˆ¶ä¸€ä¸ªå¡«å……çŸ©å½¢
 	void AddFillRect(D3DCOLOR color, int x, int y, int w, int h);
 
-	// ÑÓ³Ù»æÖÆÎÄ±¾
+	// å»¶è¿Ÿç»˜åˆ¶æ–‡æœ¬
 	void AddString(D3DCOLOR color, int x, int y, bool centered, const char* fmt, ...);
 
-	// ÑÓ³Ù»æÖÆÒ»¸öÖ»ÓĞËÄ¸ö½ÇµÄ¾ØĞÎ
-	void AddCorner(D3DCOLOR color, int x, int y, int w, int h, size_t length = 5);
+	// å»¶è¿Ÿç»˜åˆ¶ä¸€ä¸ªåªæœ‰å››ä¸ªè§’çš„çŸ©å½¢
+	void AddCorner(D3DCOLOR color, int x, int y, int w, int h, size_t length = 0);
 
 	__declspec(deprecated) void DrawString(int x, int y, D3DCOLOR color, const char* text, ...);
 	__declspec(deprecated) void DrawString(int x, int y, D3DCOLOR color, const wchar_t* text, ...);
@@ -326,14 +326,14 @@ public:
 	__declspec(deprecated) void DrawFilledRect(int x, int y, int width, int height, D3DCOLOR color);
 	__declspec(deprecated) void DrawCircle(int x, int y, int radius, D3DCOLOR color);
 
-	// ½«ÎÄ±¾Ìí¼Óµ½ÏŞÊ±»æÖÆ¶ÓÁĞ£¬ÕâĞ©ÎÄ±¾»áÔÚÌí¼ÓºóµÄ 5 ÃëÖ®ºó×Ô¶¯ÏûÊ§
+	// å°†æ–‡æœ¬æ·»åŠ åˆ°é™æ—¶ç»˜åˆ¶é˜Ÿåˆ—ï¼Œè¿™äº›æ–‡æœ¬ä¼šåœ¨æ·»åŠ åçš„ 5 ç§’ä¹‹åè‡ªåŠ¨æ¶ˆå¤±
 	void PushRenderText(D3DCOLOR color, const char* text, ...);
 
-	// »ñÈ¡µ±Ç°×ÖÌåµÄ´óĞ¡
+	// è·å–å½“å‰å­—ä½“çš„å¤§å°
 	inline int GetFontSize();
 
-	// ½«ÓÎÏ·ÊÀ½ç×ø±ê×ªÎªÆÁÄ»ÉÏµÄÎ»ÖÃ
-	// Èç¹ûÌá¹©µÄÎ»ÖÃÔÚÆÁÄ»¿É¼û·¶Î§ÄÚ£¬Êä³öÆÁÄ»×ø±ê²¢·µ»Ø true¡£·ñÔò·µ»Ø false
+	// å°†æ¸¸æˆä¸–ç•Œåæ ‡è½¬ä¸ºå±å¹•ä¸Šçš„ä½ç½®
+	// å¦‚æœæä¾›çš„ä½ç½®åœ¨å±å¹•å¯è§èŒƒå›´å†…ï¼Œè¾“å‡ºå±å¹•åæ ‡å¹¶è¿”å› trueã€‚å¦åˆ™è¿”å› false
 	bool WorldToScreen(const Vector& origin, Vector& output);
 	std::string DisassembleShader();
 
@@ -346,33 +346,33 @@ public:
 	* void FillGradient(DWORD from, Color to, bool isVertical, int x, int y, int w, int h);
 	*/
 
-	// ³£ÓÃÑÕÉ«
+	// å¸¸ç”¨é¢œè‰²
 	enum D3DColor
 	{
-		WHITE = D3DCOLOR_ARGB(255, 255, 255, 255),		// °×É«
-		BLACK = D3DCOLOR_ARGB(255, 0, 0, 0),			// ºÚÉ«
-		RED = D3DCOLOR_ARGB(255, 255, 0, 0),			// ºìÉ«
-		GREEN = D3DCOLOR_ARGB(255, 0, 128, 0),			// ÂÌÉ«
-		LAWNGREEN = D3DCOLOR_ARGB(255, 124, 252, 0),	// ²İÂÌÉ«
-		BLUE = D3DCOLOR_ARGB(255, 0, 200, 255),			// À¶É«
-		DEEPSKYBLUE = D3DCOLOR_ARGB(255, 0, 191, 255),	// ÉîÀ¶É«
-		SKYBLUE = D3DCOLOR_ARGB(255, 0, 122, 204),		// ÌìÀ¶É«
-		YELLOW = D3DCOLOR_ARGB(255, 255, 255, 0),		// »ÆÉ«
-		ORANGE = D3DCOLOR_ARGB(255, 255, 165, 0),		// ³ÈÉ«
-		DARKORANGE = D3DCOLOR_ARGB(255, 255, 140, 0),	// °µ³ÈÉ«
-		PURPLE = D3DCOLOR_ARGB(255, 125, 0, 255),		// ×ÏÉ«
-		CYAN = D3DCOLOR_ARGB(255, 0, 255, 255),			// ÇàÉ«
-		PINK = D3DCOLOR_ARGB(255, 255, 20, 147),		// ·ÛÉ«
-		GRAY = D3DCOLOR_ARGB(255, 128, 128, 128),		// »ÒÉ«
-		DARKGRAY = D3DCOLOR_ARGB(255, 73, 73, 73),		// °µ»ÒÉ«
-		DARKERGRAY = D3DCOLOR_ARGB(255, 31, 31, 31)		// Ç³»ÒÉ«
+		WHITE = D3DCOLOR_ARGB(255, 255, 255, 255),		// ç™½è‰²
+		BLACK = D3DCOLOR_ARGB(255, 0, 0, 0),			// é»‘è‰²
+		RED = D3DCOLOR_ARGB(255, 255, 0, 0),			// çº¢è‰²
+		GREEN = D3DCOLOR_ARGB(255, 0, 128, 0),			// ç»¿è‰²
+		LAWNGREEN = D3DCOLOR_ARGB(255, 124, 252, 0),	// è‰ç»¿è‰²
+		BLUE = D3DCOLOR_ARGB(255, 0, 200, 255),			// è“è‰²
+		DEEPSKYBLUE = D3DCOLOR_ARGB(255, 0, 191, 255),	// æ·±è“è‰²
+		SKYBLUE = D3DCOLOR_ARGB(255, 0, 122, 204),		// å¤©è“è‰²
+		YELLOW = D3DCOLOR_ARGB(255, 255, 255, 0),		// é»„è‰²
+		ORANGE = D3DCOLOR_ARGB(255, 255, 165, 0),		// æ©™è‰²
+		DARKORANGE = D3DCOLOR_ARGB(255, 255, 140, 0),	// æš—æ©™è‰²
+		PURPLE = D3DCOLOR_ARGB(255, 125, 0, 255),		// ç´«è‰²
+		CYAN = D3DCOLOR_ARGB(255, 0, 255, 255),			// é’è‰²
+		PINK = D3DCOLOR_ARGB(255, 255, 20, 147),		// ç²‰è‰²
+		GRAY = D3DCOLOR_ARGB(255, 128, 128, 128),		// ç°è‰²
+		DARKGRAY = D3DCOLOR_ARGB(255, 73, 73, 73),		// æš—ç°è‰²
+		DARKERGRAY = D3DCOLOR_ARGB(255, 31, 31, 31)		// æµ…ç°è‰²
 	};
 
 #ifdef IMGUI_VERSION
-	// ¿ªÊ¼»æÖÆ²Ëµ¥
+	// å¼€å§‹ç»˜åˆ¶èœå•
 	void BeginImGuiRender();
 
-	// Íê³É»æÖÆ²Ëµ¥
+	// å®Œæˆç»˜åˆ¶èœå•
 	void FinishImGuiRender();
 #endif
 
@@ -417,7 +417,7 @@ protected:
 			this->vertex = std::move(vertex);
 			vertexCount = count;
 			if (vertexCount > this->vertex.size())
-				throw std::exception("ÇëÌá¹©Ò»¸öÓĞÄÚÈİµÄÊı×é");
+				throw std::exception("è¯·æä¾›ä¸€ä¸ªæœ‰å†…å®¹çš„æ•°ç»„");
 		}
 		
 		DelayDraw(D3DVertex* vertex, size_t len, D3DPRIMITIVETYPE type) :
@@ -449,6 +449,7 @@ private:
 	void ReleaseObjects();
 	void CreateObjects();
 	void DrawQueueObject();
+	static std::string FindFonts(const std::string& name);
 
 private:
 	IDirect3DDevice9*			m_pDevice;
@@ -458,17 +459,17 @@ private:
 	ID3DXLine*					m_pLine;
 	ID3DXSprite*				m_pTextSprite;
 
-	// ×ÖÌå´óĞ¡
+	// å­—ä½“å¤§å°
 	int							m_iFontSize;
 
-	// µ±Ç°ÊÇ·ñÕıÔÚ»æÖÆ
+	// å½“å‰æ˜¯å¦æ­£åœ¨ç»˜åˆ¶
 	bool						m_bRenderRunning;
 	std::mutex					m_hasDelayDrawing;
 
-	// ÎÄ±¾»æÖÆ¶ÓÁĞ
+	// æ–‡æœ¬ç»˜åˆ¶é˜Ÿåˆ—
 	std::vector<TextQueue>		m_textDrawQueue;
 	
-	// ÑÓ³Ù»æÖÆ
+	// å»¶è¿Ÿç»˜åˆ¶
 	std::vector<DelayDraw>		m_delayDraw;
 	std::vector<DelayString>	m_delayString;
 
@@ -560,6 +561,11 @@ void DrawManager::OnResetDevice()
 	CreateObjects();
 	m_bRenderRunning = false;
 	m_bImIsFirst = false;
+	
+	int width, height;
+	g_interface.Engine->GetScreenSize(width, height);
+	ImGui::GetIO().DisplaySize.x = width;
+	ImGui::GetIO().DisplaySize.y = height;
 }
 
 void DrawManager::ReleaseObjects()
@@ -649,7 +655,14 @@ void DrawManager::CreateObjects()
 
 #ifdef IMGUI_VERSION
 	m_imDrawList = new ImDrawList();
-	m_imFonts.AddFontFromFileTTF("Tahoma", m_iFontSize, 0, m_imFonts.GetGlyphRangesDefault());
+
+	std::string fontPath = FindFonts("SimSun-ExtB");
+	if(fontPath.empty())
+		fontPath = FindFonts("Tahoma");
+
+	Utils::log("font loading %s", fontPath.c_str());
+	m_imFonts.AddFontFromFileTTF(fontPath.data(), m_iFontSize, nullptr, m_imFonts.GetGlyphRangesChinese());
+	// ImGui::GetIO().Fonts->AddFontFromFileTTF(fontPath.data(), m_iFontSize, nullptr, m_imFonts.GetGlyphRangesChinese());
 	
 	uint8_t* pixel_data;
 	int width, height, bytes_per_pixel;
@@ -680,6 +693,67 @@ void DrawManager::CreateObjects()
 	m_hasDelayDrawing.unlock();
 }
 
+std::string DrawManager::FindFonts(const std::string & name)
+{
+	//
+	// This code is not as safe as it should be.
+	// Assumptions we make:
+	//  -> GetWindowsDirectoryA does not fail.
+	//  -> The registry key exists.
+	//  -> The subkeys are ordered alphabetically
+	//  -> The subkeys name and data are no longer than 260 (MAX_PATH) chars.
+	//
+
+	char buffer[MAX_PATH];
+	HKEY registryKey;
+
+	GetWindowsDirectoryA(buffer, MAX_PATH);
+	std::string fontsFolder = buffer + std::string("\\Fonts\\");
+
+	if (RegOpenKeyExA(HKEY_LOCAL_MACHINE, "Software\\Microsoft\\Windows NT\\CurrentVersion\\Fonts", 0,
+		KEY_READ, &registryKey))
+	{
+		return "";
+	}
+
+	uint32_t valueIndex = 0;
+	char valueName[MAX_PATH];
+	uint8_t valueData[MAX_PATH];
+	std::wstring wsFontFile;
+
+	for(;;)
+	{
+		uint32_t valueNameSize = MAX_PATH;
+		uint32_t valueDataSize = MAX_PATH;
+		uint32_t valueType;
+
+		auto error = RegEnumValueA(registryKey, valueIndex, valueName,
+			reinterpret_cast<DWORD*>(&valueNameSize), 0, reinterpret_cast<DWORD*>(&valueType),
+			valueData, reinterpret_cast<DWORD*>(&valueDataSize));
+
+		valueIndex++;
+
+		if (error == ERROR_NO_MORE_ITEMS)
+		{
+			RegCloseKey(registryKey);
+			break;
+		}
+
+		if (error || valueType != REG_SZ)
+		{
+			continue;
+		}
+
+		if (_strnicmp(name.data(), valueName, name.size()) == 0)
+		{
+			RegCloseKey(registryKey);
+			return (fontsFolder + std::string((char*)valueData, valueDataSize));
+		}
+	}
+
+	return "";
+}
+
 void DrawManager::BeginImGuiRender()
 {
 	ImGui_ImplDX9_NewFrame();
@@ -698,7 +772,7 @@ void DrawManager::FinishImGuiRender()
 	}
 	else
 	{
-		// ²»Òª½øĞĞ»æÖÆ
+		// ä¸è¦è¿›è¡Œç»˜åˆ¶
 		m_imDrawData.Valid = false;
 	}
 
@@ -724,7 +798,7 @@ void DrawManager::BeginRendering()
 	m_pDevice->SetVertexShader(nullptr);
 	m_pDevice->SetFVF(D3DFVF_XYZRHW | D3DFVF_DIFFUSE);
 
-	// ĞŞ¸´ÑÕÉ«²»ÕıÈ·£¬Ä³Ğ©¶«Î÷»æÖÆ²»³öÀ´
+	// ä¿®å¤é¢œè‰²ä¸æ­£ç¡®ï¼ŒæŸäº›ä¸œè¥¿ç»˜åˆ¶ä¸å‡ºæ¥
 	m_pDevice->SetRenderState(D3DRS_COLORWRITEENABLE, 0xFFFFFFFF);
 	m_pDevice->SetRenderState(D3DRS_LIGHTING, false);
 	m_pDevice->SetRenderState(D3DRS_FOGENABLE, false);
@@ -766,7 +840,7 @@ void DrawManager::EndRendering()
 	}
 	m_hasDelayDrawing.unlock();
 
-	// ½«Éè±¸×´Ì¬ÖØÖÃ£¬·ÀÖ¹Ô­À´µÄ»æÖÆ³öÏÖÎÊÌâ
+	// å°†è®¾å¤‡çŠ¶æ€é‡ç½®ï¼Œé˜²æ­¢åŸæ¥çš„ç»˜åˆ¶å‡ºç°é—®é¢˜
 	m_pStateBlock->Apply();
 }
 
@@ -775,7 +849,7 @@ void DrawManager::DrawQueueObject()
 	if (!m_textDrawQueue.empty() || !m_delayString.empty())
 	{
 #ifndef ORIGINAL_CD3DFONT
-		// ¿ªÊ¼ÅúÁ¿»æÖÆ
+		// å¼€å§‹æ‰¹é‡ç»˜åˆ¶
 		m_pFont->BeginDrawing();
 #endif
 		
@@ -809,16 +883,16 @@ void DrawManager::DrawQueueObject()
 				{
 					rect = { 0, 0, 0, 0 };
 					
-					// »ñÈ¡×óÉÏ½ÇÎ»ÖÃ (²»»æÖÆ)
+					// è·å–å·¦ä¸Šè§’ä½ç½® (ä¸ç»˜åˆ¶)
 					m_pDefaultFont->DrawTextA(m_pTextSprite, each.text.c_str(), each.text.length(),
 						&rect, DT_NOCLIP | DT_CALCRECT, each.color);
 
-					// ¼ÆËãÖĞĞÄÎ»ÖÃ
+					// è®¡ç®—ä¸­å¿ƒä½ç½®
 					rect = { ((LONG)each.x) - rect.right / 2, ((LONG)each.y), 0, 0 };
 				}
 				else
 				{
-					// ×óÉÏ½ÇÎ»ÖÃ
+					// å·¦ä¸Šè§’ä½ç½®
 					rect = { ((LONG)each.x), ((LONG)each.y), 1000, 100 };
 				}
 
@@ -840,16 +914,16 @@ void DrawManager::DrawQueueObject()
 		m_delayString.clear();
 
 #ifndef ORIGINAL_CD3DFONT
-		// Íê³ÉÅúÁ¿»æÖÆ
+		// å®Œæˆæ‰¹é‡ç»˜åˆ¶
 		m_pFont->EndDrawing();
 #endif
 		m_pTextSprite->End();
 	}
 	
-	// ÑÓ³Ù»æÖÆÍ¼ĞÎ
+	// å»¶è¿Ÿç»˜åˆ¶å›¾å½¢
 	if (!m_delayDraw.empty())
 	{
-		// ÓÅ»¯»æÖÆËÙ¶È
+		// ä¼˜åŒ–ç»˜åˆ¶é€Ÿåº¦
 		m_pDevice->SetRenderState(D3DRS_CULLMODE, D3DCULL_CW);
 
 		for (const auto& each : m_delayDraw)
@@ -1224,40 +1298,56 @@ void DrawManager::AddString(D3DCOLOR color, int x, int y, bool centered, const c
 
 void DrawManager::RenderCorner(D3DCOLOR color, int x, int y, int w, int h, size_t length)
 {
-	// ×óÉÏ
+	if (length == 0)
+	{
+		if (w == 0)
+			return;
+
+		length = w / 3;
+	}
+
+	// å·¦ä¸Š
 	this->RenderLine(color, x, y, x + length, y);
-	this->RenderLine(color, x, y, x, y + length);
+	this->RenderLine(color, x, y, x, y - length);
 
-	// ÓÒÉÏ
+	// å³ä¸Š
 	this->RenderLine(color, x + w, y, x + w - length, y);
-	this->RenderLine(color, x + w, y, x + w, y + length);
+	this->RenderLine(color, x + w, y, x + w, y - length);
 
-	// ×óÏÂ
+	// å·¦ä¸‹
 	this->RenderLine(color, x, y + h, x + length, y + h);
-	this->RenderLine(color, x, y + h, x, y + h - length);
+	this->RenderLine(color, x, y + h, x, y + h + length);
 
-	// ÓÒÏÂ
+	// å³ä¸‹
 	this->RenderLine(color, x + w, y + h, x + w - length, y + h);
-	this->RenderLine(color, x + w, y + h, x + w, y + h - length);
+	this->RenderLine(color, x + w, y + h, x + w, y + h + length);
 }
 
 void DrawManager::AddCorner(D3DCOLOR color, int x, int y, int w, int h, size_t length)
 {
-	// ×óÉÏ
+	if (length == 0)
+	{
+		if (w == 0)
+			return;
+
+		length = w / 3;
+	}
+
+	// å·¦ä¸Š
 	this->AddLine(color, x, y, x + length, y);
-	this->AddLine(color, x, y, x, y + length);
+	this->AddLine(color, x, y, x, y - length);
 
-	// ÓÒÉÏ
+	// å³ä¸Š
 	this->AddLine(color, x + w, y, x + w - length, y);
-	this->AddLine(color, x + w, y, x + w, y + length);
+	this->AddLine(color, x + w, y, x + w, y - length);
 
-	// ×óÏÂ
+	// å·¦ä¸‹
 	this->AddLine(color, x, y + h, x + length, y + h);
-	this->AddLine(color, x, y + h, x, y + h - length);
+	this->AddLine(color, x, y + h, x, y + h + length);
 
-	// ÓÒÏÂ
+	// å³ä¸‹
 	this->AddLine(color, x + w, y + h, x + w - length, y + h);
-	this->AddLine(color, x + w, y + h, x + w, y + h - length);
+	this->AddLine(color, x + w, y + h, x + w, y + h + length);
 }
 
 inline HRESULT DrawManager::DrawString2Begin()
@@ -1419,7 +1509,7 @@ inline int DrawManager::GetFontSize()
 	return m_iFontSize;
 }
 
-// GBK ×ª UTF-8
+// GBK è½¬ UTF-8
 std::string Utils::g2u(const std::string& strGBK)
 {
 	std::string strOutUTF8 = "";
@@ -1438,7 +1528,7 @@ std::string Utils::g2u(const std::string& strGBK)
 	return strOutUTF8;
 }
 
-// UTF-8 ×ª GBK
+// UTF-8 è½¬ GBK
 std::string Utils::u2g(const std::string& strUTF8)
 {
 	int len = MultiByteToWideChar(CP_UTF8, 0, strUTF8.c_str(), -1, NULL, 0);
@@ -1457,7 +1547,7 @@ std::string Utils::u2g(const std::string& strUTF8)
 	return strTemp;
 }
 
-// UTF-8 ×ª GB2312
+// UTF-8 è½¬ GB2312
 char* Utils::utg(const char* utf8)
 {
 	int len = MultiByteToWideChar(CP_UTF8, 0, utf8, -1, NULL, 0);
@@ -1472,7 +1562,7 @@ char* Utils::utg(const char* utf8)
 	return str;
 }
 
-// GB2312 ×ª UTF-8
+// GB2312 è½¬ UTF-8
 char* Utils::gtu(const char* gb2312)
 {
 	int len = MultiByteToWideChar(CP_ACP, 0, gb2312, -1, NULL, 0);
@@ -1487,7 +1577,7 @@ char* Utils::gtu(const char* gb2312)
 	return str;
 }
 
-// wchar ×ª char
+// wchar è½¬ char
 std::string Utils::w2c(const std::wstring& ws)
 {
 	size_t convertedChars = 0;
@@ -1506,7 +1596,7 @@ std::string Utils::w2c(const std::wstring& ws)
 	return result;
 }
 
-// char ×ª wchar
+// char è½¬ wchar
 std::wstring Utils::c2w(const std::string& s)
 {
 	size_t convertedChars = 0;
@@ -1621,7 +1711,7 @@ HMODULE Utils::GetModuleHandleSafe(const std::string& pszModuleName)
 	return hmModuleHandle;
 }
 
-// »ñÈ¡ dll µØÖ·
+// è·å– dll åœ°å€
 DWORD Utils::GetModuleBase(const std::string& ModuleName, DWORD ProcessID)
 {
 	if (ProcessID == 0)
@@ -1673,7 +1763,7 @@ DWORD Utils::GetModuleBase(const std::string& ModuleName, DWORD* ModuleSize, DWO
 	return NULL;
 }
 
-// ¸ù¾İ½ø³ÌÃû»ñÈ¡½ø³Ìid
+// æ ¹æ®è¿›ç¨‹åè·å–è¿›ç¨‹id
 DWORD Utils::FindProccess(const std::string& proccessName)
 {
 	HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, NULL);
@@ -1706,7 +1796,7 @@ T Utils::readMemory(Arg... offset)
 	int len = GetArrayLength(offsetList);
 	if (len <= 0)
 	{
-		Utils::log("ÇëÌá¹©ÖÁÉÙÒ»¸öµØÖ·£¡");
+		Utils::log("è¯·æä¾›è‡³å°‘ä¸€ä¸ªåœ°å€ï¼");
 		return T();
 	}
 
@@ -1720,7 +1810,7 @@ T Utils::readMemory(Arg... offset)
 			if (finalAddress != NULL)
 			return *(T*)finalAddress;
 
-			printf("ÕÒ²»µ½ÈÎºÎ¶«Î÷¡£\n");
+			printf("æ‰¾ä¸åˆ°ä»»ä½•ä¸œè¥¿ã€‚\n");
 			return T();
 			}
 			*/
@@ -1728,7 +1818,7 @@ T Utils::readMemory(Arg... offset)
 			currentAddress += offsetList[i];
 			if (VirtualProtect((void*)currentAddress, sizeof(finalAddress), PAGE_EXECUTE_READWRITE, &oldProtect) == FALSE)
 			{
-				printf("´íÎó£ºĞŞ¸ÄµØÖ· 0x%X µÄ±£»¤Ê§°Ü¡£\n", currentAddress);
+				printf("é”™è¯¯ï¼šä¿®æ”¹åœ°å€ 0x%X çš„ä¿æŠ¤å¤±è´¥ã€‚\n", currentAddress);
 				return T();
 			}
 
@@ -1742,12 +1832,12 @@ T Utils::readMemory(Arg... offset)
 
 #ifdef DEBUG
 			if (VirtualProtect((void*)currentAddress, sizeof(finalAddress), oldProtect, NULL) == FALSE)
-				printf("´íÎó£º»Ö¸´µØÖ· 0x%X µÄ±£»¤Ê§°Ü¡£\n", currentAddress);
+				printf("é”™è¯¯ï¼šæ¢å¤åœ°å€ 0x%X çš„ä¿æŠ¤å¤±è´¥ã€‚\n", currentAddress);
 #else
 			VirtualProtect((void*)currentAddress, sizeof(finalAddress), oldProtect, &oldProtect);
 #endif
 
-			// ½«µ±Ç°µØÖ·ÉèÖÃÎª×îºóµÄµØÖ·
+			// å°†å½“å‰åœ°å€è®¾ç½®ä¸ºæœ€åçš„åœ°å€
 			currentAddress = finalAddress;
 		}
 
@@ -1756,7 +1846,7 @@ T Utils::readMemory(Arg... offset)
 	}
 	catch (...)
 	{
-		Utils::log("´íÎó£º¶ÁÈ¡µØÖ·Îª 0x%X µÄÄÚÈİÊ§°Ü¡£", currentAddress);
+		Utils::log("é”™è¯¯ï¼šè¯»å–åœ°å€ä¸º 0x%X çš„å†…å®¹å¤±è´¥ã€‚", currentAddress);
 	}
 
 	return T();
@@ -1770,7 +1860,7 @@ T Utils::writeMemory(T value, Arg... offset)
 	int len = GetArrayLength(offsetList);
 	if (len <= 0)
 	{
-		Utils::log("ÇëÌá¹©ÖÁÉÙÒ»¸öµØÖ·£¡");
+		Utils::log("è¯·æä¾›è‡³å°‘ä¸€ä¸ªåœ°å€ï¼");
 		return T();
 	}
 
@@ -1784,7 +1874,7 @@ T Utils::writeMemory(T value, Arg... offset)
 			if (finalAddress != NULL)
 			return (*(T*)finalAddress = value);
 
-			printf("ÕÒ²»µ½ÈÎºÎ¶«Î÷¡£\n");
+			printf("æ‰¾ä¸åˆ°ä»»ä½•ä¸œè¥¿ã€‚\n");
 			return T();
 			}
 			*/
@@ -1792,7 +1882,7 @@ T Utils::writeMemory(T value, Arg... offset)
 			currentAddress += offsetList[i];
 			if (VirtualProtect((void*)currentAddress, sizeof(finalAddress), PAGE_EXECUTE_READWRITE, &oldProtect) == FALSE)
 			{
-				Utils::log("´íÎó£ºĞŞ¸ÄµØÖ· 0x%X µÄ±£»¤Ê§°Ü¡£", currentAddress);
+				Utils::log("é”™è¯¯ï¼šä¿®æ”¹åœ°å€ 0x%X çš„ä¿æŠ¤å¤±è´¥ã€‚", currentAddress);
 				return T();
 			}
 
@@ -1806,12 +1896,12 @@ T Utils::writeMemory(T value, Arg... offset)
 
 #ifdef DEBUG
 			if (VirtualProtect((void*)currentAddress, sizeof(finalAddress), oldProtect, NULL) == FALSE)
-				printf("´íÎó£º»Ö¸´µØÖ· 0x%X µÄ±£»¤Ê§°Ü¡£\n", currentAddress);
+				printf("é”™è¯¯ï¼šæ¢å¤åœ°å€ 0x%X çš„ä¿æŠ¤å¤±è´¥ã€‚\n", currentAddress);
 #else
 			VirtualProtect((void*)currentAddress, sizeof(finalAddress), oldProtect, &oldProtect);
 #endif
 
-			// ½«µ±Ç°µØÖ·ÉèÖÃÎª×îºóµÄµØÖ·
+			// å°†å½“å‰åœ°å€è®¾ç½®ä¸ºæœ€åçš„åœ°å€
 			currentAddress = finalAddress;
 		}
 
@@ -1820,7 +1910,7 @@ T Utils::writeMemory(T value, Arg... offset)
 	}
 	catch (...)
 	{
-		Utils::log("´íÎó£º¶ÁÈ¡µØÖ·Îª 0x%X µÄÄÚÈİÊ§°Ü¡£", currentAddress);
+		Utils::log("é”™è¯¯ï¼šè¯»å–åœ°å€ä¸º 0x%X çš„å†…å®¹å¤±è´¥ã€‚", currentAddress);
 	}
 
 	return T();
@@ -1886,18 +1976,18 @@ void Utils::log(const char* text, ...)
 	tm tmp;
 	localtime_s(&tmp, &t);
 
-	// ÎÄ¼ş´´½¨ÈÕÆÚ
+	// æ–‡ä»¶åˆ›å»ºæ—¥æœŸ
 	strftime(buffer, 1024, "\\segt_%Y%m%d.log", &tmp);
 
 	std::fstream file(GetPath() + buffer, std::ios::out | std::ios::app | std::ios::ate);
 
-	// ÈÕÖ¾Ğ´ÈëÊ±¼ä
+	// æ—¥å¿—å†™å…¥æ—¶é—´
 	strftime(buffer, 1024, "[%H:%M:%S] ", &tmp);
 	file << buffer;
 
 #endif
 
-	// ¸ñÊ½»¯×Ö·û´®
+	// æ ¼å¼åŒ–å­—ç¬¦ä¸²
 	va_list ap;
 	va_start(ap, text);
 	vsprintf_s(buffer, text, ap);
@@ -1905,15 +1995,15 @@ void Utils::log(const char* text, ...)
 
 #ifdef _DEBUG
 
-	// Êä³ö
+	// è¾“å‡º
 	file << buffer << "\n";
 
-	// Íê±Ï
+	// å®Œæ¯•
 	file.close();
 
 #endif
 
-	// Êä³öµ½¿ØÖÆÌ¨
+	// è¾“å‡ºåˆ°æ§åˆ¶å°
 	g_interface.Engine->ClientCmd("echo \"%s\"", buffer);
 	std::cout << buffer << std::endl;
 }
@@ -1932,18 +2022,18 @@ void Utils::log(const wchar_t* text, ...)
 	tm tmp;
 	localtime_s(&tmp, &t);
 
-	// ÎÄ¼ş´´½¨ÈÕÆÚ
+	// æ–‡ä»¶åˆ›å»ºæ—¥æœŸ
 	strftime(ctime, 64, "\\segt_%Y%m%d.log", &tmp);
 
 	std::wfstream file(GetPath() + ctime, std::ios::out | std::ios::app | std::ios::ate);
 
-	// ÈÕÖ¾Ğ´ÈëÊ±¼ä
+	// æ—¥å¿—å†™å…¥æ—¶é—´
 	strftime(ctime, 64, "[%H:%M:%S] ", &tmp);
 	file << c2w(ctime);
 
 #endif
 
-	// ¸ñÊ½»¯×Ö·û´®
+	// æ ¼å¼åŒ–å­—ç¬¦ä¸²
 	va_list ap;
 	va_start(ap, text);
 	vswprintf_s(buffer, text, ap);
@@ -1951,15 +2041,15 @@ void Utils::log(const wchar_t* text, ...)
 
 #ifdef _DEBUG
 
-	// Êä³ö
+	// è¾“å‡º
 	file << buffer << L"\n";
 
-	// Íê±Ï
+	// å®Œæ¯•
 	file.close();
 
 #endif
 
-	// Êä³öµ½¿ØÖÆÌ¨
+	// è¾“å‡ºåˆ°æ§åˆ¶å°
 	g_interface.Engine->ClientCmd("echo \"%s\"", w2c(buffer));
 	std::wcout << buffer << std::endl;
 }

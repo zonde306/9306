@@ -17,7 +17,7 @@ void CInterfaces::GetInterfaces()
 	GameEvent = (IGameEventManager2*)GetPointer("engine.dll", "GAMEEVENTSMANAGER002");
 	ModelRender = (CModelRender*)GetPointer("engine.dll", "VEngineModel");
 	RenderView = (CRenderView*)GetPointer("engine.dll", "VEngineRenderView");
-	InputSystem = (IInputInternal*)GetPointer("inputsystem.dll", "VGUI_InputInternal");
+	InputSystem = (IInputSystem*)GetPointer("inputsystem.dll", "VGUI_InputInternal");
 	MaterialSystem = (IMaterialSystem*)GetPointer("materialsystem.dll", "VMaterialSystem");
 	EngineVGui = (CEngineVGui*)GetPointer("engine.dll", "VEngineVGui");
 	Cvar = (ICvar*)GetPointer("vstdlib.dll", "VEngineCvar");
