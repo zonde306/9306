@@ -258,9 +258,7 @@ public:
 		}
 		catch (std::exception& e)
 		{
-#ifdef _DEBUG
-			Utils::log("%s (%d) ´íÎó£º", __FILE__, __LINE__, e.what());
-#endif
+			Utils::log("%s (%d) : %s", __FILE__, __LINE__, e.what());
 			return false;
 		}
 

@@ -18,6 +18,7 @@ IMGUI_API void			ImGui_ImplDX9_NewFrame();
 IMGUI_API void			ImGui_ImplDX9_InvalidateDeviceObjects();
 IMGUI_API bool			ImGui_ImplDX9_CreateDeviceObjects();
 IMGUI_API LRESULT		ImGui_ImplDX9_WndProcHandler(HWND, UINT, WPARAM, LPARAM);
+void					ImGui_ImplDX9_RenderDrawLists(ImDrawData* draw_data);
 
 LRESULT WINAPI ImGui_WindowProccess(HWND, UINT, WPARAM, LPARAM);
 extern WNDPROC g_pOldWindowProccess;

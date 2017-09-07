@@ -433,7 +433,16 @@ enum
 	OBS_MODE_POI,		// PASSTIME point of interest - game objective, big fight, anything interesting; added in the middle of the enum due to tons of hard-coded "<ROAMING" enum compares
 	OBS_MODE_ROAMING,	// free roaming
 
-	NUM_OBSERVER_MODES,
+	NUM_OBSERVER_MODES
+};
+
+enum LifeStates_t
+{
+	LIFE_ALIVE = 0,
+	LIFE_DYING,
+	LIFE_DEAD,
+	LIFE_RESPAWNABLE,
+	LIFE_DISCARDBODY
 };
 
 //----------------------------------

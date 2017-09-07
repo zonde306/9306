@@ -1796,27 +1796,10 @@ HRESULT WINAPI Hooked_Present(IDirect3DDevice9* device, const RECT* source, cons
 		showHint = true;
 	}
 
-	return oPresent(device, source, dest, window, region);
-}
-
-HRESULT WINAPI Hooked_EndScene(IDirect3DDevice9* device)
-{
-	static bool showHint = true;
-	if (showHint)
-	{
-		showHint = false;
-		if ((DWORD)g_pDeviceHooker->GetDevice() == (DWORD)device)
-			Utils::log("Hooked_EndScene success");
-	}
-
-	if (g_pDeviceHooker->GetDevice() == nullptr)
-	{
-		ResetDeviceHook(device);
-		showHint = true;
-	}
-
-	// 初始化
 	if (!g_pDrawRender)
+		g_pDrawRender = std::make_unique<DrawManager>(device);
+
+	if (!g_pCallbackOnMenuToggle)
 	{
 		g_pCallbackOnMenuToggle = [](bool showMenu) -> void
 		{
@@ -1827,24 +1810,15 @@ HRESULT WINAPI Hooked_EndScene(IDirect3DDevice9* device)
 			g_bIsShowMenu = false;
 		};
 
-		g_pDrawRender = std::make_unique<DrawManager>(device);
 		ImGui_ImplDX9_Init(g_hwGameWindow, device);
-
-		// 第一次运行时只初始化不进行绘制
-		return oEndScene(device);
 	}
 
-	// 备份之前绘制设置
-	g_pDrawRender->BeginRendering();
+	g_pDrawRender->BeginImGuiRender();
+	ImGui::GetIO().MouseDrawCursor = g_bIsShowMenu;
 
 	// 绘制菜单
-	/*
 	if (g_bIsShowMenu)
 	{
-		// 启动 ImGui 绘制
-		ImGui::GetIO().MouseDrawCursor = g_bIsShowMenu;
-		ImGui_ImplDX9_NewFrame();
-
 		// 绘制一个窗口
 		ImGui::Begin("L4D2Simple", &g_bIsShowMenu, ImVec2(300, 250), 0.75f);
 		{
@@ -1898,7 +1872,33 @@ HRESULT WINAPI Hooked_EndScene(IDirect3DDevice9* device)
 		}
 		ImGui::End();	// 完成一个窗口的绘制
 	}
-	*/
+
+	g_pDrawRender->FinishImGuiRender();
+
+	return oPresent(device, source, dest, window, region);
+}
+
+HRESULT WINAPI Hooked_EndScene(IDirect3DDevice9* device)
+{
+	static bool showHint = true;
+	if (showHint)
+	{
+		showHint = false;
+		if ((DWORD)g_pDeviceHooker->GetDevice() == (DWORD)device)
+			Utils::log("Hooked_EndScene success");
+	}
+
+	if (g_pDeviceHooker->GetDevice() == nullptr)
+	{
+		ResetDeviceHook(device);
+		showHint = true;
+	}
+
+	if (!g_pDrawRender)
+		g_pDrawRender = std::make_unique<DrawManager>(device);
+
+	// 备份之前绘制设置
+	g_pDrawRender->BeginRendering();
 
 #ifdef USE_D3D_DRAW
 

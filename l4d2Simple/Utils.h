@@ -240,6 +240,10 @@ private:
 	bool canRelease;
 };
 
+// 将 D3DCOLOR 转换为 ImGui 的颜色
+// DirectX 的颜色为 ARGB。ImGui 的颜色为 ABGR
+#define D3DCOLOR_IMGUI(_clr)	((_clr & 0xFF000000) | ((_clr & 0x00FF0000) >> 16) | (_clr & 0x0000FF00) | ((_clr & 0x000000FF) << 16))
+
 class DrawManager
 {
 public:
@@ -269,6 +273,9 @@ public:
 
 	// 绘制一个填充圆形
 	void RenderFillCircle(D3DCOLOR color, int x, int y, int r, size_t resolution = 64);
+
+	// 延迟绘制一个只有四个角的矩形
+	void RenderCorner(D3DCOLOR color, int x, int y, int w, int h, size_t length = 5);
 
 	// 绘制文本（必须在调用 BeginRendering 之后才可以使用）
 	__declspec(deprecated) void RenderText(D3DCOLOR color, int x, int y, bool centered, const char* fmt, ...);
@@ -307,6 +314,9 @@ public:
 
 	// 延迟绘制文本
 	void AddString(D3DCOLOR color, int x, int y, bool centered, const char* fmt, ...);
+
+	// 延迟绘制一个只有四个角的矩形
+	void AddCorner(D3DCOLOR color, int x, int y, int w, int h, size_t length = 5);
 
 	__declspec(deprecated) void DrawString(int x, int y, D3DCOLOR color, const char* text, ...);
 	__declspec(deprecated) void DrawString(int x, int y, D3DCOLOR color, const wchar_t* text, ...);
@@ -357,6 +367,14 @@ public:
 		DARKGRAY = D3DCOLOR_ARGB(255, 73, 73, 73),		// 暗灰色
 		DARKERGRAY = D3DCOLOR_ARGB(255, 31, 31, 31)		// 浅灰色
 	};
+
+#ifdef IMGUI_VERSION
+	// 开始绘制菜单
+	void BeginImGuiRender();
+
+	// 完成绘制菜单
+	void FinishImGuiRender();
+#endif
 
 protected:
 	struct D3DVertex
@@ -433,26 +451,34 @@ private:
 	void DrawQueueObject();
 
 private:
-	IDirect3DDevice9*		m_pDevice;
-	IDirect3DStateBlock9*	m_pStateBlock;
-	ID3DXFont*				m_pDefaultFont;
-	CD3DFont*				m_pFont;
-	ID3DXLine*				m_pLine;
-	ID3DXSprite*			m_pTextSprite;
+	IDirect3DDevice9*			m_pDevice;
+	IDirect3DStateBlock9*		m_pStateBlock;
+	ID3DXFont*					m_pDefaultFont;
+	CD3DFont*					m_pFont;
+	ID3DXLine*					m_pLine;
+	ID3DXSprite*				m_pTextSprite;
 
 	// 字体大小
-	int						m_iFontSize;
+	int							m_iFontSize;
 
 	// 当前是否正在绘制
-	bool					m_bRenderRunning;
-	std::mutex				m_hasDelayDrawing;
+	bool						m_bRenderRunning;
+	std::mutex					m_hasDelayDrawing;
 
 	// 文本绘制队列
-	std::vector<TextQueue> m_textDrawQueue;
+	std::vector<TextQueue>		m_textDrawQueue;
 	
 	// 延迟绘制
-	std::vector<DelayDraw> m_delayDraw;
-	std::vector<DelayString> m_delayString;
+	std::vector<DelayDraw>		m_delayDraw;
+	std::vector<DelayString>	m_delayString;
+
+#ifdef IMGUI_VERSION
+	bool						m_bImIsFirst;
+	ImDrawData					m_imDrawData;
+	ImDrawList*					m_imDrawList;
+	IDirect3DTexture9*			m_imFontTexture;
+	ImFontAtlas					m_imFonts;
+#endif
 };
 
 #define D3DFONT_ORIGINAL 0x80
@@ -526,16 +552,20 @@ void DrawManager::OnLostDevice()
 {
 	ReleaseObjects();
 	m_bRenderRunning = false;
+	m_bImIsFirst = false;
 }
 
 void DrawManager::OnResetDevice()
 {
 	CreateObjects();
 	m_bRenderRunning = false;
+	m_bImIsFirst = false;
 }
 
 void DrawManager::ReleaseObjects()
 {
+	m_hasDelayDrawing.lock();
+	
 	if (m_pStateBlock)
 	{
 		m_pStateBlock->Release();
@@ -565,10 +595,27 @@ void DrawManager::ReleaseObjects()
 		delete m_pFont;
 		m_pFont = nullptr;
 	}
+
+	if (m_imFontTexture)
+	{
+		m_imFontTexture->Release();
+		m_imFontTexture = nullptr;
+	}
+
+	if (m_imDrawList)
+	{
+		delete m_imDrawList;
+		m_imDrawList = nullptr;
+	}
+
+	m_imFonts.Clear();
+	m_hasDelayDrawing.unlock();
 }
 
 void DrawManager::CreateObjects()
 {
+	m_hasDelayDrawing.lock();
+	
 	if (FAILED(m_pDevice->CreateStateBlock(D3DSBT_ALL, &m_pStateBlock)))
 	{
 		throw std::exception("Failed to create the state block");
@@ -599,6 +646,69 @@ void DrawManager::CreateObjects()
 	m_pFont->InitDeviceObjects(m_pDevice);
 	m_pFont->RestoreDeviceObjects();
 #endif
+
+#ifdef IMGUI_VERSION
+	m_imDrawList = new ImDrawList();
+	m_imFonts.AddFontFromFileTTF("Tahoma", m_iFontSize, 0, m_imFonts.GetGlyphRangesDefault());
+	
+	uint8_t* pixel_data;
+	int width, height, bytes_per_pixel;
+	m_imFonts.GetTexDataAsRGBA32(&pixel_data, &width, &height, &bytes_per_pixel);
+
+	if (FAILED(m_pDevice->CreateTexture(width, height, 1, D3DUSAGE_DYNAMIC, D3DFMT_A8R8G8B8,
+		D3DPOOL_DEFAULT, &m_imFontTexture, nullptr)))
+	{
+		throw std::exception("Failed to create the texture");
+	}
+
+	D3DLOCKED_RECT textureLock;
+	if (FAILED(m_imFontTexture->LockRect(0, &textureLock, nullptr, 0)))
+	{
+		throw std::exception("Failed to lock the texture");
+	}
+
+	for (int y = 0; y < height; y++)
+	{
+		memcpy_s((uint8_t*)textureLock.pBits + textureLock.Pitch * y, (width * bytes_per_pixel),
+			pixel_data + (width * bytes_per_pixel) * y, (width * bytes_per_pixel));
+	}
+
+	m_imFontTexture->UnlockRect(0);
+	m_imFonts.TexID = m_imFontTexture;
+#endif
+
+	m_hasDelayDrawing.unlock();
+}
+
+void DrawManager::BeginImGuiRender()
+{
+	ImGui_ImplDX9_NewFrame();
+	m_imDrawData.Valid = false;
+}
+
+void DrawManager::FinishImGuiRender()
+{
+	if (!m_imDrawList->VtxBuffer.empty())
+	{
+		m_imDrawData.Valid = true;
+		m_imDrawData.CmdLists = &m_imDrawList;
+		m_imDrawData.CmdListsCount = 1;
+		m_imDrawData.TotalIdxCount = m_imDrawList->IdxBuffer.Size;
+		m_imDrawData.TotalVtxCount = m_imDrawList->VtxBuffer.Size;
+	}
+	else
+	{
+		// 不要进行绘制
+		m_imDrawData.Valid = false;
+	}
+
+	m_hasDelayDrawing.lock();
+	ImGui_ImplDX9_RenderDrawLists(&m_imDrawData);
+	ImGui::Render();
+	
+	m_imDrawList->Clear();
+	m_imDrawList->PushClipRectFullScreen();
+	m_hasDelayDrawing.unlock();
 }
 
 void DrawManager::BeginRendering()
@@ -772,10 +882,21 @@ void DrawManager::AddLine(D3DCOLOR color, int x1, int y1, int x2, int y2)
 	if (!m_hasDelayDrawing.try_lock())
 		return;
 
+#ifdef IMGUI_VERSION
+	__try
+	{
+		m_imDrawList->AddLine(ImVec2(x1, y1), ImVec2(x2, y2), D3DCOLOR_IMGUI(color));
+	}
+	__except(EXCEPTION_EXECUTE_HANDLER)
+	{
+		Utils::log("%s (%d): 0x%X", __FILE__, __LINE__, GetExceptionCode());
+	}
+#else
 	this->m_delayDraw.emplace_back(D3DPT_LINELIST, 1, std::vector<D3DVertex>{
 		D3DVertex((float)x1, (float)y1, 1.0f, color),
 		D3DVertex((float)x2, (float)y2, 1.0f, color)
 	});
+#endif
 
 	m_hasDelayDrawing.unlock();
 }
@@ -798,6 +919,16 @@ void DrawManager::AddRect(D3DCOLOR color, int x, int y, int w, int h)
 	if (!m_hasDelayDrawing.try_lock())
 		return;
 	
+#ifdef IMGUI_VERSION
+	__try
+	{
+		m_imDrawList->AddRect(ImVec2(x, y), ImVec2(x + w, y + h), D3DCOLOR_IMGUI(color));
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER)
+	{
+		Utils::log("%s (%d): 0x%X", __FILE__, __LINE__, GetExceptionCode());
+	}
+#else
 	this->m_delayDraw.emplace_back(D3DPT_LINESTRIP, 4, std::vector<D3DVertex>{
 		D3DVertex((float)x, (float)y, 1.0f, color),
 		D3DVertex((float)(x + w), (float)y, 1.0f, color),
@@ -805,6 +936,7 @@ void DrawManager::AddRect(D3DCOLOR color, int x, int y, int w, int h)
 		D3DVertex((float)x, (float)(y + h), 1.0f, color),
 		D3DVertex((float)x, (float)y, 1.0f, color)
 	});
+#endif
 
 	m_hasDelayDrawing.unlock();
 }
@@ -847,6 +979,16 @@ void DrawManager::AddCircle(D3DCOLOR color, int x, int y, int r, size_t resoluti
 	if (!m_hasDelayDrawing.try_lock())
 		return;
 
+#ifdef IMGUI_VERSION
+	__try
+	{
+		m_imDrawList->AddCircle(ImVec2(x, y), r, D3DCOLOR_IMGUI(color), resolution);
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER)
+	{
+		Utils::log("%s (%d): 0x%X", __FILE__, __LINE__, GetExceptionCode());
+	}
+#else
 	float curAngle;
 	float angle = (float)((2.0f * M_PI_F) / resolution);
 	std::vector<D3DVertex> vertices;
@@ -857,6 +999,8 @@ void DrawManager::AddCircle(D3DCOLOR color, int x, int y, int r, size_t resoluti
 	}
 
 	this->m_delayDraw.emplace_back(D3DPT_LINESTRIP, resolution, std::move(vertices));
+#endif
+
 	m_hasDelayDrawing.unlock();
 }
 
@@ -865,6 +1009,16 @@ void DrawManager::AddFillCircle(D3DCOLOR color, int x, int y, int r, size_t reso
 	if (!m_hasDelayDrawing.try_lock())
 		return;
 
+#ifdef IMGUI_VERSION
+	__try
+	{
+		m_imDrawList->AddCircleFilled(ImVec2(x, y), r, D3DCOLOR_IMGUI(color), resolution);
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER)
+	{
+		Utils::log("%s (%d): 0x%X", __FILE__, __LINE__, GetExceptionCode());
+	}
+#else
 	float curAngle;
 	float angle = (float)((2.0f * M_PI_F) / resolution);
 	std::vector<D3DVertex> vertices;
@@ -875,6 +1029,8 @@ void DrawManager::AddFillCircle(D3DCOLOR color, int x, int y, int r, size_t reso
 	}
 
 	this->m_delayDraw.emplace_back(D3DPT_TRIANGLEFAN, resolution, std::move(vertices));
+#endif
+
 	m_hasDelayDrawing.unlock();
 }
 
@@ -972,13 +1128,24 @@ void DrawManager::AddFillRect(D3DCOLOR color, int x, int y, int w, int h)
 {
 	if (!m_hasDelayDrawing.try_lock())
 		return;
-	
+
+#ifdef IMGUI_VERSION
+	__try
+	{
+		m_imDrawList->AddRectFilled(ImVec2(x, y), ImVec2(x + w, y + h), D3DCOLOR_IMGUI(color));
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER)
+	{
+		Utils::log("%s (%d): 0x%X", __FILE__, __LINE__, GetExceptionCode());
+	}
+#else
 	this->m_delayDraw.emplace_back(D3DPT_TRIANGLESTRIP, 2, std::vector<D3DVertex>{
 		D3DVertex((float)x, (float)y, 1.0f, color),
 		D3DVertex((float)x, (float)(y + h), 1.0f, color),
 		D3DVertex((float)(x + w), (float)y, 1.0f, color),
 		D3DVertex((float)(x + w), (float)(y + h), 1.0f, color)
 	});
+#endif
 
 	m_hasDelayDrawing.unlock();
 }
@@ -1011,7 +1178,30 @@ void DrawManager::AddText(D3DCOLOR color, int x, int y, bool centered, const cha
 
 	va_end(ap);
 
+#ifdef IMGUI_VERSION
+	ImFont* font = m_imFonts.Fonts[0];
+	ImVec2 textSize = font->CalcTextSizeA(font->FontSize, FLT_MAX, 0.0f, buffer);
+
+	if (centered)
+	{
+		x -= textSize.x / 2;
+		y -= textSize.y / 2;
+	}
+
+	m_imDrawList->PushTextureID(m_imFontTexture);
+	__try
+	{
+		m_imDrawList->AddText(font, font->FontSize, ImVec2(x, y), D3DCOLOR_IMGUI(color), buffer);
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER)
+	{
+		Utils::log("%s (%d): 0x%X", __FILE__, __LINE__, GetExceptionCode());
+	}
+	m_imDrawList->PopTextureID();
+#else
 	this->m_delayString.emplace_back(x, y, std::move(buffer), color, (centered ? D3DFONT_CENTERED : 0), 0);
+#endif
+
 	m_hasDelayDrawing.unlock();
 }
 
@@ -1030,6 +1220,44 @@ void DrawManager::AddString(D3DCOLOR color, int x, int y, bool centered, const c
 
 	this->m_delayString.emplace_back(x, y, std::move(buffer), color, (centered ? D3DFONT_CENTERED|D3DFONT_ORIGINAL : D3DFONT_ORIGINAL), 0);
 	m_hasDelayDrawing.unlock();
+}
+
+void DrawManager::RenderCorner(D3DCOLOR color, int x, int y, int w, int h, size_t length)
+{
+	// 左上
+	this->RenderLine(color, x, y, x + length, y);
+	this->RenderLine(color, x, y, x, y + length);
+
+	// 右上
+	this->RenderLine(color, x + w, y, x + w - length, y);
+	this->RenderLine(color, x + w, y, x + w, y + length);
+
+	// 左下
+	this->RenderLine(color, x, y + h, x + length, y + h);
+	this->RenderLine(color, x, y + h, x, y + h - length);
+
+	// 右下
+	this->RenderLine(color, x + w, y + h, x + w - length, y + h);
+	this->RenderLine(color, x + w, y + h, x + w, y + h - length);
+}
+
+void DrawManager::AddCorner(D3DCOLOR color, int x, int y, int w, int h, size_t length)
+{
+	// 左上
+	this->AddLine(color, x, y, x + length, y);
+	this->AddLine(color, x, y, x, y + length);
+
+	// 右上
+	this->AddLine(color, x + w, y, x + w - length, y);
+	this->AddLine(color, x + w, y, x + w, y + length);
+
+	// 左下
+	this->AddLine(color, x, y + h, x + length, y + h);
+	this->AddLine(color, x, y + h, x, y + h - length);
+
+	// 右下
+	this->AddLine(color, x + w, y + h, x + w - length, y + h);
+	this->AddLine(color, x + w, y + h, x + w, y + h - length);
 }
 
 inline HRESULT DrawManager::DrawString2Begin()
