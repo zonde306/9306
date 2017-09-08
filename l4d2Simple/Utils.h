@@ -656,12 +656,14 @@ void DrawManager::CreateObjects()
 #ifdef IMGUI_VERSION
 	m_imDrawList = new ImDrawList();
 
-	std::string fontPath = FindFonts("SimSun-ExtB");
-	if(fontPath.empty())
-		fontPath = FindFonts("Tahoma");
+	char systemPath[MAX_PATH];
+	GetWindowsDirectoryA(systemPath, MAX_PATH);
 
-	Utils::log("font loading %s", fontPath.c_str());
-	m_imFonts.AddFontFromFileTTF(fontPath.data(), m_iFontSize, nullptr, m_imFonts.GetGlyphRangesChinese());
+	std::string fontPath(systemPath);
+	fontPath += "\\Fonts\\msyhul.ttf";
+
+	Utils::log("font %s loading...", fontPath.c_str());
+	m_imFonts.AddFontFromFileTTF(fontPath.c_str(), m_iFontSize, nullptr, m_imFonts.GetGlyphRangesChinese());
 	// ImGui::GetIO().Fonts->AddFontFromFileTTF(fontPath.data(), m_iFontSize, nullptr, m_imFonts.GetGlyphRangesChinese());
 	
 	uint8_t* pixel_data;

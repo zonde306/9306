@@ -1666,6 +1666,7 @@ CBaseEntity* GetAimingTarget(int* hitbox = nullptr)
 	}
 	__except (EXCEPTION_EXECUTE_HANDLER)
 	{
+		Utils::log("%s (%d): TraceRayError: 0x%X", __FILE__, __LINE__, GetExceptionCode());
 		return nullptr;
 	}
 

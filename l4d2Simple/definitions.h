@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 typedef void* (*CreateInterfaceFn)(const char *Name, int *ReturnCode);
 
 #define _AssertMsg( _exp, _msg, _executeExp, _bFatal ) do { __analysis_assume( !!(_exp) ); _msg; } while (0)
@@ -44,14 +44,14 @@ inline void AssertValidReadWritePtr(const void* ptr, int count = 1) { }
 #define GREEN(COLORCODE) ((int)(COLORCODE >> 16) & 0xFF)
 #define ALPHA(COLORCODE) ((int)COLORCODE & 0xFF)
 
-#define COLORBOX_ENEMY_VISIBLE		D3DCOLOR_RGBA(255, 0, 0, 255)		// ºìÉ«
-#define COLORBOX_FIREND_VISIBLE		D3DCOLOR_RGBA(0, 0, 255, 255)		// ÉîÀ¶É«
-#define COLORBOX_ENEMY				D3DCOLOR_RGBA(128, 0, 255, 255)		// ×ÏÉ«
-#define COLORBOX_FIREND				D3DCOLOR_RGBA(0, 255, 255, 255)		// Ç³À¶É«
-#define COLORBOX_INFECTED_VISIBLE	D3DCOLOR_RGBA(255, 255, 0, 255)		// »ÆÉ«
-#define COLORBOX_INFECTED			D3DCOLOR_RGBA(255, 128, 0, 255)		// ³ÈÉ«
-#define COLORBOX_WITCH_VISIBLE		D3DCOLOR_RGBA(255, 128, 255, 255)	// ·ÛÉ«
-#define COLORBOX_WITCH				D3DCOLOR_RGBA(255, 0, 128, 255)		// Éî·ÛÉ«
+#define COLORBOX_ENEMY_VISIBLE		D3DCOLOR_RGBA(255, 0, 0, 255)		// çº¢è‰²
+#define COLORBOX_FIREND_VISIBLE		D3DCOLOR_RGBA(0, 0, 255, 255)		// æ·±è“è‰²
+#define COLORBOX_ENEMY				D3DCOLOR_RGBA(128, 0, 255, 255)		// ç´«è‰²
+#define COLORBOX_FIREND				D3DCOLOR_RGBA(0, 255, 255, 255)		// æµ…è“è‰²
+#define COLORBOX_INFECTED_VISIBLE	D3DCOLOR_RGBA(255, 255, 0, 255)		// é»„è‰²
+#define COLORBOX_INFECTED			D3DCOLOR_RGBA(255, 128, 0, 255)		// æ©™è‰²
+#define COLORBOX_WITCH_VISIBLE		D3DCOLOR_RGBA(255, 128, 255, 255)	// ç²‰è‰²
+#define COLORBOX_WITCH				D3DCOLOR_RGBA(255, 0, 128, 255)		// æ·±ç²‰è‰²
 
 // These defines are for client button presses.
 #define IN_ATTACK					(1 << 0)
@@ -206,10 +206,10 @@ inline void AssertValidReadWritePtr(const void* ptr, int count = 1) { }
 #define MASK_NPCWORLDSTATIC		(CONTENTS_SOLID|CONTENTS_WINDOW|CONTENTS_MONSTERCLIP|CONTENTS_GRATE) 					/**< just the world, used for route rebuilding */
 #define MASK_SPLITAREAPORTAL	(CONTENTS_WATER|CONTENTS_SLIME) 									/**< These are things that can split areaportals */
 
-#define HITBOX_COMMON			15	// ÆÕ¸Ğ
-#define HITBOX_PLAYER			10	// Éú»¹Õß/ÌØ¸Ğ
-#define CLASSID_COMMON			263	// ÆÕ¸Ğ
-#define CLASSID_WORLD			260	// ÓÎÏ·µØÍ¼
+#define HITBOX_COMMON			15	// æ™®æ„Ÿ
+#define HITBOX_PLAYER			10	// ç”Ÿè¿˜è€…/ç‰¹æ„Ÿ
+#define CLASSID_COMMON			263	// æ™®æ„Ÿ
+#define CLASSID_WORLD			260	// æ¸¸æˆåœ°å›¾
 
 #define HITBOX_COMMON_1			14
 #define HITBOX_COMMON_2			15
@@ -471,57 +471,57 @@ enum LifeStates_t
 // other
 #define D3DDevice				0x173988		// shaderapidx9.dll
 
-// »ñÈ¡±¾µØÍæ¼Ò
+// è·å–æœ¬åœ°ç©å®¶
 #define GetLocalClient()			g_interface.ClientEntList->GetClientEntity(g_interface.Engine->GetLocalPlayer())
 
-// µ¹µØ
+// å€’åœ°
 #define IsFallDown(_e)				(_e->GetNetProp<byte>("m_isIncapacitated", "DT_TerrorPlayer") & 1)
 
-// ¹Ò±ß
+// æŒ‚è¾¹
 #define IsHangingFromLedge(_e)		(_e->GetNetProp<byte>("m_isHangingFromLedge", "DT_TerrorPlayer") & 1)
 
-// ±»ÉàÍ·À­
+// è¢«èˆŒå¤´æ‹‰
 #define IsVictimSmoker(_e)			(_e->GetNetProp<int>("m_tongueOwner", "DT_TerrorPlayer") > 0)
 
-// ±»ºïÆï
+// è¢«çŒ´éª‘
 #define IsVictimJockey(_e)			(_e->GetNetProp<int>("m_jockeyAttacker", "DT_TerrorPlayer") > 0)
 
-// ±»ÁÔÈËÆË
+// è¢«çŒäººæ‰‘
 #define IsVictimHunter(_e)			(_e->GetNetProp<int>("m_pounceAttacker", "DT_TerrorPlayer") > 0)
 
-// ±»Å£×¥×¡´¸µØ°å
+// è¢«ç‰›æŠ“ä½é”¤åœ°æ¿
 #define IsVictimCharger(_e)			(_e->GetNetProp<int>("m_pummelAttacker", "DT_TerrorPlayer") > 0)
 
-// ±»¿Ø
+// è¢«æ§
 #define IsControlled(_e)			(IsVictimSmoker(_e) || IsVictimJockey(_e) || IsVictimHunter(_e) || IsVictimCharger(_e))
 
-// ÎŞ·¨ÒÆ¶¯(µ¹µØ¹Ò±ß)
+// æ— æ³•ç§»åŠ¨(å€’åœ°æŒ‚è¾¹)
 #define IsIncapacitated(_e)			(IsFallDown(_e) || IsHangingFromLedge(_e))
 
-// ÊÇ·ñĞèÒª¶ÓÓÑ¾ÈÔ®
+// æ˜¯å¦éœ€è¦é˜Ÿå‹æ•‘æ´
 #define IsNeedRescue(_e)			(IsIncapacitated(_e) || IsControlled(_e))
 
-// ÊÇ·ñÎªÓÄÁé×´Ì¬
-#define IsGhostInfected(_e)			(_e->GetNetProp<byte>("DT_TerrorPlayer", "m_isGhost") & 1)
+// æ˜¯å¦ä¸ºå¹½çµçŠ¶æ€
+#define IsGhostInfected(_e)			(_e->GetNetProp<byte>("m_isGhost", "DT_TerrorPlayer") & 1)
 
-// »ñÈ¡µ±Ç°·şÎñÆ÷Ê±¼ä
+// è·å–å½“å‰æœåŠ¡å™¨æ—¶é—´
 #define GetServerTime()				(g_interface.ClientEntList->GetClientEntity(g_interface.Engine->GetLocalPlayer())->GetTickBase() * g_interface.Globals->interval_per_tick)
 
-// Êä³öÆ«ÒÆµØÖ·
+// è¾“å‡ºåç§»åœ°å€
 #define printo(_s,_n)				std::cout << XorStr(_s) << XorStr(" = 0x") << std::setiosflags(std::ios::hex|std::ios::uppercase) << std::hex << (DWORD)_n << std::resetiosflags(std::ios::hex|std::ios::uppercase) << std::oct << std::endl
 #define printv(_n)					printo(#_n,_n)
 
-// Êä³öÈÕÖ¾
+// è¾“å‡ºæ—¥å¿—
 #define logerr(_x)					errlog << XorStr(__FILE__) << "("<<__LINE__<<")" << XorStr(__FUNCTION__) << ": " << XorStr(_x) << "\r\n"
 #define logfile(_s)					std::fstream f("segt.log", std::ios::out|std::ios::app|std::ios::ate); f << XorStr(__FILE__) << "("<<__LINE__<<")" << XorStr(__FUNCTION__) << ": " << XorStr(_s) << "\r\n"; f.close()
 
-// ¼ì²éÊÇ·ñĞèÒª×Ô¶¯Á¬µã
+// æ£€æŸ¥æ˜¯å¦éœ€è¦è‡ªåŠ¨è¿ç‚¹
 #define IsWeaponSingle(_id)			(_id == Weapon_Pistol || _id == Weapon_ShotgunPump || _id == Weapon_ShotgunAuto || _id == Weapon_SniperHunting || _id == Weapon_ShotgunChrome || _id == Weapon_SniperMilitary || _id == Weapon_ShotgunSpas || _id == Weapon_PistolMagnum || _id == Weapon_SniperAWP || _id == Weapon_SniperScout)
 
-// ¸Ãµ¯Ò©ÀàĞÍÊÇ·ñÎªÇ¹Ğµ
+// è¯¥å¼¹è¯ç±»å‹æ˜¯å¦ä¸ºæªæ¢°
 #define IsGunWeaponAmmotype(_at)	(_at == AT_Pistol || _at == AT_Magnum || _at == AT_Rifle || _at == AT_Smg || _at == AT_M60 || _at == AT_Shotgun || _at == AT_AutoShotgun || _at == AT_Hunting || _at == AT_Sniper || _at == AT_Grenade)
 
-// ¼ì²éÊÇ·ñÊÇÒ»°ÑÇ¹
+// æ£€æŸ¥æ˜¯å¦æ˜¯ä¸€æŠŠæª
 #define IsNotGunWeapon(_id)			(IsGrenadeWeapon(_id) || IsMedickitWeapon(_id) || IsPillsWeapon(_id) || IsCarryWeapon(_id) || _id == Weapon_Melee || _id == Weapon_Chainsaw)
 #define IsGunWeapon(_id)			(!IsGrenadeWeapon(_id) && !IsMedickitWeapon(_id) && !IsPillsWeapon(_id) && !IsCarryWeapon(_id) && _id != Weapon_Melee && _id != Weapon_Chainsaw)
 #define IsGrenadeWeapon(_id)		(_id == Weapon_Molotov || _id == Weapon_PipeBomb || _id == Weapon_Vomitjar)
@@ -529,73 +529,73 @@ enum LifeStates_t
 #define IsPillsWeapon(_id)			(_id == Weapon_PainPills || _id == Weapon_Adrenaline)
 #define IsCarryWeapon(_id)			(_id == Weapon_Gascan || _id == Weapon_Fireworkcrate || _id == Weapon_Propanetank || _id == Weapon_Oxygentank || _id == Weapon_Gnome || _id == Weapon_Cola)
 
-// ÊÇ·ñÎªÌØ¸Ğ
+// æ˜¯å¦ä¸ºç‰¹æ„Ÿ
 #define IsSpecialInfected(_id)		(_id == ET_BOOMER || _id == ET_HUNTER || _id == ET_SMOKER || _id == ET_SPITTER || _id == ET_JOCKEY || _id == ET_CHARGER || _id == ET_TANK)
 
-// ÊÇ·ñÎªÆÕ¸Ğ
+// æ˜¯å¦ä¸ºæ™®æ„Ÿ
 #define IsCommonInfected(_id)		(_id == ET_INFECTED || _id == ET_WITCH)
 
-// ÊÇ·ñÎªÉú»¹Õß
+// æ˜¯å¦ä¸ºç”Ÿè¿˜è€…
 #define IsSurvivor(_id)				(_id == ET_SURVIVORBOT || _id == ET_CTERRORPLAYER)
 
-// ¼ì²éÊÇ·ñÎªÓĞÓÃµÄÊµÌå
+// æ£€æŸ¥æ˜¯å¦ä¸ºæœ‰ç”¨çš„å®ä½“
 #define IsValidVictimId(_id)		(_id == ET_INFECTED || _id == ET_WITCH || _id == ET_BOOMER || _id == ET_HUNTER || _id == ET_SMOKER || _id == ET_SPITTER || _id == ET_JOCKEY || _id == ET_CHARGER || _id == ET_TANK || _id == ET_SURVIVORBOT || _id == ET_CTERRORPLAYER)
 
 enum AmmoType_t
 {
-	AT_Pistol = 1,					// Ğ¡ÊÖÇ¹µ¯Ò©
-	AT_Magnum,						// Âí¸ñÄÏÊÖÇ¹µ¯Ò©
-	AT_Rifle,						// ²½Ç¹µ¯Ò©
-	AT_Minigun,						// Ò»´ú¹Ì¶¨»úÇ¹£¨¿ªÇ¹ÓĞÑÓ³ÙÄÇ¸ö£©
-	AT_Smg,							// ³å·æÇ¹µ¯Ò©
-	AT_M60,							// »úÇ¹µ¯Ò©
-	AT_Shotgun,						// µ¥Åçµ¯Ò©
-	AT_AutoShotgun,					// Á¬Åçµ¯Ò©
-	AT_Hunting,						// ÁÔÇ¹£¨15·¢×Óµ¯£©
-	AT_Sniper,						// ¾Ñ»÷Ç¹µ¯Ò©
-	AT_Turret,						// ¶ş´ú¹Ì¶¨»úÇ¹£¨ÉäËÙÂıµãµ«ÎŞÑÓ³Ù£©
-	AT_PipeBomb,					// ÍÁÖÆÕ¨µ¯
-	AT_Molotov,						// È¼ÉÕÆ¿
-	AT_Vomitjar,					// µ¨Ö­¹Ş
-	AT_PainPills,					// Ö¹Í´Ò©
-	AT_FirstAidKit,					// Ò½ÁÆ°ü
-	AT_Grenade,						// Áñµ¯·¢ÉäÆ÷µÄÁñµ¯
-	AT_Adrenline,					// ÉöÉÏÏÙËØ
-	AT_Chainsaw						// µç¾â
+	AT_Pistol = 1,					// å°æ‰‹æªå¼¹è¯
+	AT_Magnum,						// é©¬æ ¼å—æ‰‹æªå¼¹è¯
+	AT_Rifle,						// æ­¥æªå¼¹è¯
+	AT_Minigun,						// ä¸€ä»£å›ºå®šæœºæªï¼ˆå¼€æªæœ‰å»¶è¿Ÿé‚£ä¸ªï¼‰
+	AT_Smg,							// å†²é”‹æªå¼¹è¯
+	AT_M60,							// æœºæªå¼¹è¯
+	AT_Shotgun,						// å•å–·å¼¹è¯
+	AT_AutoShotgun,					// è¿å–·å¼¹è¯
+	AT_Hunting,						// çŒæªï¼ˆ15å‘å­å¼¹ï¼‰
+	AT_Sniper,						// ç‹™å‡»æªå¼¹è¯
+	AT_Turret,						// äºŒä»£å›ºå®šæœºæªï¼ˆå°„é€Ÿæ…¢ç‚¹ä½†æ— å»¶è¿Ÿï¼‰
+	AT_PipeBomb,					// åœŸåˆ¶ç‚¸å¼¹
+	AT_Molotov,						// ç‡ƒçƒ§ç“¶
+	AT_Vomitjar,					// èƒ†æ±ç½
+	AT_PainPills,					// æ­¢ç—›è¯
+	AT_FirstAidKit,					// åŒ»ç–—åŒ…
+	AT_Grenade,						// æ¦´å¼¹å‘å°„å™¨çš„æ¦´å¼¹
+	AT_Adrenline,					// è‚¾ä¸Šè…ºç´ 
+	AT_Chainsaw						// ç”µé”¯
 };
 
 enum WeaponID_t
 {
-	Weapon_Pistol = 1,				// Ğ¡ÊÖÇ¹(°üÀ¨Ë«³Ö) ÊÖÇ¹
-	Weapon_ShotgunPump = 3,			// Ä¾Åç °ë×Ô¶¯
-	Weapon_ShotgunAuto = 4,			// Á¬Åç Á¬µã¼Ó¿ìÉäËÙ
-	Weapon_SniperHunting = 6,		// ÁÔÇ¹ °ë×Ô¶¯
-	Weapon_ShotgunChrome = 8,		// ÌúÅç °ë×Ô¶¯
-	Weapon_SniperMilitary = 10,		// Á¬¾Ñ °ë×Ô¶¯
-	Weapon_ShotgunSpas = 11,		// ¸ß¼¶Á¬Åç Á¬µã¼Ó¿ìÉäËÙ
-	Weapon_PistolMagnum = 32,		// Âí¸ñÄÏ ÊÖÇ¹
-	Weapon_SniperAWP = 35,			// ´óÄñ °ë×Ô¶¯
-	Weapon_SniperScout = 36,		// Äñ¾Ñ °ë×Ô¶¯
+	Weapon_Pistol = 1,				// å°æ‰‹æª(åŒ…æ‹¬åŒæŒ) æ‰‹æª
+	Weapon_ShotgunPump = 3,			// æœ¨å–· åŠè‡ªåŠ¨
+	Weapon_ShotgunAuto = 4,			// è¿å–· è¿ç‚¹åŠ å¿«å°„é€Ÿ
+	Weapon_SniperHunting = 6,		// çŒæª åŠè‡ªåŠ¨
+	Weapon_ShotgunChrome = 8,		// é“å–· åŠè‡ªåŠ¨
+	Weapon_SniperMilitary = 10,		// è¿ç‹™ åŠè‡ªåŠ¨
+	Weapon_ShotgunSpas = 11,		// é«˜çº§è¿å–· è¿ç‚¹åŠ å¿«å°„é€Ÿ
+	Weapon_PistolMagnum = 32,		// é©¬æ ¼å— æ‰‹æª
+	Weapon_SniperAWP = 35,			// å¤§é¸Ÿ åŠè‡ªåŠ¨
+	Weapon_SniperScout = 36,		// é¸Ÿç‹™ åŠè‡ªåŠ¨
 
-	Weapon_Melee = 19,				// ½üÕ½ÎäÆ÷
-	Weapon_GrenadeLauncher = 21,	// Áñµ¯·¢ÉäÆ÷
-	Weapon_Chainsaw = 20,			// µç¾â
+	Weapon_Melee = 19,				// è¿‘æˆ˜æ­¦å™¨
+	Weapon_GrenadeLauncher = 21,	// æ¦´å¼¹å‘å°„å™¨
+	Weapon_Chainsaw = 20,			// ç”µé”¯
 
-	Weapon_FirstAidKit = 12,		// Ò½ÁÆ°ü
-	Weapon_PainPills = 15,			// Ö¹Í´Ò©
-	Weapon_Defibrillator = 24,		// µç»÷Æ÷
-	Weapon_Adrenaline = 23,			// ÉöÉÏÏÙËØ
-	Weapon_Molotov = 13,			// È¼ÉÕÆ¿
-	Weapon_PipeBomb = 14,			// ÍÁÖÆÕ¨µ¯
-	Weapon_Vomitjar = 25,			// µ¨Ö­¹Ş
-	Weapon_FireAmmo = 30,			// È¼ÉÕ×Óµ¯ºĞ
-	Weapon_ExplodeAmmo = 31,		// ±¬Õ¨×Óµ¯ºĞ
-	Weapon_Gascan = 16,				// ÓÍÍ°£¨ºìÉ«ºÍ»ÆÉ«£©
-	Weapon_Fireworkcrate = 29,		// ÑÌ»¨ºĞ
-	Weapon_Propanetank = 17,		// ÃºÆø¹Ş
-	Weapon_Oxygentank = 18,			// ÑõÆøÆ¿
-	Weapon_Gnome = 27,				// ÙªÈå
-	Weapon_Cola = 28				// ¿ÉÀÖ
+	Weapon_FirstAidKit = 12,		// åŒ»ç–—åŒ…
+	Weapon_PainPills = 15,			// æ­¢ç—›è¯
+	Weapon_Defibrillator = 24,		// ç”µå‡»å™¨
+	Weapon_Adrenaline = 23,			// è‚¾ä¸Šè…ºç´ 
+	Weapon_Molotov = 13,			// ç‡ƒçƒ§ç“¶
+	Weapon_PipeBomb = 14,			// åœŸåˆ¶ç‚¸å¼¹
+	Weapon_Vomitjar = 25,			// èƒ†æ±ç½
+	Weapon_FireAmmo = 30,			// ç‡ƒçƒ§å­å¼¹ç›’
+	Weapon_ExplodeAmmo = 31,		// çˆ†ç‚¸å­å¼¹ç›’
+	Weapon_Gascan = 16,				// æ²¹æ¡¶ï¼ˆçº¢è‰²å’Œé»„è‰²ï¼‰
+	Weapon_Fireworkcrate = 29,		// çƒŸèŠ±ç›’
+	Weapon_Propanetank = 17,		// ç…¤æ°”ç½
+	Weapon_Oxygentank = 18,			// æ°§æ°”ç“¶
+	Weapon_Gnome = 27,				// ä¾å„’
+	Weapon_Cola = 28				// å¯ä¹
 };
 
 enum EntityType_t
@@ -608,15 +608,15 @@ enum EntityType_t
 	ET_CSGameRulesProxy = 47,
 	ET_GameRulesProxy = 93,
 
-	// Éú»¹Õß
+	// ç”Ÿè¿˜è€…
 	ET_CTERRORPLAYER = 231,
 	ET_SURVIVORBOT = 274,
 
-	// ÆÕ¸Ğ
+	// æ™®æ„Ÿ
 	ET_INFECTED = 263,
 	ET_WITCH = 276,
 
-	// ÌØ¸Ğ
+	// ç‰¹æ„Ÿ
 	ET_BOOMER = 0,
 	ET_TANK = 275,
 	ET_JOCKEY = 264,
@@ -625,33 +625,33 @@ enum EntityType_t
 	ET_HUNTER = 262,
 	ET_SMOKER = 269,
 	
-	// ·ÉĞĞÎï
-	ET_TankRock = 13,				// ¿ËµÄÊ¯Í·
-	ET_VomitJarProjectile = 251,	// µ¨Ö­
-	ET_SpitterProjectile = 175,		// ¿ÚË®µÄËáÒºÇò
-	ET_PipeBombProjectile = 130,	// ÍÁÀ×
-	ET_MolotovProjectile = 119,		// »ğÆ¿
-	ET_GrenadeProjectile = 97,		// Áñµ¯·¢ÉäÆ÷µÄÁñµ¯
+	// é£è¡Œç‰©
+	ET_TankRock = 13,				// å…‹çš„çŸ³å¤´
+	ET_VomitJarProjectile = 251,	// èƒ†æ±
+	ET_SpitterProjectile = 175,		// å£æ°´çš„é…¸æ¶²çƒ
+	ET_PipeBombProjectile = 130,	// åœŸé›·
+	ET_MolotovProjectile = 119,		// ç«ç“¶
+	ET_GrenadeProjectile = 97,		// æ¦´å¼¹å‘å°„å™¨çš„æ¦´å¼¹
 
-	// ÔÓÎï
-	ET_DoorCheckpoint = 143,		// °²È«ÃÅ
-	ET_SurvivorRescue = 185,		// ¸´»îµã
+	// æ‚ç‰©
+	ET_DoorCheckpoint = 143,		// å®‰å…¨é—¨
+	ET_SurvivorRescue = 185,		// å¤æ´»ç‚¹
 
-	// ÎäÆ÷ - ÆäËû
+	// æ­¦å™¨ - å…¶ä»–
 	ET_WeaponMountedGun = 146,
 	ET_WeaponMinigun = 145,
 
-	// ÎäÆ÷ - ³å·æÇ¹
+	// æ­¦å™¨ - å†²é”‹æª
 	ET_WeaponMP5 = 164,
 	ET_WeaponSilenced = 165,
 
-	// ÎäÆ÷ - ö±µ¯Ç¹
+	// æ­¦å™¨ - éœ°å¼¹æª
 	ET_WeaponAuto = 2,
 	ET_WeaponSpas = 162,
 	ET_WeaponChrome = 161,
 	ET_WeaponPump = 148,
 
-	// ÎäÆ÷ - ²½Ç¹
+	// æ­¦å™¨ - æ­¥æª
 	ET_WeaponAK47 = 152,
 	ET_WeaponDesert = 153,
 	ET_WeaponSG552 = 155,
@@ -659,25 +659,25 @@ enum EntityType_t
 	ET_WeaponM60 = 154,
 	ET_WeaponGrenadeLauncher = 96,
 
-	// ÎäÆ÷ - ¾Ñ»÷Ç¹
+	// æ­¦å™¨ - ç‹™å‡»æª
 	ET_WeaponScout = 170,
 	ET_WeaponMilitary = 169,
 	ET_WeaponAWP = 168,
 	
-	// ÎäÆ÷ - ÊÖÇ¹
+	// æ­¦å™¨ - æ‰‹æª
 	ET_WeaponMagnum = 116,
 	ET_WeaponPistol = 131,
 	
-	// ÎäÆ÷ - ½üÕ½ÎäÆ÷
+	// æ­¦å™¨ - è¿‘æˆ˜æ­¦å™¨
 	ET_WeaponChainsaw = 39,
 	ET_WeaponMelee = 230,
 
-	// ÎäÆ÷ - Í¶ÖÀÎäÆ÷
+	// æ­¦å™¨ - æŠ•æ·æ­¦å™¨
 	ET_WeaponPipeBomb = 129,
 	ET_WeaponMolotov = 118,
 	ET_WeaponVomitjar = 106,
 	
-	// ÎäÆ÷ - Ò½ÁÆÆ·/Éı¼¶°ü
+	// æ­¦å™¨ - åŒ»ç–—å“/å‡çº§åŒ…
 	ET_WeaponIncendiary = 111,
 	ET_WeaponExplosive = 110,
 	ET_WeaponDefibrillator = 109,
@@ -685,11 +685,11 @@ enum EntityType_t
 	ET_WeaponAmmoPack = 107,
 	ET_WeaponAmmoSpawn = 255,
 	
-	// ÎäÆ÷ - Ò©Îï
+	// æ­¦å™¨ - è¯ç‰©
 	ET_WeaponPainPills = 121,
 	ET_WeaponAdrenaline = 105,
 	
-	// ÎäÆ÷ - Ğ¯´øÎïÆ·
+	// æ­¦å™¨ - æºå¸¦ç‰©å“
 	ET_WeaponOxygen = 120,
 	ET_WeaponGnome = 95,
 	ET_WeaponGascan = 94,
