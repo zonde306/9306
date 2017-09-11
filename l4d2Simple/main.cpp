@@ -1294,13 +1294,14 @@ void bindAlias(int wait)
 	g_interface.Engine->ClientCmd("unbind f11");
 	g_interface.Engine->ClientCmd("unbind f12");
 	g_interface.Engine->ClientCmd("unbind f8");
-	g_interface.Engine->ClientCmd("net_graph 1");
+	g_interface.Engine->ClientCmd("net_graph 0");
 	g_interface.Engine->ClientCmd("net_graphpos 1");
 	g_interface.Engine->ClientCmd("net_graphshowinterp 0");
 	g_interface.Engine->ClientCmd("net_graphshowlatency 0");
 	g_interface.Engine->ClientCmd("net_graphtext 1");
+	g_interface.Engine->ClientCmd("cl_showfps 1");
 	g_interface.Engine->ClientCmd("alias +shownetscores \"+showscores; net_graph 3; net_graphtext 1\"");
-	g_interface.Engine->ClientCmd("alias -shownetscores \"-showscores; net_graph 1\"");
+	g_interface.Engine->ClientCmd("alias -shownetscores \"-showscores; net_graph 0\"");
 	g_interface.Engine->ClientCmd("bind tab +shownetscores");
 	g_interface.Engine->ClientCmd("alias \"lerp_0\" \"rate 30000;cl_cmdrate 100;cl_updaterate 100;cl_interp 0.0;cl_interp_ratio -1;alias lerp_change lerp_16;echo Lerp set to 0 (rate 30000, cl_cmdrate 100, cl_updaterate 100, cl_interp 0.0, cl_interp_ratio -1).\";");
 	g_interface.Engine->ClientCmd("alias \"lerp_16\" \"rate 30000;cl_cmdrate 100;cl_updaterate 100;cl_interp 0.0167;cl_interp_ratio -1;alias lerp_change lerp_33;echo Lerp set to 16.7 (rate 30000, cl_cmdrate 100, cl_updaterate 100, cl_interp 0.0167, cl_interp_ratio -1).\";");
@@ -2561,6 +2562,9 @@ void __fastcall Hooked_PaintTraverse(CPanel* pPanel, void* _edx, unsigned int pa
 			// 绘制颜色
 			D3DCOLOR color = 0;
 
+			// 观众数量
+			byte spectatorCount = 0;
+
 			// 用于格式化字符串
 			std::stringstream ss;
 			ss.sync_with_stdio(false);
@@ -2647,7 +2651,8 @@ void __fastcall Hooked_PaintTraverse(CPanel* pPanel, void* _edx, unsigned int pa
 							{
 								ss.str("");
 
-								if (IsSurvivor(classId) || IsSpecialInfected(classId))
+								int team = entity->GetTeam();
+								if (team == 1 || team == 2 || team == 3)
 								{
 									int obsMode = entity->GetNetProp<int>("m_iObserverMode", "DT_BasePlayer");
 									if (obsMode == OBS_MODE_IN_EYE || obsMode == OBS_MODE_CHASE)
@@ -2670,11 +2675,32 @@ void __fastcall Hooked_PaintTraverse(CPanel* pPanel, void* _edx, unsigned int pa
 
 								if (!ss.str().empty())
 								{
-									color = (entity->GetTeam() == 2 ? DrawManager::SKYBLUE : DrawManager::RED);
+									switch (team)
+									{
+									case 1:
+										// 观察者
+										color = DrawManager::WHITE;
+										break;
+									case 2:
+										// 生还者
+										color = DrawManager::SKYBLUE;
+										break;
+									case 3:
+										// 感染者
+										color = DrawManager::RED;
+										break;
+									case 4:
+										// 非玩家生还者
+										color = DrawManager::PURPLE;
+										break;
+									}
 
 									int width, height;
 									g_interface.Engine->GetScreenSize(width, height);
-									g_pDrawRender->AddText(color, width * 0.75, height * 0.75, false, ss.str().c_str());
+									g_pDrawRender->AddText(color,
+										width * 0.75f, (height * 0.75f) +
+										(spectatorCount++ * g_pDrawRender->GetFontSize()),
+										false, ss.str().c_str());
 								}
 							}
 

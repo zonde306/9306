@@ -1,4 +1,4 @@
-#pragma once
+ο»Ώ#pragma once
 #pragma warning(disable : 4800)
 #pragma warning(disable : 4244)
 #pragma warning(disable : 4996)
@@ -77,7 +77,7 @@ private:
 	std::vector<RecvTable*> _tables;
 };
 
-// ΚµΜε NetProp ±ν
+// ε®δ½“ NetProp θ΅¨
 extern std::unique_ptr<CNetVars> g_pNetVars;
 
 class CEngine;
@@ -148,7 +148,7 @@ public:
 	inline Fn* GetFactoryPointer(const std::string& module, const std::string& interfaces);
 };
 
-// Έχΐΰ½ΣΏΪ
+// ε„η±»ζ¥ε£
 extern CInterfaces g_interface;
 
 namespace Config
@@ -170,6 +170,8 @@ namespace Config
 	bool bBufferCarry = false;
 
 	bool bAimbot = false;
+	bool bAimbotKey = true;
+	bool bAimbotPred = true;
 	bool bSilentAimbot = true;
 	bool bTriggerBot = false;
 	bool bTriggerBotHead = false;
@@ -187,6 +189,7 @@ namespace Config
 	bool bThirdPersons = false;
 
 	float fAimbotFov = 30.0f;
+	int iFastMeleeTick = 10;
 };
 
 #include "./definitions.h"
