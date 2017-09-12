@@ -87,7 +87,7 @@ public:
 	char pad_0x0000[0x4];		// 0x0000 - VTable
 	int command_number;			// 0x0004	For matching server and client commands for debugging
 	int tick_count;				// 0x0008	the tick the client created this command
-	Vector viewangles;			// 0x000C	Player instantaneous view angles.
+	QAngle viewangles;			// 0x000C	Player instantaneous view angles.
 	float fowardmove;			// 0x0018
 	float sidemove;				// 0x001C
 	float upmove;				// 0x0020

@@ -1,4 +1,4 @@
-#pragma once
+Ôªø#pragma once
 /*
 	TODO: Finish this
 */
@@ -73,7 +73,7 @@ void ClampAngles(Vector& angles)
 	angles.z = 0;
 }
 
-void AngleVectors(const QAngle &angles, Vector *forward)
+void AngleVectors(const QAngle &angles, Vector& forward)
 {
 	// Assert(s_bMathlibInitialized);
 	// Assert(forward);
@@ -83,12 +83,12 @@ void AngleVectors(const QAngle &angles, Vector *forward)
 	SinCos(DEG2RAD(angles[YAW]), &sy, &cy);
 	SinCos(DEG2RAD(angles[PITCH]), &sp, &cp);
 
-	forward->x = cp*cy;
-	forward->y = cp*sy;
-	forward->z = -sp;
+	forward.x = cp*cy;
+	forward.y = cp*sy;
+	forward.z = -sp;
 }
 
-void AngleVectors(const QAngle &angles, Vector *forward, Vector *right, Vector *up)
+void AngleVectors(const QAngle &angles, Vector& forward, Vector& right, Vector& up)
 {
 	// Assert(s_bMathlibInitialized);
 
@@ -110,23 +110,23 @@ void AngleVectors(const QAngle &angles, Vector *forward, Vector *right, Vector *
 
 	if (forward)
 	{
-		forward->x = cp*cy;
-		forward->y = cp*sy;
-		forward->z = -sp;
+		forward.x = cp*cy;
+		forward.y = cp*sy;
+		forward.z = -sp;
 	}
 
 	if (right)
 	{
-		right->x = (-1 * sr*sp*cy + -1 * cr*-sy);
-		right->y = (-1 * sr*sp*sy + -1 * cr*cy);
-		right->z = -1 * sr*cp;
+		right.x = (-1 * sr*sp*cy + -1 * cr*-sy);
+		right.y = (-1 * sr*sp*sy + -1 * cr*cy);
+		right.z = -1 * sr*cp;
 	}
 
 	if (up)
 	{
-		up->x = (cr*sp*cy + -sr*-sy);
-		up->y = (cr*sp*sy + -sr*cy);
-		up->z = cr*cp;
+		up.x = (cr*sp*cy + -sr*-sy);
+		up.y = (cr*sp*sy + -sr*cy);
+		up.z = cr*cp;
 	}
 }
 
@@ -494,7 +494,7 @@ bool WorldToScreen(const Vector &point, Vector &out)
 Vector CrossProduct(const Vector& a, const Vector& b)
 {
 	if (!a.IsValid() || !b.IsValid())
-		throw std::exception("Ã·π©µƒ Vector Œﬁ–ß");
+		throw std::exception("Êèê‰æõÁöÑ Vector Êó†Êïà");
 
 	return Vector(a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x);
 }
@@ -510,7 +510,7 @@ Vector2D DoEnemyCircle(CBaseEntity* pLocalPlayer, const Vector &vecDelta, float 
 
 	Vector vForward, vRight, vUp(0.0f, 0.0f, 1.0f);
 
-	AngleVectors(vRealAngles, &vForward);
+	AngleVectors(vRealAngles, vForward);
 
 	vForward.z = 0.0f;
 	VectorNormalize(vForward);
@@ -530,4 +530,13 @@ Vector2D DoEnemyCircle(CBaseEntity* pLocalPlayer, const Vector &vecDelta, float 
 
 	return Vector2D((iScreenWidth / 2.0f) + (flRadius * flSinYaw),
 		(iScreenHeight / 2.0f) - (flRadius * flCosYaw));
+}
+
+float GetDelta(float hiSpeed, float maxSpeed, float airAcceleRate)
+{
+	float term = (30.0f - (airAcceleRate * maxSpeed / 66.0f)) / hiSpeed;
+	if (term < 1.0f && term > -1.0f)
+		return acos(term);
+
+	return 0.0f;
 }

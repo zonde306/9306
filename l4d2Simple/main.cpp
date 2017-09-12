@@ -1646,7 +1646,7 @@ CBaseEntity* GetAimingTarget(int* hitbox = nullptr)
 	g_interface.Engine->GetViewAngles(dst);
 
 	// angle (QAngle) to basic vectors.
-	AngleVectors(dst, &dst);
+	AngleVectors(dst, dst);
 
 	// multiply our angles by shooting range.
 	dst *= 3500.f;
@@ -2712,12 +2712,12 @@ void __fastcall Hooked_PaintTraverse(CPanel* pPanel, void* _edx, unsigned int pa
 				}
 				catch (std::exception e)
 				{
-					Utils::log("%s (%d): %s", __FILE__, __LINE__, e.what());
+					Utils::log("%s (%d): entity %d %s", __FILE__, __LINE__, i, e.what());
 					continue;
 				}
 				catch (...)
 				{
-					Utils::log("%s (%d): 未知异常 -> 0x%X", __FILE__, __LINE__, (DWORD)entity);
+					Utils::log("%s (%d): entity %d 未知异常 -> 0x%X", __FILE__, __LINE__, i, (DWORD)entity);
 					continue;
 				}
 
@@ -3088,11 +3088,63 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 		// 连跳自动旋转
 		if (Config::bAutoStrafe && !(flags & FL_ONGROUND))
 		{
+			/*
 			if (pCmd->mousedx < 0)
-				pCmd->sidemove = -400.f;
+				pCmd->sidemove = -450.f;
 
 			if (pCmd->mousedx > 0)
-				pCmd->sidemove = 400.f;
+				pCmd->sidemove = 450.f;
+			*/
+
+			Vector velocity = client->GetVelocity();
+			velocity.z = 0.0f;
+
+			float speed = velocity.Length();
+			if (abs(speed) >= 0.1f)
+			{
+				float rad = GetDelta(speed, 300.0f, 1.0f);
+				if (rad > 0.0f)
+				{
+					float deg = fmod(RAD2DEG(rad), 360);
+
+					Vector forward;
+					AngleVectors(pCmd->viewangles, forward);
+					VectorNormalize(forward);
+
+					if (abs(forward.Dot(velocity)) > 30.0f)
+					{
+						float lookYawDeg = fmod(pCmd->viewangles.x, 360);
+						Vector wishMoveYaw(pCmd->fowardmove, pCmd->sidemove, 0.0f);
+						VectorNormalize(wishMoveYaw);
+
+						Vector o1, o2;
+						VectorAngles(wishMoveYaw, o1);
+
+						float wishMoveDegLocal = fmod(o1.x, 360);
+						float wishMoveDeg = fmod(lookYawDeg + wishMoveDegLocal, 360);
+						
+						VectorNormalize(velocity);
+						VectorAngles(velocity, o2);
+						
+						float veloYawDeg = fmod(o2.x, 360);
+
+						float factor;
+						if (veloYawDeg - wishMoveDeg > 0.0f)
+							factor = 1.0f;
+						else
+							factor = -1.0f;
+
+						float finalYawDeg = fmod(veloYawDeg + factor * deg, 360);
+						float finalYawRad = DEG2RAD(finalYawDeg);
+
+						Vector move(pCmd->fowardmove, pCmd->sidemove, 0.0f);
+						speed = move.Length();
+
+						pCmd->fowardmove = speed * cos(finalYawRad);
+						pCmd->sidemove = speed * sin(finalYawRad);
+					}
+				}
+			}
 		}
 	}
 
