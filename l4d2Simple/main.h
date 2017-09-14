@@ -169,9 +169,11 @@ namespace Config
 	bool bBufferMedickit = true;
 	bool bBufferCarry = false;
 
+	bool bNoSpread = true;
 	bool bAimbot = false;
 	bool bAimbotKey = true;
 	bool bAimbotPred = true;
+	bool bAimbotRCS = true;
 	bool bSilentAimbot = true;
 	bool bTriggerBot = false;
 	bool bTriggerBotHead = false;
@@ -179,7 +181,7 @@ namespace Config
 
 	bool bBunnyHop = true;
 	bool bAutoStrafe = false;
-	bool bNoRecoil = true;
+	bool bNoRecoil = false;
 	bool bRapidFire = true;
 	bool bCrcCheckBypass = true;
 	bool bCvarFullBright = false;
@@ -189,6 +191,9 @@ namespace Config
 	bool bThirdPersons = false;
 
 	float fAimbotFov = 30.0f;
+	float fAimbotRCSX = 2.0f;
+	float fAimbotRCSY = 2.0f;
+
 	int iFastMeleeTick = 10;
 };
 

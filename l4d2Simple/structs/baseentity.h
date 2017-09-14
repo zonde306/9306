@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 #include "../../Utils.h"
 #include "../libraries/math.h"
 
@@ -29,6 +29,9 @@ extern CBaseEntity* g_pGameRulesProxy;
 	static int offset = g_pNetVars->GetOffset(_t, _p);\
 	return (*(T*)(this + offset) = value);\
 }
+
+class IClientNetworkable;
+class IClientRenderable;
 
 class CBaseEntity
 {
@@ -141,7 +144,7 @@ public:
 			}
 		}
 
-		// Èç¹ûÕÒ²»µ½µÄ»°¾ÍÅ×³ö´íÎó
+		// å¦‚æœæ‰¾ä¸åˆ°çš„è¯å°±æŠ›å‡ºé”™è¯¯
 		return g_offsetList[prop];
 	}
 
@@ -217,16 +220,16 @@ public:
 
 	ClientClass* GetClientClass()
 	{
-		void* Networkable = (void*)(this + 0x8);
-		typedef ClientClass* (__thiscall* OriginalFn)(void*);
+		IClientNetworkable* Networkable = (IClientNetworkable*)(this + 0x8);
+		typedef ClientClass* (__thiscall* OriginalFn)(IClientNetworkable*);
 		return ((OriginalFn)VMT.GetFunction(Networkable, indexes::GetClientClass))(Networkable);
 	}
 	
 	bool IsDormant()
 	{
 		// return *reinterpret_cast<bool*>((DWORD)this + 0xE9);
-		PVOID pNetworkable = static_cast<PVOID>(this + 0x8);
-		typedef bool(__thiscall * OriginalFn)(PVOID);
+		IClientNetworkable* pNetworkable = (IClientNetworkable*)(this + 0x8);
+		typedef bool(__thiscall * OriginalFn)(IClientNetworkable*);
 
 		bool result = true;
 
@@ -249,7 +252,7 @@ public:
 
 		try
 		{
-			// ¼ì²éÊÇ·ñÎªÒ»¸öÓĞĞ§µÄÖ¸ÏòÊµÌåµÄÖ¸Õë
+			// æ£€æŸ¥æ˜¯å¦ä¸ºä¸€ä¸ªæœ‰æ•ˆçš„æŒ‡å‘å®ä½“çš„æŒ‡é’ˆ
 			if (this->IsDormant() || !(cc = this->GetClientClass()) || (id = cc->m_ClassID) == ET_WORLD)
 				return false;
 
@@ -264,55 +267,55 @@ public:
 
 		if (IsSurvivor(id))
 		{
-			// Éú»¹ÕßÖ»ĞèÒª¼ì²éÉúÃü×´Ì¬ (Éú»¹Õß 0 ÑªÒ²¿ÉÒÔ»î×ÅµÄ)
+			// ç”Ÿè¿˜è€…åªéœ€è¦æ£€æŸ¥ç”Ÿå‘½çŠ¶æ€ (ç”Ÿè¿˜è€… 0 è¡€ä¹Ÿå¯ä»¥æ´»ç€çš„)
 			if (this->GetNetProp<byte>("m_lifeState", "DT_BasePlayer") != 0)
 				return false;
 		}
 		else if (IsSpecialInfected(id))
 		{
-			// ¸ĞÈ¾Õß¼ì²éÑªÁ¿ºÍÊÇ·ñÎªÁé»ê×´Ì¬
+			// æ„ŸæŸ“è€…æ£€æŸ¥è¡€é‡å’Œæ˜¯å¦ä¸ºçµé­‚çŠ¶æ€
 			if (this->GetNetProp<byte>("m_lifeState", "DT_BasePlayer") != 0 ||
 				this->GetNetProp<byte>("m_iHealth", "DT_BasePlayer") < 1 ||
 				this->GetNetProp<byte>("m_isGhost", "DT_TerrorPlayer"))
 				return false;
 
-			// Ì¹¿Ë¼ì²éÊÇ·ñ´¦ÓÚ½©Ö±×´Ì¬
+			// å¦å…‹æ£€æŸ¥æ˜¯å¦å¤„äºåƒµç›´çŠ¶æ€
 			if (id == ET_TANK && sequence > 70)
 				return false;
 		}
 		else if (IsCommonInfected(id))
 		{
-			// ¼ì²éÆÕ¸ĞÊÇ·ñ´¦ÓÚËÀÍö¶¯×÷×´Ì¬
+			// æ£€æŸ¥æ™®æ„Ÿæ˜¯å¦å¤„äºæ­»äº¡åŠ¨ä½œçŠ¶æ€
 			if ((solid & SF_NOT_SOLID) || sequence > 305)
 				return false;
 
-			// ¼ì²éÆÕ¸ĞÊÇ·ñ±»µãÈ¼ÁË (ÆÕ¸Ğ±»µãÈ¼¾ÍÊÇËÀÍö)
+			// æ£€æŸ¥æ™®æ„Ÿæ˜¯å¦è¢«ç‚¹ç‡ƒäº† (æ™®æ„Ÿè¢«ç‚¹ç‡ƒå°±æ˜¯æ­»äº¡)
 			if (id == ET_INFECTED && this->GetNetProp<byte>("m_bIsBurning", "DT_Infected") != 0)
 				return false;
 		}
 		
-		// Èç¹û²»ÊÇÉú»¹ÕßÒ²²»ÊÇ¸ĞÈ¾ÕßµÄ»°²»ĞèÒª¼ì²éÊÇ·ñ»î×Å£¬Ö»Òª´æÔÚ¾ÍÊÇ»î×Å
+		// å¦‚æœä¸æ˜¯ç”Ÿè¿˜è€…ä¹Ÿä¸æ˜¯æ„ŸæŸ“è€…çš„è¯ä¸éœ€è¦æ£€æŸ¥æ˜¯å¦æ´»ç€ï¼Œåªè¦å­˜åœ¨å°±æ˜¯æ´»ç€
 		return true;
 	}
 
 	int GetIndex()
 	{
-		void* networkable = (void*)(this + 0x8);
-		typedef int(__thiscall* OriginalFn)(PVOID);
-		return ((OriginalFn)VMT.GetFunction(this, indexes::GetIndex))(this);
+		IClientNetworkable* networkable = (IClientNetworkable*)(this + 0x8);
+		typedef int(__thiscall* OriginalFn)(IClientNetworkable*);
+		return ((OriginalFn)VMT.GetFunction(this, indexes::EntIndex))(networkable);
 	}
 
 	bool SetupBones(VMatrix *pBoneToWorldOut, int nMaxBones, int boneMask, float currentTime)
 	{
-		void *pRenderable = (void*)(this + 0x4);
-		typedef bool(__thiscall* OriginalFn)(PVOID, VMatrix*, int, int, float);
+		IClientRenderable* pRenderable = (IClientRenderable*)(this + 0x4);
+		typedef bool(__thiscall* OriginalFn)(IClientRenderable*, VMatrix*, int, int, float);
 		return ((OriginalFn)VMT.GetFunction(pRenderable, indexes::SetupBones))(pRenderable, pBoneToWorldOut, nMaxBones, boneMask, currentTime);
 	}
 
 	model_t* GetModel()
 	{
-		void *pRenderable = (void*)(this + 0x4);
-		typedef model_t*(__thiscall* OriginalFn)(PVOID);
+		IClientRenderable* pRenderable = (IClientRenderable*)(this + 0x4);
+		typedef model_t*(__thiscall* OriginalFn)(IClientRenderable*);
 		return VMT.getvfunc<OriginalFn>(pRenderable, indexes::GetModel)(pRenderable);
 	}
 
@@ -335,37 +338,37 @@ public:
 		{
 			if (!this->SetupBones(matrix, 128, 0x00000100, g_interface.Globals->curtime))
 			{
-				Utils::log("%s (%d) ´íÎó£º»ñÈ¡¹ÇÍ·Î»ÖÃÊ§°Ü 0x%X", __FILE__, __LINE__, (DWORD)this);
+				Utils::log("%s (%d) é”™è¯¯ï¼šè·å–éª¨å¤´ä½ç½®å¤±è´¥ 0x%X", __FILE__, __LINE__, (DWORD)this);
 				return Vector();
 			}
 
 			if ((mod = this->GetModel()) == nullptr)
 			{
-				Utils::log("%s (%d) ´íÎó£º»ñÈ¡Ä£ĞÍÊ§°Ü 0x%X", __FILE__, __LINE__, (DWORD)this);
+				Utils::log("%s (%d) é”™è¯¯ï¼šè·å–æ¨¡å‹å¤±è´¥ 0x%X", __FILE__, __LINE__, (DWORD)this);
 				return Vector();
 			}
 
 			if ((hdr = g_interface.ModelInfo->GetStudioModel(mod)) == nullptr)
 			{
-				Utils::log("%s (%d) ´íÎó£º»ñÈ¡Ä£ĞÍĞÅÏ¢Ê§°Ü 0x%X", __FILE__, __LINE__, (DWORD)this);
+				Utils::log("%s (%d) é”™è¯¯ï¼šè·å–æ¨¡å‹ä¿¡æ¯å¤±è´¥ 0x%X", __FILE__, __LINE__, (DWORD)this);
 				return Vector();
 			}
 
 			if ((set = hdr->pHitboxSet(0)) == nullptr)
 			{
-				Utils::log("%s (%d) ´íÎó£º»ñÈ¡ Hitbox ×éÊ§°Ü 0x%X", __FILE__, __LINE__, (DWORD)this);
+				Utils::log("%s (%d) é”™è¯¯ï¼šè·å– Hitbox ç»„å¤±è´¥ 0x%X", __FILE__, __LINE__, (DWORD)this);
 				return Vector();
 			}
 
 			if ((hitbox = set->pHitbox(Hitbox)) == nullptr)
 			{
-				Utils::log("%s (%d) ´íÎó£ºËÑË÷ Hitbox Ê§°Ü 0x%X", __FILE__, __LINE__, (DWORD)this);
+				Utils::log("%s (%d) é”™è¯¯ï¼šæœç´¢ Hitbox å¤±è´¥ 0x%X", __FILE__, __LINE__, (DWORD)this);
 				return Vector();
 			}
 		}
 		catch(...)
 		{
-			Utils::log("%s (%d) ´íÎó£º·¢ÉúÁËÎ´Öª´íÎó 0x%X", __FILE__, __LINE__, (DWORD)this);
+			Utils::log("%s (%d) é”™è¯¯ï¼šå‘ç”Ÿäº†æœªçŸ¥é”™è¯¯ 0x%X", __FILE__, __LINE__, (DWORD)this);
 			return Vector();
 		}
 		
@@ -386,7 +389,7 @@ public:
 		}
 		catch(...)
 		{
-			Utils::log("%s (%d) ´íÎó£º·¢ÉúÁËÎ´Öª´íÎó 0x%X", __FILE__, __LINE__, (DWORD)this);
+			Utils::log("%s (%d) é”™è¯¯ï¼šå‘ç”Ÿäº†æœªçŸ¥é”™è¯¯ 0x%X", __FILE__, __LINE__, (DWORD)this);
 			return Vector();
 		}
 
@@ -400,6 +403,10 @@ public:
 	}
 #endif // m_iCrosshairsId
 
+	float GetSpread()
+	{
+		return *(float*)(this + indexes::GetSpread);
+	}
 };
 
 class ICollideable;
@@ -427,14 +434,13 @@ class IClientNetworkable
 {
 public:
 	virtual IClientUnknown*			GetIClientUnknown() = 0;
-	virtual void					Release() = 0;
+	// virtual void					Release() = 0;
 	virtual ClientClass*			GetClientClass() = 0;
 	virtual void					NotifyShouldTransmit(int state) = 0;
 	virtual void					OnPreDataChanged(int updateType) = 0;
 	virtual void					OnDataChanged(int updateType) = 0;
 	virtual void					PreDataUpdate(int updateType) = 0;
 	virtual void					PostDataUpdate(int updateType) = 0;
-	virtual void					__unkn(void) = 0;
 	virtual bool					IsDormant(void) = 0;
 	virtual int						EntIndex(void) const = 0;
 	virtual void					ReceiveMessage(int classID, bf_read& msg) = 0;

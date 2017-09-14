@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 #include <memory>
 
 void CInterfaces::GetInterfaces()
@@ -27,20 +27,30 @@ void CInterfaces::GetInterfaces()
 
 	Input = (CInput*)*(PDWORD**)*(PDWORD**)(pdwClient[indexes::CreateMove] + 0x28);
 	UserMessage = (CUserMessages*)*(PDWORD**)*(PDWORD**)(pdwClient[indexes::DispatchUserMessage] + 0x5);
-	MoveHelper = (CMoveHelper*)((*(DWORD**)GameMovement)[indexes::PlayerMove] + 0x4E);
+	
+	MoveHelper = (CMoveHelper*)*(PDWORD**)((*(DWORD**)GameMovement)[indexes::PlaySwimSound] + 0x4);
+	DWORD dwInitAddr = (DWORD)((*(DWORD**)GameMovement)[indexes::PlaySwimSound]);
+	for (DWORD dwIter = 0; dwIter <= 0x1D; dwIter++)
+	{
+		if (*(PBYTE)(dwInitAddr + dwIter) == 0xA1)
+		{
+			MoveHelper = *(CMoveHelper**)(dwInitAddr + dwIter + 1);
+			break;
+		}
+	}
 
-	DWORD dwInitAddr = (DWORD)(pdwClient[0]);
+	dwInitAddr = (DWORD)(pdwClient[0]);
 	for (DWORD dwIter = 0; dwIter <= 0xFF; dwIter++)
 	{
 		if (*(PBYTE)(dwInitAddr + dwIter) == 0xA3)
 		{
 			Globals = **(CGlobalVarsBase***)(dwInitAddr + dwIter + 1);
-			// Utils::log("ÕÒµ½ÁËÈ«¾Ö±äÁ¿ 0x%X", (DWORD)Globals);
+			// Utils::log("æ‰¾åˆ°äº†å…¨å±€å˜é‡ 0x%X", (DWORD)Globals);
 			break;
 		}
 	}
 
-	// Utils::log("ÕÒµ½ÁË Input Ö¸Õë 0x%X", (DWORD)Input);
+	// Utils::log("æ‰¾åˆ°äº† Input æŒ‡é’ˆ 0x%X", (DWORD)Input);
 
 	PanelHook = std::make_unique<CVMTHookManager>(Panel);
 	ClientHook = std::make_unique<CVMTHookManager>(Client);
@@ -70,14 +80,14 @@ void* CInterfaces::GetPointer(const char* Module, const char* InterfaceName)
 		Interface = (void*)CreateInterface(PossibleInterfaceName, NULL);
 		if (Interface != NULL)
 		{
-			// Utils::log("ÕÒµ½ÁË %s µÄÖ¸ÕëÎª 0x%X", PossibleInterfaceName, (DWORD)Interface);
+			// Utils::log("æ‰¾åˆ°äº† %s çš„æŒ‡é’ˆä¸º 0x%X", PossibleInterfaceName, (DWORD)Interface);
 			break;
 		}
 		sprintf_s(PossibleInterfaceName, "%s00%i", InterfaceName, i);
 		Interface = (void*)CreateInterface(PossibleInterfaceName, NULL);
 		if (Interface != NULL)
 		{
-			// Utils::log("ÕÒµ½ÁË %s µÄÖ¸ÕëÎª 0x%X", PossibleInterfaceName, (DWORD)Interface);
+			// Utils::log("æ‰¾åˆ°äº† %s çš„æŒ‡é’ˆä¸º 0x%X", PossibleInterfaceName, (DWORD)Interface);
 			break;
 		}
 	}

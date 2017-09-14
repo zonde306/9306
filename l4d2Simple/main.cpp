@@ -32,12 +32,6 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved)
 		g_hMyInstance = module;
 		DisableThreadLibraryCalls(module);
 
-		// 获取所有接口
-		g_interface.GetInterfaces();
-
-		// 初始化 NetProp 表
-		g_pNetVars = std::make_unique<CNetVars>();
-
 		// se异常捕获器
 		_set_se_translator([](unsigned int expCode, EXCEPTION_POINTERS* pExp) -> void
 		{
@@ -213,26 +207,29 @@ FnSharedRandomFloat SharedRandomFloat;		// 随机数
 
 typedef int(__stdcall* FnTraceLine)(void* ebp, void* esi, const Vector&, const Vector&, unsigned int mask,
 	const IHandleEntity*, int, trace_t*);
-FnTraceLine UTIL_TraceRay;					// 光线跟踪
+FnTraceLine UTIL_TraceRay;							// 光线跟踪
 
 typedef const char*(__cdecl* FnWeaponIdToAlias)(unsigned int);
-FnWeaponIdToAlias WeaponIdToAlias;			// 获取武器的名字
+FnWeaponIdToAlias WeaponIdToAlias;					// 获取武器的名字
 
 typedef bool(__thiscall* FnUserMessagesDispatch)(void*, int, bf_read&);
-FnUserMessagesDispatch DispatchUserMessage;	// 用户消息
+FnUserMessagesDispatch DispatchUserMessage;			// 用户消息
 
 typedef bool(__cdecl* FnIsInDebugSession)();
 bool __cdecl Hooked_IsInDebugSession();
 FnIsInDebugSession oPlat_IsInDebugSession;
 
 typedef void*(__thiscall* FnGetWpnData)(CBaseEntity*);
-FnGetWpnData g_pCallGetWpnData;				// 获取武器数据 (不是虚函数)
+FnGetWpnData g_pCallGetWpnData;						// 获取武器数据 (不是虚函数)
 
 typedef void(__thiscall* FnStartDrawing)(CSurface*);
-FnStartDrawing PaintStartDrawing;			// 开始绘制 (在 CEngineVGui::Paint 里绘制必须先调用这个)
+FnStartDrawing PaintStartDrawing;					// 开始绘制 (在 CEngineVGui::Paint 里绘制必须先调用这个)
 
 typedef void(__thiscall* FnFinishDrawing)(CSurface*);
-FnFinishDrawing PaintFinishDrawing;			// 完成绘制 (在 CEngineVGui::Paint 里绘制结束时必须调用这个)
+FnFinishDrawing PaintFinishDrawing;					// 完成绘制 (在 CEngineVGui::Paint 里绘制结束时必须调用这个)
+
+typedef int(__cdecl* FnSetPredictionRandomSeed)(int);
+FnSetPredictionRandomSeed SetPredictionRandomSeed;	// 设置预测随机数种子
 
 // -------------------------------- Cheats Function --------------------------------
 void thirdPerson(bool);
@@ -252,13 +249,20 @@ CBaseEntity* g_pCurrentAiming;											// 当前正在瞄准的目标
 int g_iCurrentHitbox;													// 当前正在瞄准的敌人的 Hitbox
 CBaseEntity* g_pGameRulesProxy;											// 游戏规则实体，在这里会有一些有用的东西
 CBaseEntity* g_pPlayerResource;											// 玩家资源，可以用来获取某些东西
-static DWORD g_iClientBase, g_iEngineBase, g_iMaterialModules;			// 有用的 DLL 文件地址
+DWORD g_iClientBase, g_iEngineBase, g_iMaterialModules;					// 有用的 DLL 文件地址
+int* g_pPredictionRandomSeed;											// 随机数种子
 
 std::string GetZombieClassName(CBaseEntity* player);
 bool IsValidVictim(CBaseEntity* entity);
 
 DWORD WINAPI StartCheat(LPVOID params)
 {
+	// 获取所有接口
+	g_interface.GetInterfaces();
+
+	// 初始化 NetProp 表
+	g_pNetVars = std::make_unique<CNetVars>();
+	
 	g_iClientBase = Utils::GetModuleBase("client.dll");
 	g_iEngineBase = Utils::GetModuleBase("engine.dll");
 	g_iMaterialModules = Utils::GetModuleBase("materialsystem.dll");
@@ -306,9 +310,35 @@ DWORD WINAPI StartCheat(LPVOID params)
 	else
 		Utils::log("CL_Move not found");
 
+	if ((SetPredictionRandomSeed = (FnSetPredictionRandomSeed)Utils::FindPattern("client.dll",
+		XorStr("55 8B EC 8B 45 08 85 C0 75 0C"))) != nullptr)
+	{
+		Utils::log("SetPredictionRandomSeed found client.dll + 0x%X", (DWORD)SetPredictionRandomSeed - g_iClientBase);
+		g_pPredictionRandomSeed = *(int**)((DWORD)SetPredictionRandomSeed + 0x1A);
+
+		for (DWORD i = 0; i <= 0x1F; ++i)
+		{
+			// A3 18 68 6A 00		mov g_pPredictionRandomSeed, eax
+			if (*(PBYTE)((DWORD)g_pPredictionRandomSeed + i) == 0xA3)
+			{
+				g_pPredictionRandomSeed = *(int**)(g_pPredictionRandomSeed + i + 1);
+				Utils::log("g_pPredictionRandomSeed found 0x%X", (DWORD)g_pPredictionRandomSeed);
+				break;
+			}
+		}
+
+		Utils::log("SetPredictionRandomSeed::g_pPredictionRandomSeed = 0x%X", (DWORD)g_pPredictionRandomSeed);
+	}
+	else
+		Utils::log("SetPredictionRandomSeed not found");
+
 	if ((SharedRandomFloat = (FnSharedRandomFloat)Utils::FindPattern("client.dll",
 		XorStr("55 8B EC 83 EC 08 A1 ? ? ? ? 53 56 57 8B 7D 14 8D 4D 14 51 89 7D F8 89 45 FC E8 ? ? ? ? 6A 04 8D 55 FC 52 8D 45 14 50 E8 ? ? ? ? 6A 04 8D 4D F8 51 8D 55 14 52 E8 ? ? ? ? 8B 75 08 56 E8 ? ? ? ? 50 8D 45 14 56 50 E8 ? ? ? ? 8D 4D 14 51 E8 ? ? ? ? 8B 15 ? ? ? ? 8B 5D 14 83 C4 30 83 7A 30 00 74 26 57 53 56 68 ? ? ? ? 68 ? ? ? ? 8D 45 14 68 ? ? ? ? 50 C7 45 ? ? ? ? ? FF 15 ? ? ? ? 83 C4 1C 53 B9 ? ? ? ? FF 15 ? ? ? ? D9 45 10"))) != nullptr)
+	{
 		Utils::log("SharedRandomFloat = client.dll + 0x%X", (DWORD)SharedRandomFloat - g_iClientBase);
+		g_pPredictionRandomSeed = *(int**)((DWORD)SharedRandomFloat + 0x7);
+		Utils::log("SharedRandomFloat::g_pPredictionRandomSeed = 0x%X", (DWORD)g_pPredictionRandomSeed);
+	}
 	else
 		Utils::log("SharedRandomFloat not found");
 
@@ -3155,6 +3185,10 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 	// 引擎预测
 	if (g_interface.MoveHelper)
 	{
+		// 设置随机数种子
+		// SetPredictionRandomSeed(MD5_PseudoRandom(pCmd->command_number) & 0x7FFFFFFF);
+		*g_pPredictionRandomSeed = MD5_PseudoRandom(pCmd->command_number) & 0x7FFFFFFF;
+		
 		// 设置需要预测的时间（帧）
 		g_interface.Globals->curtime = serverTime;
 		g_interface.Globals->frametime = g_interface.Globals->interval_per_tick;
@@ -3252,8 +3286,11 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 				runAimbot = true;
 
 				// 速度预测
-				myOrigin = VelocityExtrapolate(client, myOrigin);
-				position = VelocityExtrapolate(g_pCurrentAimbot, position);
+				if (Config::bAimbotPred)
+				{
+					myOrigin = VelocityExtrapolate(client, myOrigin);
+					position = VelocityExtrapolate(g_pCurrentAimbot, position);
+				}
 
 				// 将准星转到敌人头部
 				pCmd->viewangles = CalculateAim(myOrigin, position);
@@ -3269,6 +3306,23 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 		}
 #endif
 
+		QAngle lastPunch(0.0f, 0.0f, 0.0f);
+		QAngle currentPunch = client->GetLocalNetProp<QAngle>("m_vecPunchAngle");
+		
+		/*
+		if (!lastPunch.IsValid())
+		{
+			lastPunch = QAngle(0.0f, 0.0f, 0.0f);
+
+			Vector punchAngleVel = client->GetLocalNetProp<Vector>("m_vecPunchAngleVel");
+			Utils::log("m_Local.m_vecPunchAngle = (%f, %f, %f)",
+				currentPunch.x, currentPunch.y, currentPunch.z);
+
+			Utils::log("m_Local.m_vecPunchAngleVel = (%f, %f, %f)",
+				punchAngleVel.x, punchAngleVel.y, punchAngleVel.z);
+		}
+		*/
+
 		if (Config::bSilentAimbot)
 		{
 			if (!runAimbot)
@@ -3282,6 +3336,13 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 					pCmd->sidemove = oldSidemove;
 					pCmd->fowardmove = oldForwardmove;
 					pCmd->upmove = oldUpmove;
+
+					if (Config::bAimbotRCS)
+					{
+						QAngle newPunch(currentPunch.x - lastPunch.x, currentPunch.y - lastPunch.y, 0.0f);
+						pCmd->viewangles.x -= newPunch.x * Config::fAimbotRCSX;
+						pCmd->viewangles.y -= newPunch.y * Config::fAimbotRCSY;
+					}
 				}
 
 				oldViewAngles.Invalidate();
@@ -3290,8 +3351,17 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 			{
 				// 修改角度
 				*bSendPacket = false;
+
+				// 后坐力控制系统
+				if (Config::bAimbotRCS)
+				{
+					pCmd->viewangles.x -= currentPunch.x * Config::fAimbotRCSX;
+					pCmd->viewangles.y -= currentPunch.y * Config::fAimbotRCSY;
+				}
 			}
 		}
+
+		lastPunch = currentPunch;
 	}
 
 end_aimbot:
@@ -3369,6 +3439,33 @@ end_trigger_bot:
 		pCmd->viewangles -= punch * 2.0f;
 	}
 
+	// 无扩散 (扩散就是子弹射击时不在同一个点上)
+	if (Config::bNoSpread)
+	{
+		if (IsGunWeapon(weaponId))
+		{
+			float spread = weapon->GetSpread();
+			// int seed = SetPredictionRandomSeed(pCmd->random_seed);
+			int seed = *g_pPredictionRandomSeed;
+			*g_pPredictionRandomSeed = pCmd->random_seed;
+			
+			Utils::log("oldSeed = %d, newSeed = %d", seed, pCmd->random_seed);
+
+			float horizontal = 0.0f, vertical = 0.0f;
+			SharedRandomFloat("CTerrorGun::FireBullet HorizSpread", -spread, spread, 0);
+			__asm fstp horizontal;
+			SharedRandomFloat("CTerrorGun::FireBullet VertSpread", -spread, spread, 0);
+			__asm fstp vertical;
+
+			Utils::log("spread = %f, horizontal = %f, vertical = %f", spread, horizontal, vertical);
+			
+			// SetPredictionRandomSeed(seed);
+			*g_pPredictionRandomSeed = seed;
+			pCmd->viewangles.x -= horizontal;
+			pCmd->viewangles.y -= vertical;
+		}
+	}
+
 	// 引擎预测
 	if (g_interface.MoveHelper)
 	{
@@ -3376,6 +3473,8 @@ end_trigger_bot:
 		// g_interface.Prediction->FinishMove(client, pCmd, &g_predMoveData);
 		g_interface.GameMovement->FinishTrackPredictionErrors(client);
 		g_interface.MoveHelper->SetHost(nullptr);
+		// SetPredictionRandomSeed(-1);
+		*g_pPredictionRandomSeed = -1;
 
 		// 还原备份
 		g_interface.Globals->curtime = oldCurtime;

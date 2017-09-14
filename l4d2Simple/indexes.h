@@ -98,16 +98,18 @@ namespace indexes
 	// GameMovement
 	const int ProccessMovement = 1;
 	const int PlayerMove = 18;
+	const int PlaySwimSound = 62;
 
 	// Entity
 	const int GetClientClass = 1;
 	const int GetAbsOrigin = 11;
 	const int GetAbsAngles = 12;
-	const int GetIndex = 8;
+	const int EntIndex = 8;
 	const int SetupBones = 13;
 	const int IsDormant = 7;
 	const int GetModel = 8;
 	const int GetWeaponId = 383;
+	const int GetSpread = 0xD0C;	// CTerrorWeapon* + 0xD0C
 
 	// ClientModeShared
 	const int SharedCreateMove = 27;
