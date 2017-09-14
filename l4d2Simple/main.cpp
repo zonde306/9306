@@ -3449,7 +3449,7 @@ end_trigger_bot:
 			int seed = *g_pPredictionRandomSeed;
 			*g_pPredictionRandomSeed = pCmd->random_seed;
 			
-			Utils::log("oldSeed = %d, newSeed = %d", seed, pCmd->random_seed);
+			// Utils::log("oldSeed = %d, newSeed = %d", seed, pCmd->random_seed);
 
 			float horizontal = 0.0f, vertical = 0.0f;
 			SharedRandomFloat("CTerrorGun::FireBullet HorizSpread", -spread, spread, 0);
@@ -3457,7 +3457,7 @@ end_trigger_bot:
 			SharedRandomFloat("CTerrorGun::FireBullet VertSpread", -spread, spread, 0);
 			__asm fstp vertical;
 
-			Utils::log("spread = %f, horizontal = %f, vertical = %f", spread, horizontal, vertical);
+			// Utils::log("spread = %f, horizontal = %f, vertical = %f", spread, horizontal, vertical);
 			
 			// SetPredictionRandomSeed(seed);
 			*g_pPredictionRandomSeed = seed;
