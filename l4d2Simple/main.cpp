@@ -6,7 +6,8 @@
 
 // D3D 的函数 jmp 挂钩
 static std::unique_ptr<DetourXS> g_pDetourReset, g_pDetourPresent, g_pDetourEndScene,
-g_pDetourDrawIndexedPrimitive, g_pDetourCreateQuery, g_pDetourCL_Move, g_pDetourDebugger;
+	g_pDetourDrawIndexedPrimitive, g_pDetourCreateQuery, g_pDetourCL_Move, g_pDetourDebugger,
+	g_pDetourCreateMove;
 
 std::unique_ptr<CNetVars> g_pNetVars;
 CInterfaces g_interface;
@@ -100,6 +101,7 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved)
 		DETOURXS_DESTORY(g_pDetourCreateQuery);
 		DETOURXS_DESTORY(g_pDetourDebugger);
 		DETOURXS_DESTORY(g_pDetourCL_Move);
+		DETOURXS_DESTORY(g_pDetourCreateMove);
 
 		try
 		{
@@ -393,6 +395,15 @@ DWORD WINAPI StartCheat(LPVOID params)
 	else
 		Utils::log("CMatSystemSurface::FinishDrawing not found");
 
+	if ((oCreateMoveShared = (FnCreateMoveShared)Utils::FindPattern("client.dll",
+		XorStr("55 8B EC 6A FF E8 ? ? ? ? 83 C4 04 85 C0 75 06 B0 01"))) != nullptr)
+	{
+		Utils::log("ClientModeShared::CreateMove = client.dll + 0x%X", (DWORD)oCreateMoveShared - g_iClientBase);
+		g_pDetourCreateMove = std::make_unique<DetourXS>(oCreateMoveShared, Hooked_CreateMoveShared);
+		oCreateMoveShared = (FnCreateMoveShared)g_pDetourCreateMove->GetTrampoline();
+		Utils::log("Trampoline oCreateMoveShared = 0x%X", (DWORD)oCreateMoveShared);
+	}
+
 	if (g_interface.PanelHook && indexes::PaintTraverse > -1)
 	{
 		oPaintTraverse = (FnPaintTraverse)g_interface.PanelHook->HookFunction(indexes::PaintTraverse, Hooked_PaintTraverse);
@@ -400,12 +411,14 @@ DWORD WINAPI StartCheat(LPVOID params)
 		Utils::log("oPaintTraverse = 0x%X", (DWORD)oPaintTraverse);
 	}
 
+	/*
 	if (g_interface.ClientModeHook && indexes::SharedCreateMove > -1)
 	{
 		oCreateMoveShared = (FnCreateMoveShared)g_interface.ClientModeHook->HookFunction(indexes::SharedCreateMove, Hooked_CreateMoveShared);
 		// g_interface.ClientModeHook->HookTable(true);
 		Utils::log("oCreateMoveShared = 0x%X", (DWORD)oCreateMoveShared);
 	}
+	*/
 
 	if (g_interface.ClientHook && indexes::CreateMove > -1)
 	{
@@ -3041,7 +3054,7 @@ void __fastcall Hooked_PaintTraverse(CPanel* pPanel, void* _edx, unsigned int pa
 	}
 }
 
-static bool* bSendPacket;
+static bool* bSendPacket = nullptr;
 void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frametime, bool active)
 {
 	static bool showHint = true;
@@ -3442,7 +3455,7 @@ end_trigger_bot:
 	// 无扩散 (扩散就是子弹射击时不在同一个点上)
 	if (Config::bNoSpread)
 	{
-		if (IsGunWeapon(weaponId))
+		if (IsGunWeapon(weaponId) && weapon != nullptr)
 		{
 			float spread = weapon->GetSpread();
 			// int seed = SetPredictionRandomSeed(pCmd->random_seed);
@@ -3909,10 +3922,7 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 				g_pCurrentAiming = nullptr;
 				g_iCurrentAiming = 0;
 
-				if (IsPlayerHost(g_interface.Engine->GetLocalPlayer()))
-					Utils::log("*** connected by listen host ***");
-				else
-					Utils::log("*** connected ***");
+				Utils::log("*** connected ***");
 			}
 
 			connected = true;
@@ -4003,22 +4013,24 @@ void __fastcall Hooked_RunCommand(CPrediction* ecx, void* edx, CBaseEntity* pEnt
 	g_interface.MoveHelper = moveHelper;
 }
 
-bool __stdcall Hooked_CreateMoveShared(float flInputSampleTime, CUserCmd* cmd)
+bool __stdcall Hooked_CreateMoveShared(float flInputSampleTime, CUserCmd* pCmd)
 {
-	static bool showHint = true;
-	if (showHint)
-	{
-		showHint = false;
-		std::cout << "Hooked_CreateMoveShared trigged." << std::endl;
-		Utils::log("Hooked_CreateMoveShared success");
-	}
-
+	oCreateMoveShared(flInputSampleTime, pCmd);
 	CBaseEntity* client = GetLocalClient();
 
-	if (!client || !cmd)
+	if (!client || !pCmd || pCmd->command_number == 0)
 		return false;
 
-	return oCreateMoveShared(flInputSampleTime, cmd);
+	static bool showHint = true;
+	if (showHint && bSendPacket)
+	{
+		showHint = false;
+		Utils::log("Hooked_CreateMoveShared success");
+		Utils::log("Input->pCmd = 0x%X", (DWORD)pCmd);
+		Utils::log("CL_Move->bSendPacket = 0x%X | %d", (DWORD)bSendPacket, *bSendPacket);
+	}
+
+	return false;
 }
 
 int __stdcall Hooked_InKeyEvent(int eventcode, ButtonCode_t keynum, const char *pszCurrentBinding)
@@ -4064,7 +4076,7 @@ void __stdcall Hooked_CL_Move(float accumulated_extra_samples, bool bFinalTick)
 	auto CL_Move = [&_bl, &_edi](float accumulated_extra_samples, bool bFinalTick) -> void
 	{
 		// 不支持 push byte. 所以只能 push word
-		WORD wFinalTick = bFinalTick;
+		DWORD wFinalTick = bFinalTick;
 
 		__asm
 		{
@@ -4079,8 +4091,8 @@ void __stdcall Hooked_CL_Move(float accumulated_extra_samples, bool bFinalTick)
 			// 调用原函数(其实是个蹦床)
 			call	oCL_Move
 
-			// 清理堆栈
-			add		esp, 6
+			// 清理堆栈(需要内存对齐)
+			add		esp, 8
 		};
 	};
 
@@ -4088,7 +4100,7 @@ void __stdcall Hooked_CL_Move(float accumulated_extra_samples, bool bFinalTick)
 	// 参数 bFinalTick 相当于 bSendPacket
 	CL_Move(accumulated_extra_samples, bFinalTick);
 
-	if (GetAsyncKeyState(VK_CAPITAL) & 0x8000)
+	if (g_bIsKeyPressing[VK_CAPITAL])
 	{
 		static bool showSpeed = true;
 		if (showSpeed)
