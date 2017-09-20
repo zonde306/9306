@@ -178,6 +178,7 @@
     <ClInclude Include="main.h" />
     <ClInclude Include="ntdll.h" />
     <ClInclude Include="structs\angle.h" />
+    <ClInclude Include="structs\backtrack.h" />
     <ClInclude Include="structs\baseentity.h" />
     <ClInclude Include="structs\checksum_md5.h" />
     <ClInclude Include="structs\client.h" />

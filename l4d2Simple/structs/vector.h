@@ -83,6 +83,7 @@ public:
 
 	inline float Dot(const Vector & vOther) { return DotProduct(*this, vOther); }
 	inline float Length() { return VectorLength(*this); }
+	inline float Length2D() { return sqrtf(x * x + y * y); }
 
 	float DistTo(const Vector & vOther)
 	{

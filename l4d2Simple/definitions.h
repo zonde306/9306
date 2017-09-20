@@ -43,6 +43,7 @@ inline void AssertValidReadWritePtr(const void* ptr, int count = 1) { }
 #define BLUE(COLORCODE) ((int)(COLORCODE >> 8) & 0xFF)
 #define GREEN(COLORCODE) ((int)(COLORCODE >> 16) & 0xFF)
 #define ALPHA(COLORCODE) ((int)COLORCODE & 0xFF)
+#define TIME_TO_TICKS(dt)		((int)(0.5f + (float)(dt) / g_interface.Globals->interval_per_tick))
 
 #define COLORBOX_ENEMY_VISIBLE		D3DCOLOR_RGBA(255, 0, 0, 255)		// 红色
 #define COLORBOX_FIREND_VISIBLE		D3DCOLOR_RGBA(0, 0, 255, 255)		// 深蓝色

@@ -195,6 +195,10 @@ namespace Config
 	float fAimbotRCSY = 2.0f;
 
 	int iFastMeleeTick = 10;
+
+	bool bTeleport = false;
+	bool bAirStuck = false;
+	bool bPositionAdjustment = true;
 };
 
 #include "./definitions.h"
@@ -227,6 +231,7 @@ namespace Config
 #include "./Utils.h"
 #include "./structs/weapon.h"
 #include "./structs/baseentity.h"
+#include "./structs/backtrack.h"
 #include "./structs/cliententlist.h"
 #include "./structs/trace.h"
 #include "./structs/debugoverlay.h"

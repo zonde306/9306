@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 class CEngine
 {
 public:
@@ -30,7 +30,7 @@ public:
 		int len = vsprintf_s(cmd, Command, argp);
 		va_end(argp);
 		
-		// È¥³ýÎÞÐ§×Ö·û
+		// åŽ»é™¤æ— æ•ˆå­—ç¬¦
 		for (int i = 0; i < len; ++i)
 		{
 			if (cmd[i] == '\0')
@@ -44,15 +44,15 @@ public:
 		return ((Fn)VMT.GetFunction(this, indexes::ClientCmd))(this, cmd);
 	}
 
-	void SetViewAngles(Vector& Angles)
+	void SetViewAngles(QAngle& Angles)
 	{
-		typedef void(__thiscall* Fn)(void*, Vector&);
+		typedef void(__thiscall* Fn)(void*, QAngle&);
 		return ((Fn)VMT.GetFunction(this, indexes::SetViewAngles))(this, Angles);
 	}
 
-	void GetViewAngles(Vector& angle)
+	void GetViewAngles(QAngle& angle)
 	{
-		typedef void(__thiscall* Fn)(void*, Vector&);
+		typedef void(__thiscall* Fn)(void*, QAngle&);
 		return ((Fn)VMT.GetFunction(this, indexes::GetViewAngles))(this,angle);
 	}
 

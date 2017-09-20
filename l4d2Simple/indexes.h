@@ -89,6 +89,9 @@ namespace indexes
 
 	// Input
 	const int GetUserCmd = 8;
+	const int CAM_IsThirdPerson = 29;
+	const int CAM_ToThirdPerson = 31;
+	const int CAM_ToFirstPerson = 32;
 
 	// Prediction
 	const int RunCommand = 18;

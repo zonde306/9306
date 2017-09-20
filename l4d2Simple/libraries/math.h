@@ -540,3 +540,18 @@ float GetDelta(float hiSpeed, float maxSpeed, float airAcceleRate)
 
 	return 0.0f;
 }
+
+void CorrectMovement(Vector vOldAngles, CUserCmd* pCmd, Vector Viewangs)
+{
+	Vector vMove(pCmd->fowardmove, pCmd->sidemove, pCmd->upmove);
+	float flSpeed = sqrt(vMove.x * vMove.x + vMove.y * vMove.y), flYaw;
+	Vector vMove2;
+	VectorAngles(vMove, vMove2);
+
+	flYaw = DEG2RAD(Viewangs.y - vOldAngles.y + vMove2.y);
+	pCmd->fowardmove = cos(flYaw) * flSpeed;
+	pCmd->sidemove = sin(flYaw) * flSpeed;
+
+	if (Viewangs.x < -90.f || Viewangs.x > 90.f)
+		pCmd->fowardmove = -pCmd->fowardmove;
+}

@@ -233,6 +233,9 @@ FnFinishDrawing PaintFinishDrawing;					// 完成绘制 (在 CEngineVGui::Paint 
 typedef int(__cdecl* FnSetPredictionRandomSeed)(int);
 FnSetPredictionRandomSeed SetPredictionRandomSeed;	// 设置预测随机数种子
 
+typedef CInput*(__thiscall* FnGetCurInput)(CInput*, int somevalue);
+FnGetCurInput GetCurrentInput;
+
 // -------------------------------- Cheats Function --------------------------------
 void thirdPerson(bool);
 void showSpectator();
@@ -404,6 +407,10 @@ DWORD WINAPI StartCheat(LPVOID params)
 		Utils::log("Trampoline oCreateMoveShared = 0x%X", (DWORD)oCreateMoveShared);
 	}
 
+	if((GetCurrentInput = (FnGetCurInput)Utils::FindPattern("client.dll",
+		XorStr("55 8B EC 8B 45 08 56 8B F1 83 F8 FF 75 10 8B 0D ? ? ? ? 8B 01 8B 90 ? ? ? ? FF D2 69 C0 ? ? ? ? 8D 44 30 34 5E 5D C2 04 00"))) != nullptr)
+		Utils::log("CInput::_GetCurInput = client.dll + 0x%X", (DWORD)GetCurrentInput - g_iClientBase);
+
 	if (g_interface.PanelHook && indexes::PaintTraverse > -1)
 	{
 		oPaintTraverse = (FnPaintTraverse)g_interface.PanelHook->HookFunction(indexes::PaintTraverse, Hooked_PaintTraverse);
@@ -520,6 +527,11 @@ DWORD WINAPI StartCheat(LPVOID params)
 		g_conVar["c_thirdpersonshoulderheight"] = g_interface.Cvar->FindVar("c_thirdpersonshoulderheight");
 		g_conVar["c_thirdpersonshoulderoffset"] = g_interface.Cvar->FindVar("c_thirdpersonshoulderoffset");
 		g_conVar["cl_mouseenable"] = g_interface.Cvar->FindVar("cl_mouseenable");
+		g_conVar["cl_interp"] = g_interface.Cvar->FindVar("cl_interp");
+		g_conVar["cl_updaterate"] = g_interface.Cvar->FindVar("cl_updaterate");
+		g_conVar["sv_maxupdaterate"] = g_interface.Cvar->FindVar("sv_maxupdaterate");
+		g_conVar["sv_minupdaterate"] = g_interface.Cvar->FindVar("sv_minupdaterate");
+		g_conVar["cl_interp_ratio"] = g_interface.Cvar->FindVar("cl_interp_ratio");
 
 		Utils::log("sv_cheats = 0x%X", (DWORD)g_conVar["sv_cheats"]);
 		Utils::log("r_drawothermodels = 0x%X", (DWORD)g_conVar["r_drawothermodels"]);
@@ -532,6 +544,12 @@ DWORD WINAPI StartCheat(LPVOID params)
 		Utils::log("c_thirdpersonshoulderheight = 0x%X", (DWORD)g_conVar["c_thirdpersonshoulderheight"]);
 		Utils::log("c_thirdpersonshoulderoffset = 0x%X", (DWORD)g_conVar["c_thirdpersonshoulderoffset"]);
 		Utils::log("cl_mouseenable = 0x%X", (DWORD)g_conVar["cl_mouseenable"]);
+		Utils::log("cl_interp = 0x%X", (DWORD)g_conVar["cl_interp"]);
+		Utils::log("cl_updaterate = 0x%X", (DWORD)g_conVar["cl_updaterate"]);
+		Utils::log("sv_maxupdaterate = 0x%X", (DWORD)g_conVar["sv_maxupdaterate"]);
+		Utils::log("sv_minupdaterate = 0x%X", (DWORD)g_conVar["sv_minupdaterate"]);
+		Utils::log("cl_interp_ratio = 0x%X", (DWORD)g_conVar["cl_interp_ratio"]);
+
 #else
 		g_conVar["sv_cheats"] = nullptr;
 		g_conVar["r_drawothermodels"] = nullptr;
@@ -2755,12 +2773,12 @@ void __fastcall Hooked_PaintTraverse(CPanel* pPanel, void* _edx, unsigned int pa
 				}
 				catch (std::exception e)
 				{
-					Utils::log("%s (%d): entity %d %s", __FILE__, __LINE__, i, e.what());
+					// Utils::log("%s (%d): entity %d %s", __FILE__, __LINE__, i, e.what());
 					continue;
 				}
 				catch (...)
 				{
-					Utils::log("%s (%d): entity %d 未知异常 -> 0x%X", __FILE__, __LINE__, i, (DWORD)entity);
+					// Utils::log("%s (%d): entity %d 未知异常 -> 0x%X", __FILE__, __LINE__, i, (DWORD)entity);
 					continue;
 				}
 
@@ -3069,6 +3087,11 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 
 	oCreateMove(sequence_number, input_sample_frametime, active);
 
+	QAngle viewAngles;
+	g_interface.Engine->GetViewAngles(viewAngles);
+	viewAngles.z = 0.0f;
+	g_interface.Engine->SetViewAngles(viewAngles);
+
 	CVerifiedUserCmd *pVerifiedCmd = &(*(CVerifiedUserCmd**)((DWORD)g_interface.Input + 0xE0))[sequence_number % 150];
 	CUserCmd *pCmd = &(*(CUserCmd**)((DWORD_PTR)g_interface.Input + 0xDC))[sequence_number % 150];
 	if (showHint)
@@ -3219,6 +3242,35 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 		g_interface.Prediction->SetupMove(client, pCmd, g_interface.MoveHelper, &g_predMoveData);
 		g_interface.GameMovement->ProcessMovement(client, &g_predMoveData);
 		g_interface.Prediction->FinishMove(client, pCmd, &g_predMoveData);
+	}
+
+	// 根据服务器配置使 tick 最大化
+	if (Config::bPositionAdjustment)
+	{
+		float cl_interp = g_conVar["cl_interp"]->GetFloat();
+		int cl_updaterate = g_conVar["cl_updaterate"]->GetInt();
+		int sv_maxupdaterate = g_conVar["sv_maxupdaterate"]->GetInt();
+		int sv_minupdaterate = g_conVar["sv_minupdaterate"]->GetInt();
+		int cl_interp_ratio = g_conVar["cl_interp_ratio"]->GetInt();
+
+		if (sv_maxupdaterate <= cl_updaterate)
+			cl_updaterate = sv_maxupdaterate;
+		if (sv_minupdaterate > cl_updaterate)
+			cl_updaterate = sv_minupdaterate;
+
+		float new_interp = (float)cl_interp_ratio / (float)cl_updaterate;
+		if (new_interp > cl_interp)
+			cl_interp = new_interp;
+
+		float simulationTime = client->GetNetProp<float>("m_flSimulationTime", "DT_BasePlayer");
+		// float animTime = client->GetNetProp<float>("m_flAnimTime", "DT_BasePlayer");
+		// int tickdiff = (int)(0.5f + (simulationTime - animTime) / g_interface.Globals->interval_per_tick);
+		int result = (int)floorf(TIME_TO_TICKS(cl_interp)) + (int)floorf(TIME_TO_TICKS(simulationTime));
+		if ((result - pCmd->tick_count) >= -50)
+		{
+			// 优化 tick
+			pCmd->tick_count = result;
+		}
 	}
 
 	// 当前正在瞄准的目标
@@ -3444,12 +3496,8 @@ end_trigger_bot:
 	if (Config::bNoRecoil)
 	{
 		Vector punch = client->GetLocalNetProp<Vector>("m_vecPunchAngle");
-		/*
-		float modifiler = VectorNormalize(punch);
-		modifiler -= (10.0f + modifiler * 0.5f) * g_interface.Globals->interval_per_tick;
-		punch *= modifiler;
-		*/
-		pCmd->viewangles -= punch * 2.0f;
+		if(punch.IsValid() && punch.Length2D() > 0.0f)
+			pCmd->viewangles -= punch * 2.0f;
 	}
 
 	// 无扩散 (扩散就是子弹射击时不在同一个点上)
@@ -3578,6 +3626,21 @@ end_trigger_bot:
 	ClampAngles(pCmd->viewangles);
 	AngleNormalize(pCmd->viewangles);
 
+	if (Config::bAirStuck)
+	{
+		if (!(pCmd->buttons & IN_ATTACK))
+		{
+			// 使用 0xFFFFF 或者 16777216
+			pCmd->tick_count = INT_MAX;
+		}
+	}
+
+	if (Config::bTeleport)
+	{
+		// 一旦使用无法恢复
+		pCmd->viewangles.z = 9e+37f;
+	}
+
 	// 发送到服务器
 	pVerifiedCmd->m_cmd = *pCmd;
 	pVerifiedCmd->m_crc = pCmd->GetChecksum();
@@ -3595,28 +3658,34 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 		Utils::log("Hooked_FrameStageNotify trigged.");
 	}
 
+	/*
 	QAngle punch, velocity;
 	CBaseEntity* client = GetLocalClient();
+	*/
 
 	if (stage == FRAME_RENDER_START && g_interface.Engine->IsInGame())
 	{
+		/*
 		if (client != nullptr && client->IsAlive())
 		{
 			punch = client->GetLocalNetProp<Vector>("m_vecPunchAngle");
 			velocity = client->GetLocalNetProp<Vector>("m_vecPunchAngleVel");
 		}
+		*/
 
 		// 在这里可以使用 DebugOverlay 来进行 3D 绘制
 	}
 
 	oFrameStageNotify(stage);
 
+	/*
 	if (Config::bNoRecoil && client != nullptr && client->IsAlive() && punch.IsValid() && velocity.IsValid())
 	{
 		// 去除屏幕晃动
 		client->SetLocalNetProp("m_vecPunchAngle", punch);
 		client->SetLocalNetProp("m_vecPunchAngleVel", velocity);
 	}
+	*/
 
 	static time_t nextUpdate = 0;
 	time_t currentTime = time(NULL);
@@ -3713,8 +3782,11 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 			}
 
 			static bool oldGameMode = false;
+
+			/*
 			if (GetAsyncKeyState(VK_PRIOR) & 0x01)
 				Config::bCvarGameMode = !Config::bCvarGameMode;
+			*/
 
 			if (oldGameMode != Config::bCvarGameMode)
 			{
@@ -3994,6 +4066,14 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 				g_pDrawRender->PushRenderText(DrawManager::WHITE, "force exit proccess timer stopped");
 		}
 
+		if (GetAsyncKeyState(VK_PRIOR) & 0x01)
+		{
+			if (g_interface.Input->CAM_IsThirdPerson())
+				g_interface.Input->CAM_ToFirstPerson();
+			else
+				g_interface.Input->CAM_ToThirdPerson();
+		}
+
 		if (GetAsyncKeyState(VK_DELETE) & 0x01)
 			g_interface.Engine->ClientCmd("disconnect");
 	}
@@ -4051,6 +4131,10 @@ bool __stdcall Hooked_DispatchUserMessage(int msg_id, bf_read* msg_data)
 		showHint = false;
 		Utils::log("Hooked_DispatchUserMessage trigged.");
 	}
+
+	// 去除屏幕摇晃和黑屏效果
+	if (msg_id == 11 || msg_id == 12)
+		return true;
 
 	return oDispatchUserMessage(msg_id, msg_data);
 }

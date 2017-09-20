@@ -37,7 +37,7 @@ public:
 	virtual void		EncodeUserCmdToBuffer(bf_write& buf, int slot) = 0;
 	virtual void		DecodeUserCmdFromBuffer(bf_read& buf, int slot) = 0;
 
-	virtual CUserCmd	*GetUserCmd(int sequence_number) = 0;
+	virtual CUserCmd	*GetUserCmd(int givezero, int sequence_number) = 0;
 
 	virtual void		MakeWeaponSelection(CBaseEntity* *weapon) = 0;
 
@@ -107,10 +107,28 @@ public:
 class CInput : public IInput
 {
 public:
-	virtual CUserCmd *GetUserCmd(int sequence_number) override
+	virtual CUserCmd *GetUserCmd(int givezero, int sequence_number) override
 	{
 		typedef CUserCmd*(__thiscall* Fn)(void*, int, int);
 		return ((Fn)VMT.GetFunction(this, indexes::GetUserCmd))(this, 0, sequence_number);
+	}
+	
+	virtual void CAM_ToThirdPerson() override
+	{
+		typedef void(__thiscall* Fn)(void*);
+		return ((Fn)VMT.GetFunction(this, indexes::CAM_ToThirdPerson))(this);
+	}
+	
+	virtual void CAM_ToFirstPerson() override
+	{
+		typedef void(__thiscall* Fn)(void*);
+		return ((Fn)VMT.GetFunction(this, indexes::CAM_ToFirstPerson))(this);
+	}
+
+	virtual int CAM_IsThirdPerson() override
+	{
+		typedef int(__thiscall* Fn)(void*);
+		return ((Fn)VMT.GetFunction(this, indexes::CAM_IsThirdPerson))(this);
 	}
 };
 

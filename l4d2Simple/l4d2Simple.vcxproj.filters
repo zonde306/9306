@@ -201,6 +201,9 @@
     <ClInclude Include="..\imgui\dx9\imgui_impl_dx9.h">
       <Filter>头文件\imgui\dx9</Filter>
     </ClInclude>
+    <ClInclude Include="structs\backtrack.h">
+      <Filter>头文件\structs</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="structs\checksum_md5.cpp">
