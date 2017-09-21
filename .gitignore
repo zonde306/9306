@@ -261,3 +261,4 @@ __pycache__/
 *.pyc
 /l4d2Simple/features.h
 /l4d2Simple/features.cpp
+/l4d2Simple/libraries/utl_keyvalues.h

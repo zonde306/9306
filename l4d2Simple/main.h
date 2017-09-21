@@ -161,12 +161,20 @@ namespace Config
 	bool bDrawCrosshairs = true;
 	bool bDrawSpectator = true;
 
+	bool bDrawT1Weapon = true;
+	bool bDrawT2Weapon = true;
+	bool bDrawT3Weapon = true;
+	bool bDrawMeleeWeapon = true;
+	bool bDrawMedicalItem = true;
+	bool bDrawGrenadeItem = true;
+	bool bDrawAmmoStack = true;
+
 	bool bBufferSurvivor = false;
 	bool bBufferSpecial = false;
 	bool bBufferCommon = false;
 	bool bBufferWeapon = false;
-	bool bBufferGrenade = true;
-	bool bBufferMedickit = true;
+	bool bBufferGrenade = false;
+	bool bBufferMedical = false;
 	bool bBufferCarry = false;
 
 	bool bNoSpread = true;
@@ -236,6 +244,7 @@ namespace Config
 #include "./structs/trace.h"
 #include "./structs/debugoverlay.h"
 #include "./structs/console.h"
+#include "./structs/filesystem.h"
 #include "./structs/event.h"
 #include "./structs/render.h"
 #include "./libraries/math.h"

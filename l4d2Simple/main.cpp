@@ -1923,7 +1923,7 @@ HRESULT WINAPI Hooked_Present(IDirect3DDevice9* device, const RECT* source, cons
 				ImGui::Checkbox(u8"Special Infected", &Config::bBufferSpecial);
 				ImGui::Checkbox(u8"Common Infected", &Config::bBufferCommon);
 				ImGui::Checkbox(u8"Grenade", &Config::bBufferGrenade);
-				ImGui::Checkbox(u8"Medickit", &Config::bBufferMedickit);
+				ImGui::Checkbox(u8"Medical", &Config::bBufferMedical);
 				ImGui::Checkbox(u8"Guns", &Config::bBufferWeapon);
 				ImGui::Checkbox(u8"Carry", &Config::bBufferCarry);
 			}
@@ -2477,7 +2477,7 @@ HRESULT WINAPI Hooked_DrawIndexedPrimitive(IDirect3DDevice9* device, D3DPRIMITIV
 		if (Config::bBufferCarry && l4d2_carry(stride, numVertices, primitiveCount) ||
 			Config::bBufferCommon && l4d2_common(stride, numVertices, primitiveCount) ||
 			Config::bBufferGrenade && l4d2_throw(stride, numVertices, primitiveCount) ||
-			Config::bBufferMedickit && l4d2_healthitem(stride, numVertices, primitiveCount) ||
+			Config::bBufferMedical && l4d2_healthitem(stride, numVertices, primitiveCount) ||
 			Config::bBufferSpecial && l4d2_special(stride, numVertices, primitiveCount) ||
 			Config::bBufferSurvivor && l4d2_survivor(stride, numVertices, primitiveCount) ||
 			Config::bBufferWeapon && l4d2_weapons(stride, numVertices, primitiveCount))
@@ -2885,17 +2885,16 @@ void __fastcall Hooked_PaintTraverse(CPanel* pPanel, void* _edx, unsigned int pa
 							// Tank 的石头
 							g_pDrawRender->AddCircle(DrawManager::PURPLE, foot.x, foot.y, 9, 8);
 						}
-						else if (classId == ET_WeaponFirstAidKit || classId == ET_WeaponDefibrillator ||
-							classId == ET_WeaponPainPills || classId == ET_WeaponPainPills)
+						else if (classId == ET_ProjectilePipeBomb || classId == ET_ProjectileMolotov ||
+							classId == ET_ProjectileVomitJar)
 						{
-							// 医疗品
-							g_pDrawRender->AddFillRect(DrawManager::DARKORANGE, foot.x, foot.y, 2, 8);
+							// 投掷武器飞行物
+							g_pDrawRender->AddCircle(DrawManager::BLUE, foot.x, foot.y, 5, 8);
 						}
-						else if (classId == ET_WeaponPipeBomb || classId == ET_WeaponMolotov ||
-							classId == ET_WeaponVomitjar)
+						else if (classId == ET_ProjectileSpitter || classId == ET_ProjectileGrenadeLauncher)
 						{
-							// 投掷武器
-							g_pDrawRender->AddFillRect(DrawManager::DARKGRAY, foot.x, foot.y, 2, 8);
+							// Spitter 的酸液 和 榴弹发射器的榴弹
+							g_pDrawRender->AddCircle(DrawManager::GREEN, foot.x, foot.y, 5, 8);
 						}
 					}
 				}
@@ -3022,10 +3021,29 @@ void __fastcall Hooked_PaintTraverse(CPanel* pPanel, void* _edx, unsigned int pa
 							}
 						}
 					}
+					else if(classId == ET_WeaponSpawn || classId == ET_WeaponAmmoSpawn)
+					{
+						// 其他东西
+						if (dist > 1000.0f)
+							continue;
+
+						if (WeaponIdToAlias)
+						{
+							int weaponId = entity->GetNetProp<short>("m_weaponID", "DT_WeaponSpawn");
+							if(IsWeaponT1(weaponId) && Config::bDrawT1Weapon ||
+								IsWeaponT2(weaponId) && Config::bDrawT2Weapon ||
+								IsWeaponT3(weaponId) && Config::bDrawT3Weapon ||
+								IsMelee(weaponId) && Config::bDrawMeleeWeapon ||
+								IsMedical(weaponId) && Config::bDrawMedicalItem ||
+								IsGrenadeWeapon(weaponId) && Config::bDrawGrenadeItem ||
+								IsAmmoStack(weaponId) && Config::bDrawAmmoStack)
+								ss << WeaponIdToAlias(weaponId);
+						}
+					}
 
 					if (!ss.str().empty())
 					{
-						color = (visible ? DrawManager::LAWNGREEN : DrawManager::GREEN);
+						color = (visible ? DrawManager::LAWNGREEN : DrawManager::YELLOW);
 
 						/*
 						g_interface.Surface->drawString(foot.x - width / 2, head.y + FontSize,

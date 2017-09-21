@@ -164,9 +164,11 @@
     <ClInclude Include="libraries\buffer.h" />
     <ClInclude Include="libraries\interfaces.h" />
     <ClInclude Include="libraries\math.h" />
+    <ClInclude Include="libraries\strtools.h" />
     <ClInclude Include="libraries\util_blockmemory.h" />
     <ClInclude Include="libraries\utl_blockmemory.h" />
     <ClInclude Include="libraries\utl_btree.h" />
+    <ClInclude Include="libraries\utl_buffer.h" />
     <ClInclude Include="libraries\utl_dict.h" />
     <ClInclude Include="libraries\utl_fixedmemory.h" />
     <ClInclude Include="libraries\utl_map.h" />
@@ -189,6 +191,7 @@
     <ClInclude Include="structs\debugoverlay.h" />
     <ClInclude Include="structs\engine.h" />
     <ClInclude Include="structs\event.h" />
+    <ClInclude Include="structs\filesystem.h" />
     <ClInclude Include="structs\globals.h" />
     <ClInclude Include="structs\handle.h" />
     <ClInclude Include="structs\input.h" />

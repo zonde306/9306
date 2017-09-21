@@ -42,7 +42,8 @@ public:
 	// KeyValue memory will be freed by manager if not needed anymore
 	virtual void FireGameEvent(IGameEvent *event) = 0;
 
-	virtual int GetEventDebugID(void) { return m_nDebugID; };
+	virtual int GetEventDebugID(void) final { return m_nDebugID; };
+	virtual int IndicateEventHandling(void) final { return m_nDebugID; };
 
 	int m_nDebugID = EVENT_DEBUG_ID_INIT;
 };

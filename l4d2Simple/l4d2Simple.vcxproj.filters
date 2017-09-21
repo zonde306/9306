@@ -204,6 +204,15 @@
     <ClInclude Include="structs\backtrack.h">
       <Filter>头文件\structs</Filter>
     </ClInclude>
+    <ClInclude Include="libraries\utl_buffer.h">
+      <Filter>头文件\libraries</Filter>
+    </ClInclude>
+    <ClInclude Include="libraries\strtools.h">
+      <Filter>头文件\libraries</Filter>
+    </ClInclude>
+    <ClInclude Include="structs\filesystem.h">
+      <Filter>头文件\structs</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="structs\checksum_md5.cpp">

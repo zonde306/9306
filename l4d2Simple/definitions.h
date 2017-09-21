@@ -523,10 +523,22 @@ enum LifeStates_t
 #define IsGunWeaponAmmotype(_at)	(_at == AT_Pistol || _at == AT_Magnum || _at == AT_Rifle || _at == AT_Smg || _at == AT_M60 || _at == AT_Shotgun || _at == AT_AutoShotgun || _at == AT_Hunting || _at == AT_Sniper || _at == AT_Grenade)
 
 // 检查是否是一把枪
-#define IsNotGunWeapon(_id)			(IsGrenadeWeapon(_id) || IsMedickitWeapon(_id) || IsPillsWeapon(_id) || IsCarryWeapon(_id) || _id == Weapon_Melee || _id == Weapon_Chainsaw)
-#define IsGunWeapon(_id)			(!IsGrenadeWeapon(_id) && !IsMedickitWeapon(_id) && !IsPillsWeapon(_id) && !IsCarryWeapon(_id) && _id != Weapon_Melee && _id != Weapon_Chainsaw)
+#define IsSubMachinegun(_id)		(_id == WeaponId_SubMachinegun || _id == WeaponId_Silenced || _id == WeaponId_MP5)
+#define IsShotgun(_id)				(_id == WeaponId_PumpShotgun || _id == WeaponId_Chrome || _id == WeaponId_AutoShotgun || _id == WeaponId_SPAS)
+#define IsAssaultRifle(_id)			(_id == WeaponId_AssaultRifle || _id == WeaponId_AK47 || _id == WeaponId_Desert || _id == WeaponId_SG552 || _id == WeaponId_M60)
+#define IsSniper(_id)				(_id == WeaponId_SniperRifle || _id == WeaponId_Military || _id == WeaponId_Scout || _id == WeaponId_AWP)
+#define IsPistol(_id)				(_id == WeaponId_Pistol || _id == WeaponId_MagnumPistol)
+#define IsMelee(_id)				(_id == WeaponId_TerrorMeleeWeapon || _id == WeaponId_Chainsaw)
+#define IsMedical(_id)				(_id == WeaponId_FirstAidKit || _id == WeaponId_ItemDefibrillator || _id == WeaponId_PainPills || _id == WeaponId_Adrenaline)
+#define IsAmmoStack(_id)			(_id == WeaponId_ItemAmmoPack || _id == WeaponId_ItemUpgradePackExplosive || _id == WeaponId_ItemUpgradePackIncendiary)
+#define IsWeaponT1(_id)				(IsSubMachinegun(_id) || _id == WeaponId_PumpShotgun || _id == WeaponId_Chrome || _id == WeaponId_Pistol)
+#define IsWeaponT2(_id)				(_id == WeaponId_AutoShotgun || _id == WeaponId_SPAS || _id == WeaponId_AssaultRifle || _id == WeaponId_AK47 || _id == WeaponId_Desert || _id == WeaponId_SG552 || _id == WeaponId_MagnumPistol || IsSniper(_id))
+#define IsWeaponT3(_id)				(_id == WeaponId_M60 || _id == WeaponId_GrenadeLauncher)
+
+#define IsNotGunWeapon(_id)			(IsGrenadeWeapon(_id) || IsMedicalWeapon(_id) || IsPillsWeapon(_id) || IsCarryWeapon(_id) || _id == Weapon_Melee || _id == Weapon_Chainsaw)
+#define IsGunWeapon(_id)			(IsSubMachinegun(_id) || IsShotgun(_id) || IsAssaultRifle(_id) || IsSniper(_id) || IsPistol(_id))
 #define IsGrenadeWeapon(_id)		(_id == Weapon_Molotov || _id == Weapon_PipeBomb || _id == Weapon_Vomitjar)
-#define IsMedickitWeapon(_id)		(_id == Weapon_FirstAidKit || _id == Weapon_Defibrillator || _id == Weapon_FireAmmo || _id == Weapon_ExplodeAmmo)
+#define IsMedicalWeapon(_id)		(_id == Weapon_FirstAidKit || _id == Weapon_Defibrillator || _id == Weapon_FireAmmo || _id == Weapon_ExplodeAmmo)
 #define IsPillsWeapon(_id)			(_id == Weapon_PainPills || _id == Weapon_Adrenaline)
 #define IsCarryWeapon(_id)			(_id == Weapon_Gascan || _id == Weapon_Fireworkcrate || _id == Weapon_Propanetank || _id == Weapon_Oxygentank || _id == Weapon_Gnome || _id == Weapon_Cola)
 
@@ -596,7 +608,56 @@ enum WeaponID_t
 	Weapon_Propanetank = 17,		// 煤气罐
 	Weapon_Oxygentank = 18,			// 氧气瓶
 	Weapon_Gnome = 27,				// 侏儒
-	Weapon_Cola = 28				// 可乐
+	Weapon_Cola = 28,				// 可乐
+
+	WeaponId_WeaponCSBase = 0,
+	WeaponId_AssaultRifle = 5,
+	WeaponId_AutoShotgun = 4,
+	WeaponId_BaseBackpackItem = 0,
+	WeaponId_BoomerClaw = 41,
+	WeaponId_CarriedProp = 16,
+	WeaponId_Chainsaw = 20,
+	WeaponId_ChargerClaw = 40,
+	WeaponId_ColaBottles = 28,
+	WeaponId_FireworkCrate = 29,
+	WeaponId_FirstAidKit = 12,
+	WeaponId_GasCan = 16,
+	WeaponId_Gnome = 27,
+	WeaponId_GrenadeLauncher = 21,
+	WeaponId_HunterClaw = 39,
+	WeaponId_Adrenaline = 23,
+	WeaponId_ItemAmmoPack = 22,
+	WeaponId_ItemDefibrillator = 24,
+	WeaponId_ItemUpgradePackExplosive = 31,
+	WeaponId_ItemUpgradePackIncendiary = 30,
+	WeaponId_VomitJar = 25,
+	WeaponId_JockeyClaw = 44,
+	WeaponId_Molotov = 13,
+	WeaponId_OxygenTank = 18,
+	WeaponId_PainPills = 15,
+	WeaponId_PipeBomb = 14,
+	WeaponId_Pistol = 1,
+	WeaponId_MagnumPistol = 32,
+	WeaponId_PropaneTank = 17,
+	WeaponId_PumpShotgun = 3,
+	WeaponId_AK47 = 26,
+	WeaponId_Desert = 9,
+	WeaponId_M60 = 37,
+	WeaponId_SG552 = 34,
+	WeaponId_Chrome = 8,
+	WeaponId_SPAS = 11,
+	WeaponId_MP5 = 33,
+	WeaponId_Silenced = 7,
+	WeaponId_SmokerClaw = 42,
+	WeaponId_SniperRifle = 6,
+	WeaponId_AWP = 35,
+	WeaponId_Military = 10,
+	WeaponId_Scout = 36,
+	WeaponId_SpitterClaw = 43,
+	WeaponId_SubMachinegun = 2,
+	WeaponId_TankClaw = 38,
+	WeaponId_TerrorMeleeWeapon = 19,
+	WeaponId_WeaponSpawn = 8
 };
 
 enum EntityType_t
@@ -637,10 +698,16 @@ enum EntityType_t
 	// 杂物
 	ET_DoorCheckpoint = 143,		// 安全门
 	ET_SurvivorRescue = 185,		// 复活点
+	ET_SurvivorDeathModel = 183,	// 死亡的生还者
+	ET_PropHealthCabinet = 144,		// 医疗箱
 
 	// 武器 - 其他
 	ET_WeaponMountedGun = 146,
 	ET_WeaponMinigun = 145,
+	ET_WeaponAmmoSpawn = 255,
+	ET_WeaponSpawn = 259,
+	ET_ScavengeItemSpawn = 258,
+	ET_BaseUpgradeItem = 29,
 
 	// 武器 - 冲锋枪
 	ET_WeaponMP5 = 164,
@@ -677,6 +744,12 @@ enum EntityType_t
 	ET_WeaponPipeBomb = 129,
 	ET_WeaponMolotov = 118,
 	ET_WeaponVomitjar = 106,
+	ET_ProjectilePipeBomb = 130,
+	ET_ProjectileMolotov = 119,
+	ET_ProjectileVomitJar = 251,
+	ET_ProjectileSpitter = 175,
+	ET_ProjectileGrenadeLauncher = 97,
+	ET_ProjectileGrenade = 13,
 	
 	// 武器 - 医疗品/升级包
 	ET_WeaponIncendiary = 111,
@@ -684,7 +757,6 @@ enum EntityType_t
 	ET_WeaponDefibrillator = 109,
 	ET_WeaponFirstAidKit = 73,
 	ET_WeaponAmmoPack = 107,
-	ET_WeaponAmmoSpawn = 255,
 	
 	// 武器 - 药物
 	ET_WeaponPainPills = 121,
@@ -842,7 +914,7 @@ enum entityGender_t
 //----STUFF------
 //---------------
 
-#define l4d2_medickit(_s,_n,_p)		(_s == 32 && _n == 883 && _p == 902) 
+#define l4d2_medical(_s,_n,_p)		(_s == 32 && _n == 883 && _p == 902) 
 #define l4d2_adrenaline(_s,_n,_p)	(_s == 32 && _n == 2035 && _p == 1842) 
 #define l4d2_defib(_s,_n,_p)		(_s == 32 && _n == 4901 && _p == 5885) 
 #define l4d2_painpills(_s,_n,_p)	(_s == 32 && _n == 240 && _p == 282) //(cachet)
@@ -860,7 +932,7 @@ enum entityGender_t
 
 #define l4d2_upgradepack(_s,_n,_p)	(l4d2_explosif(_s,_n,_p) || l4d2_incendiary(_s,_n,_p))
 #define l4d2_throw(_s,_n,_p)		(l4d2_pipebomb(_s,_n,_p) || l4d2_bilebomb(_s,_n,_p) || l4d2_molotov(_s,_n,_p))
-#define l4d2_healthitem(_s,_n,_p)	(l4d2_medickit(_s,_n,_p) || l4d2_adrenaline(_s,_n,_p) || l4d2_defib(_s,_n,_p) || l4d2_painpills(_s,_n,_p))
+#define l4d2_healthitem(_s,_n,_p)	(l4d2_medical(_s,_n,_p) || l4d2_adrenaline(_s,_n,_p) || l4d2_defib(_s,_n,_p) || l4d2_painpills(_s,_n,_p))
 #define l4d2_carry(_s,_n,_p)		(l4d2_gascan(_s,_n,_p) || l4d2_propanetank(_s,_n,_p) || l4d2_oxygentank(_s,_n,_p) || l4d2_fireworkbox(_s,_n,_p) || l4d2_cola(_s,_n,_p) || l4d2_gnome(_s,_n,_p))
 #define l4d2_stuff(_s,_n,_p)		(l4d2_upgradepack(_s,_n,_p) || l4d2_throw(_s,_n,_p) || l4d2_healthitem(_s,_n,_p) || l4d2_carry(_s,_n,_p))
 
