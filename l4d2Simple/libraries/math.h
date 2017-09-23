@@ -8,11 +8,13 @@
 
 #define M_PI_F		((float)(M_PI))	// Shouldn't collide with anything.
 #ifndef RAD2DEG
-#define RAD2DEG( x  )  ( (float)(x) * (float)(180.f / M_PI_F) )
+#define RAD2DEG(x)  ((float)(x) * (float)(180.f / M_PI_F))
+#define RadiansToDegrees RAD2DEG
 #endif
 
 #ifndef DEG2RAD
-#define DEG2RAD( x  )  ( (float)(x) * (float)(M_PI_F / 180.f) )
+#define DEG2RAD(x)  ((float)(x) * (float)(M_PI_F / 180.f))
+#define DegreesToRadians DEG2RAD
 #endif
 
 enum
@@ -554,4 +556,30 @@ void CorrectMovement(Vector vOldAngles, CUserCmd* pCmd, Vector Viewangs)
 
 	if (Viewangs.x < -90.f || Viewangs.x > 90.f)
 		pCmd->fowardmove = -pCmd->fowardmove;
+}
+
+void CorrectMovement(const QAngle& vOldAngles, CUserCmd* pCmd, float fOldForward, float fOldSidemove)
+{
+	float deltaView = pCmd->viewangles[1] - vOldAngles[1];
+	float f1;
+	float f2;
+
+	if (vOldAngles[1] < 0.f)
+		f1 = 360.0f + vOldAngles[1];
+	else
+		f1 = vOldAngles[1];
+
+	if (pCmd->viewangles[1] < 0.0f)
+		f2 = 360.0f + pCmd->viewangles[1];
+	else
+		f2 = pCmd->viewangles[1];
+
+	if (f2 < f1)
+		deltaView = abs(f2 - f1);
+	else
+		deltaView = 360.0f - abs(f1 - f2);
+	deltaView = 360.0f - deltaView;
+
+	pCmd->fowardmove = cos(DEG2RAD(deltaView)) * fOldForward + cos(DEG2RAD(deltaView + 90.f)) * fOldSidemove;
+	pCmd->sidemove = sin(DEG2RAD(deltaView)) * fOldForward + sin(DEG2RAD(deltaView + 90.f)) * fOldSidemove;
 }

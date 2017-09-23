@@ -2,7 +2,7 @@
 
 #define USE_PLAYER_INFO
 #define USE_CVAR_CHANGE
-// #define USE_D3D_DRAW
+#define USE_D3D_DRAW
 
 // D3D 的函数 jmp 挂钩
 static std::unique_ptr<DetourXS> g_pDetourReset, g_pDetourPresent, g_pDetourEndScene,
@@ -2008,6 +2008,9 @@ HRESULT WINAPI Hooked_Present(IDirect3DDevice9* device, const RECT* source, cons
 		// 绘制颜色
 		D3DCOLOR color = 0;
 
+		// 观众数量
+		byte spectatorCount = 0;
+
 		// 用于格式化字符串
 		std::stringstream ss;
 		ss.sync_with_stdio(false);
@@ -2015,42 +2018,15 @@ HRESULT WINAPI Hooked_Present(IDirect3DDevice9* device, const RECT* source, cons
 		ss.setf(std::ios::fixed);
 		ss.precision(0);
 
-		int aiming = *(int*)(local + m_iCrosshairsId);
-
-		// 当前正在瞄准的目标
-		CBaseEntity* target = (aiming > 0 ? g_interface.ClientEntList->GetClientEntity(aiming) : GetAimingTarget(&g_iCurrentHitbox));
-
-#ifdef _DEBUG
-		try
-		{
-#endif
-			if (!IsValidVictim(target))
-				target = nullptr;
-
-			g_pCurrentAiming = target;
-#ifdef _DEBUG
-		}
-		catch (std::exception e)
-		{
-			Utils::log("%s (%d): %s | 0x%X", __FILE__, __LINE__, e.what(), (DWORD)target);
-			target = nullptr;
-		}
-		catch (...)
-		{
-			Utils::log("%s (%d): 未知异常 | 0x%X", __FILE__, __LINE__, (DWORD)target);
-			target = nullptr;
-		}
-#endif
-
 		if (Config::bDrawCrosshairs)
 		{
 			int width, height;
 			g_interface.Engine->GetScreenSize(width, height);
 
-			int classId = (target == nullptr ? ET_INVALID : target->GetClientClass()->m_ClassID);
+			int classId = (!IsValidVictim(g_pCurrentAiming) ? ET_INVALID : g_pCurrentAiming->GetClientClass()->m_ClassID);
 			if (classId == ET_INVALID)
 				color = DrawManager::LAWNGREEN;
-			else if (target->GetTeam() == local->GetTeam())
+			else if (g_pCurrentAiming->GetTeam() == local->GetTeam())
 				color = DrawManager::BLUE;
 			else if (classId == ET_INFECTED)
 				color = DrawManager::ORANGE;
@@ -2104,7 +2080,8 @@ HRESULT WINAPI Hooked_Present(IDirect3DDevice9* device, const RECT* source, cons
 						{
 							ss.str("");
 
-							if (IsSurvivor(classId) || IsSpecialInfected(classId))
+							int team = entity->GetTeam();
+							if (team == 1 || team == 2 || team == 3)
 							{
 								int obsMode = entity->GetNetProp<int>("m_iObserverMode", "DT_BasePlayer");
 								if (obsMode == OBS_MODE_IN_EYE || obsMode == OBS_MODE_CHASE)
@@ -2127,11 +2104,32 @@ HRESULT WINAPI Hooked_Present(IDirect3DDevice9* device, const RECT* source, cons
 
 							if (!ss.str().empty())
 							{
-								color = (entity->GetTeam() == 2 ? DrawManager::SKYBLUE : DrawManager::RED);
+								switch (team)
+								{
+								case 1:
+									// 观察者
+									color = DrawManager::WHITE;
+									break;
+								case 2:
+									// 生还者
+									color = DrawManager::SKYBLUE;
+									break;
+								case 3:
+									// 感染者
+									color = DrawManager::RED;
+									break;
+								case 4:
+									// 非玩家生还者
+									color = DrawManager::PURPLE;
+									break;
+								}
 
 								int width, height;
 								g_interface.Engine->GetScreenSize(width, height);
-								g_pDrawRender->AddText(color, width * 0.75, height * 0.75, false, ss.str().c_str());
+								g_pDrawRender->AddText(color,
+									width * 0.75f, (height * 0.75f) +
+									(spectatorCount++ * g_pDrawRender->GetFontSize()),
+									false, ss.str().c_str());
 							}
 						}
 
@@ -2143,12 +2141,12 @@ HRESULT WINAPI Hooked_Present(IDirect3DDevice9* device, const RECT* source, cons
 			}
 			catch (std::exception e)
 			{
-				Utils::log("%s (%d): %s", __FILE__, __LINE__, e.what());
+				// Utils::log("%s (%d): entity %d %s", __FILE__, __LINE__, i, e.what());
 				continue;
 			}
 			catch (...)
 			{
-				Utils::log("%s (%d): 未知异常 -> 0x%X", __FILE__, __LINE__, (DWORD)entity);
+				// Utils::log("%s (%d): entity %d 未知异常 -> 0x%X", __FILE__, __LINE__, i, (DWORD)entity);
 				continue;
 			}
 
@@ -2209,7 +2207,7 @@ HRESULT WINAPI Hooked_Present(IDirect3DDevice9* device, const RECT* source, cons
 					}
 
 					// 绘制一个框（虽然这个框只有上下两条线）
-
+					
 					// g_pDrawRender->AddRect(color, foot.x - width / 2, foot.y, width, -height);
 					g_pDrawRender->AddCorner(color, foot.x - width / 2, foot.y, width, -height);
 				}
@@ -2228,6 +2226,11 @@ HRESULT WINAPI Hooked_Present(IDirect3DDevice9* device, const RECT* source, cons
 						color = DrawManager::PINK;
 
 					// 画一个小方形，以标记为头部
+					/*
+					g_cInterfaces.Surface->FillRGBA(head.x, head.y, size, size,
+					(color & 0xFF0000) >> 16, (color & 0xFF00) >> 8, color & 0xFF,
+					(color & 0xFF000000) >> 24);
+					*/
 
 					if (visible)
 						g_pDrawRender->AddFillCircle(color, head.x, head.y, size, 8);
@@ -2245,17 +2248,16 @@ HRESULT WINAPI Hooked_Present(IDirect3DDevice9* device, const RECT* source, cons
 						// Tank 的石头
 						g_pDrawRender->AddCircle(DrawManager::PURPLE, foot.x, foot.y, 9, 8);
 					}
-					else if (classId == ET_WeaponFirstAidKit || classId == ET_WeaponDefibrillator ||
-						classId == ET_WeaponPainPills || classId == ET_WeaponPainPills)
+					else if (classId == ET_ProjectilePipeBomb || classId == ET_ProjectileMolotov ||
+						classId == ET_ProjectileVomitJar)
 					{
-						// 医疗品
-						g_pDrawRender->AddFillRect(DrawManager::DARKORANGE, foot.x, foot.y, 2, 8);
+						// 投掷武器飞行物
+						g_pDrawRender->AddCircle(DrawManager::BLUE, foot.x, foot.y, 5, 8);
 					}
-					else if (classId == ET_WeaponPipeBomb || classId == ET_WeaponMolotov ||
-						classId == ET_WeaponVomitjar)
+					else if (classId == ET_ProjectileSpitter || classId == ET_ProjectileGrenadeLauncher)
 					{
-						// 投掷武器
-						g_pDrawRender->AddFillRect(DrawManager::DARKGRAY, foot.x, foot.y, 2, 8);
+						// Spitter 的酸液 和 榴弹发射器的榴弹
+						g_pDrawRender->AddCircle(DrawManager::GREEN, foot.x, foot.y, 5, 8);
 					}
 				}
 			}
@@ -2382,13 +2384,33 @@ HRESULT WINAPI Hooked_Present(IDirect3DDevice9* device, const RECT* source, cons
 						}
 					}
 				}
+				else if (classId == ET_WeaponSpawn || classId == ET_WeaponAmmoSpawn)
+				{
+					// 其他东西
+					if (dist > 1000.0f)
+						continue;
+
+					if (WeaponIdToAlias)
+					{
+						int weaponId = entity->GetNetProp<short>("m_weaponID", "DT_WeaponSpawn");
+						if (IsWeaponT1(weaponId) && Config::bDrawT1Weapon ||
+							IsWeaponT2(weaponId) && Config::bDrawT2Weapon ||
+							IsWeaponT3(weaponId) && Config::bDrawT3Weapon ||
+							IsMelee(weaponId) && Config::bDrawMeleeWeapon ||
+							IsMedical(weaponId) && Config::bDrawMedicalItem ||
+							IsGrenadeWeapon(weaponId) && Config::bDrawGrenadeItem ||
+							IsAmmoStack(weaponId) && Config::bDrawAmmoStack)
+							ss << WeaponIdToAlias(weaponId);
+}
+					}
 
 				if (!ss.str().empty())
 				{
-					color = (visible ? DrawManager::LAWNGREEN : DrawManager::GREEN);
+					color = (visible ? DrawManager::LAWNGREEN : DrawManager::YELLOW);
+
 					g_pDrawRender->AddText(color, foot.x, head.y, true, ss.str().c_str());
 				}
-			}
+				}
 
 			// 自动瞄准寻找目标
 			if (Config::bAimbot && (!targetSelected || !(g_pUserCommands->buttons & IN_ATTACK)) &&
@@ -2411,7 +2433,7 @@ HRESULT WINAPI Hooked_Present(IDirect3DDevice9* device, const RECT* source, cons
 						specialSelected = true;
 				}
 			}
-		}
+			}
 	}
 finish_draw:
 #endif
@@ -3641,6 +3663,7 @@ end_trigger_bot:
 	}
 
 	// 修复角度不正确
+	CorrectMovement(viewAngles, pCmd, pCmd->fowardmove, pCmd->sidemove);
 	ClampAngles(pCmd->viewangles);
 	AngleNormalize(pCmd->viewangles);
 
