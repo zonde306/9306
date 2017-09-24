@@ -3399,6 +3399,7 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 
 				// 将准星转到敌人头部
 				pCmd->viewangles = CalculateAim(myOrigin, position);
+				CorrectMovement(viewAngles, pCmd, pCmd->fowardmove, pCmd->sidemove);
 			}
 		}
 #ifdef _DEBUG_OUTPUT
@@ -3663,7 +3664,6 @@ end_trigger_bot:
 	}
 
 	// 修复角度不正确
-	CorrectMovement(viewAngles, pCmd, pCmd->fowardmove, pCmd->sidemove);
 	ClampAngles(pCmd->viewangles);
 	AngleNormalize(pCmd->viewangles);
 
