@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 #include <cassert>
 
 class CVMT
@@ -20,6 +20,7 @@ public:
 		return (void*)OriginalFunction;
 	
 	}*/
+
 	template<typename Function>
 	static Function getvfunc(PVOID Base, DWORD Index)
 	{
@@ -33,13 +34,18 @@ public:
 		}
 		catch(...)
 		{
-			Utils::log("%s (%d) ´íÎó£º»ñÈ¡ 0x%X µÄĞéº¯Êı±íÊ§°Ü %d", __FILE__, __LINE__, Base, Index);
+			Utils::log("%s (%d) é”™è¯¯ï¼šè·å– 0x%X çš„è™šå‡½æ•°è¡¨å¤±è´¥ %d", __FILE__, __LINE__, Base, Index);
 			Utils::log("VTablePointer = 0x%X", VTablePointer);
 			Utils::log("VTableFunctionBase = 0x%X", VTableFunctionBase);
 			Utils::log("dwAddress = 0x%X", dwAddress);
 			
 #ifdef _DEBUG
-			throw std::exception("getvfunc ³öÏÖÁËÒ»Ğ©ÎÊÌâ");
+			MyStackWalker sw;
+			sw.ShowCallstack();
+#endif
+
+#ifdef _DEBUG
+			throw std::exception("getvfunc å‡ºç°äº†ä¸€äº›é—®é¢˜");
 #endif
 
 			return nullptr;
@@ -60,12 +66,17 @@ public:
 		}
 		catch(...)
 		{
-			Utils::log("%s (%d) ´íÎó£º»ñÈ¡ 0x%X µÄĞéº¯Êı±íÊ§°Ü %d", __FILE__, __LINE__, Instance, Index);
+			Utils::log("%s (%d) é”™è¯¯ï¼šè·å– 0x%X çš„è™šå‡½æ•°è¡¨å¤±è´¥ %d", __FILE__, __LINE__, Instance, Index);
 			Utils::log("VirtualPointer = 0x%X", VirtualPointer);
 			Utils::log("VirtualFunction = 0x%X", VirtualFunction);
 
 #ifdef _DEBUG
-			throw std::exception("getvfunc ³öÏÖÁËÒ»Ğ©ÎÊÌâ");
+			MyStackWalker sw;
+			sw.ShowCallstack();
+#endif
+
+#ifdef _DEBUG
+			throw std::exception("getvfunc å‡ºç°äº†ä¸€äº›é—®é¢˜");
 #endif
 
 			return nullptr;
@@ -194,7 +205,12 @@ private:
 		}
 		catch(...)
 		{
-			Utils::log("%s (%d) ´íÎó£º±éÀúĞéº¯Êı±íÊ§°Ü 0x%X Ë÷ÒıÎª %d", __FILE__, __LINE__, (DWORD)table, index--);
+#ifdef _DEBUG
+			MyStackWalker sw;
+			sw.ShowCallstack();
+#endif
+
+			Utils::log("%s (%d) é”™è¯¯ï¼šéå†è™šå‡½æ•°è¡¨å¤±è´¥ 0x%X ç´¢å¼•ä¸º %d", __FILE__, __LINE__, (DWORD)table, index--);
 		}
 		
 		return index;

@@ -27,7 +27,8 @@
 #include <memory>
 #include <map>
 
-#include <./dx9/imgui_impl_dx9.h>
+#include "../stackwalker/StackWalker.h"
+#include "../imgui/dx9/imgui_impl_dx9.h"
 #pragma comment(lib, "d3d9")
 #pragma comment(lib, "d3dx9")
 #pragma comment(lib, "dwmapi")
@@ -60,6 +61,19 @@ public:
 	static std::string GetPath();
 	static void log(const char* text, ...);
 	static void log(const wchar_t* text, ...);
+};
+
+class MyStackWalker : public StackWalker
+{
+public:
+	MyStackWalker() : StackWalker() {};
+
+protected:
+	virtual void OnOutput(LPCSTR szText) override
+	{
+		Utils::log(szText);
+		StackWalker::OnOutput(szText);
+	}
 };
 
 struct RecvProp;
@@ -104,6 +118,7 @@ class ClientModeShared;
 class CVMTHookManager;
 class IMaterialSystem;
 class CEngineVGui;
+class CBaseClientState;
 
 class CInterfaces
 {
@@ -130,6 +145,7 @@ public:
 	CUserMessages* UserMessage;
 	IMaterialSystem* MaterialSystem;
 	CEngineVGui* EngineVGui;
+	CBaseClientState* ClientState;
 	ICvar* Cvar;
 
 	ClientModeShared* ClientMode;
@@ -141,6 +157,7 @@ public:
 	std::unique_ptr<CVMTHookManager> GameEventHook;
 	std::unique_ptr<CVMTHookManager> ViewRenderHook;
 	std::unique_ptr<CVMTHookManager> EngineVGuiHook;
+	std::unique_ptr<CVMTHookManager> ClientStateHook;
 
 	void GetInterfaces();
 	void* GetPointer(const char* Module, const char* InterfaceName);

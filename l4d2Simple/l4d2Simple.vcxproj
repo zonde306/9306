@@ -155,6 +155,7 @@
     <ClInclude Include="..\imgui\stb_rect_pack.h" />
     <ClInclude Include="..\imgui\stb_textedit.h" />
     <ClInclude Include="..\imgui\stb_truetype.h" />
+    <ClInclude Include="..\stackwalker\StackWalker.h" />
     <ClInclude Include="d3dfont\D3DFont.h" />
     <ClInclude Include="d3dukmdt.h" />
     <ClInclude Include="d3dumddi.h" />
@@ -215,6 +216,7 @@
     <ClCompile Include="..\imgui\imgui.cpp" />
     <ClCompile Include="..\imgui\imgui_demo.cpp" />
     <ClCompile Include="..\imgui\imgui_draw.cpp" />
+    <ClCompile Include="..\stackwalker\StackWalker.cpp" />
     <ClCompile Include="d3dfont\D3DFont.cpp" />
     <ClCompile Include="detours\detourxs.cpp" />
     <ClCompile Include="main.cpp" />

@@ -40,6 +40,7 @@ public:
 	virtual float GetAvgData(int flow) const = 0;								   // data flow in BYTEs/sec
 	virtual float GetAvgPackets(int flow) const = 0;							   // avg packets/sec
 	virtual int GetTotalData(int flow) const = 0;								   // total flow in/out in BYTEs
+	virtual int GetTotalPackets(int) const = 0;
 	virtual int GetSequenceNr(int flow) const = 0;								   // last send seq number
 	virtual bool IsValidPacket(int flow, int frame_number) const = 0;			   // true if packet was not lost/dropped/chocked/flushed
 	virtual float GetPacketTime(int flow, int frame_number) const = 0;			   // time when packet was send
@@ -228,70 +229,91 @@ public: // members are public to avoid to much changes
 class INetChannel : public INetChannelInfo
 {
 public:
-	virtual ~INetChannel(void) {};
+	virtual const char *GetName(void) const = 0;	// get channel name
+	virtual const char *GetAddress(void) const = 0; // get channel IP address as string
+	virtual float GetTime(void) const = 0;			// current net time
+	virtual float GetTimeConnected(void) const = 0; // get connection time in seconds
+	virtual int GetBufferSize(void) const = 0;		// netchannel packet history size
+	virtual int GetDataRate(void) const = 0;		// send data rate in BYTE/sec
 
-	virtual void SetDataRate(float rate) = 0;
-	virtual bool RegisterMessage(INetMessage *msg) = 0;
-	virtual bool StartStreaming(unsigned int challengeNr) = 0;
-	virtual void ResetStreaming(void) = 0;
-	virtual void SetTimeout(float seconds) = 0;
-	virtual void SetDemoRecorder(IDemoRecorder *recorder) = 0;
-	virtual void SetChallengeNr(unsigned int chnr) = 0;
+	virtual bool IsLoopback(void) const = 0;  // true if loopback channel
+	virtual bool IsTimingOut(void) const = 0; // true if timing out
+	virtual bool IsPlayback(void) const = 0;  // true if demo playback
 
-	virtual void Reset(void) = 0;
-	virtual void Clear(void) = 0;
-	virtual void Shutdown(const char *reason) = 0;
+	virtual float GetLatency(int flow) const = 0;								   // current latency (RTT), more accurate but jittering
+	virtual float GetAvgLatency(int flow) const = 0;							   // average packet latency in seconds
+	virtual float GetAvgLoss(int flow) const = 0;								   // avg packet loss[0..1]
+	virtual float GetAvgChoke(int flow) const = 0;								   // avg packet choke[0..1]
+	virtual float GetAvgData(int flow) const = 0;								   // data flow in BYTEs/sec
+	virtual float GetAvgPackets(int flow) const = 0;							   // avg packets/sec
+	virtual int GetTotalData(int flow) const = 0;								   // total flow in/out in BYTEs
+	virtual int GetTotalPackets(int) const = 0;
+	virtual int GetSequenceNr(int flow) const = 0;								   // last send seq number
+	virtual bool IsValidPacket(int flow, int frame_number) const = 0;			   // true if packet was not lost/dropped/chocked/flushed
+	virtual float GetPacketTime(int flow, int frame_number) const = 0;			   // time when packet was send
+	virtual int GetPacketBYTEs(int flow, int frame_number, int group) const = 0;   // group size of this packet
+	virtual bool GetStreamProgress(int flow, int *received, int *total) const = 0; // TCP progress if transmitting
+	virtual float GetTimeSinceLastReceived(void) const = 0;						   // get time since last recieved packet in seconds
+	virtual float GetCommandInterpolationAmount(int flow, int frame_number) const = 0;
+	virtual void GetPacketResponseLatency(int flow, int frame_number, int *pnLatencyMsecs, int *pnChoke) const = 0;
+	virtual void GetRemoteFramerate(float *pflFrameTime, float *pflFrameTimeStdDeviation) const = 0;
 
-	virtual void ProcessPlayback(void) = 0;
-	virtual bool ProcessStream(void) = 0;
-	virtual void ProcessPacket(struct netpacket_s *packet, bool bHasHeader) = 0;
+	virtual float GetTimeoutSeconds() const = 0;
 
-	virtual bool SendNetMsg(INetMessage &msg, bool bForceReliable = false, bool bVoice = false) = 0;
-#ifdef POSIX
-	FORCEINLINE bool SendNetMsg(INetMessage const &msg, bool bForceReliable = false, bool bVoice = false)
-	{
-		return SendNetMsg(*((INetMessage *)&msg), bForceReliable, bVoice);
-	}
-#endif
-	virtual bool SendData(bf_write &msg, bool bReliable = true) = 0;
-	virtual bool SendFile(const char *filename, unsigned int transferID) = 0;
-	virtual void DenyFile(const char *filename, unsigned int transferID) = 0;
-	virtual void RequestFile_OLD(const char *filename, unsigned int transferID) = 0; // get rid of this function when we version the
-	virtual void SetChoked(void) = 0;
-	virtual int SendDatagram(bf_write *data) = 0;
-	virtual bool Transmit(bool onlyReliable = false) = 0;
+public:
+	virtual				~INetChannel() = 0;	// 27
+	virtual void		SetDataRate(float rate) = 0;
+	virtual bool		RegisterMessage(INetMessage *msg) = 0;
+	virtual bool		StartStreaming(unsigned int challengeNr) = 0;
+	virtual void		ResetStreaming(void) = 0;
+	virtual void		SetTimeout(float seconds) = 0;
+	virtual void		SetDemoRecorder(IDemoRecorder *recorder) = 0;
+	virtual void		SetChallengeNr(unsigned int chnr) = 0;
 
-	virtual const netadr_t &GetRemoteAddress(void) const = 0;
+	virtual void		Reset(void) = 0;
+	virtual void		Clear(void) = 0;
+	virtual void		Shutdown(const char * reason) = 0;
+
+	virtual void		ProcessPlayback(void) = 0;	// 38
+	virtual bool		ProcessStream(void) = 0;
+	virtual void		ProcessPacket(/*netpacket_t*/void* packet, bool bHasHeader) = 0;
+
+	virtual bool		SendNetMsg(INetMessage &msg, bool bForceReliable = false, bool bVoice = false) = 0;	// 41
+	virtual bool		SendData(bf_write &msg, bool bReliable = true) = 0;
+	virtual bool		SendFile(const char *filename, unsigned int transferID) = 0;
+	virtual void		DenyFile(const char *filename, unsigned int transferID, bool) = 0;
+	virtual void		RequestFile_OLD(const char *filename, unsigned int transferID) = 0;
+	virtual void		SetChoked(void) = 0;
+	virtual int			SendDatagram(bf_write *data) = 0;
+	virtual bool		Transmit(bool onlyReliable = false) = 0;
+	
+	virtual const netadr_t	&GetRemoteAddress(void) const = 0;
 	virtual INetChannelHandler *GetMsgHandler(void) const = 0;
-	virtual int GetDropNumber(void) const = 0;
-	virtual int GetSocket(void) const = 0;
-	virtual unsigned int GetChallengeNr(void) const = 0;
-	virtual void GetSequenceData(int &nOutSequenceNr, int &nInSequenceNr, int &nOutSequenceNrAck) = 0;
-	virtual void SetSequenceData(int nOutSequenceNr, int nInSequenceNr, int nOutSequenceNrAck) = 0;
+	virtual int				GetDropNumber(void) const = 0;
+	virtual int				GetSocket(void) const = 0;
+	virtual unsigned int	GetChallengeNr(void) const = 0;
+	virtual void			GetSequenceData(int &nOutSequenceNr, int &nInSequenceNr, int &nOutSequenceNrAck) = 0;
+	virtual void			SetSequenceData(int nOutSequenceNr, int nInSequenceNr, int nOutSequenceNrAck) = 0;
 
-	virtual void UpdateMessageStats(int msggroup, int bits) = 0;
-	virtual bool CanPacket(void) const = 0;
-	virtual bool IsOverflowed(void) const = 0;
-	virtual bool IsTimedOut(void) const = 0;
-	virtual bool HasPendingReliableData(void) = 0;
-
-	virtual void SetFileTransmissionMode(bool bBackgroundMode) = 0;
-	virtual void SetCompressionMode(bool bUseCompression) = 0;
+	virtual void		UpdateMessageStats(int msggroup, int bits) = 0;
+	virtual bool		CanPacket(void) const = 0;
+	virtual bool		IsOverflowed(void) const = 0;	// 58
+	virtual bool		IsTimedOut(void) const = 0;
+	virtual bool		HasPendingReliableData(void) = 0;
+	virtual void		SetFileTransmissionMode(bool bBackgroundMode) = 0;
+	virtual void		SetCompressionMode(bool bUseCompression) = 0;
 	virtual unsigned int RequestFile(const char *filename) = 0;
-	virtual float GetTimeSinceLastReceived(void) const = 0; // get time since last received packet in seconds
-
-	virtual void SetMaxBufferSize(bool bReliable, int nBYTEs, bool bVoice = false) = 0;
-
-	virtual bool IsNull() const = 0;
-	virtual int GetNumBitsWritten(bool bReliable) = 0;
-	virtual void SetInterpolationAmount(float flInterpolationAmount) = 0;
-	virtual void SetRemoteFramerate(float flFrameTime, float flFrameTimeStdDeviation) = 0;
-
-	// Max # of payload BYTEs before we must split/fragment the packet
-	virtual void SetMaxRoutablePayloadSize(int nSplitSize) = 0;
-	virtual int GetMaxRoutablePayloadSize() = 0;
-
-	virtual int GetProtocolVersion() = 0;
+	virtual void		SetMaxBufferSize(bool bReliable, int nBytes, bool bVoice = false) = 0;
+	virtual bool		IsNull() const = 0;
+	virtual int		GetNumBitsWritten(bool bReliable) = 0;
+	virtual void	SetInterpolationAmount(float flInterpolationAmount) = 0;
+	virtual void	SetRemoteFramerate(float flFrameTime, float flFrameTimeStdDeviation) = 0;
+	virtual void	SetMaxRoutablePayloadSize(int nSplitSize) = 0;
+	virtual int		GetMaxRoutablePayloadSize() = 0;
+	virtual void		SetActiveChannel(INetChannel*) = 0;
+	virtual void		AttachSplitPlayer(int, INetChannel*) = 0;
+	virtual void		DetachSplitPlayer(int) = 0;
+	virtual void		IsRemoteDisconnected() const = 0;	// 74
 };
 
 class NET_Tick;
@@ -327,8 +349,8 @@ public:		// INetMsgHandler
 	virtual void PacketStart(int incoming_sequence, int outgoing_acknowledged) {};
 	virtual void PacketEnd(void) {};
 
-	virtual void FileReceived(const char *fileName, unsigned int transferID) = 0;
 	virtual void FileRequested(const char *fileName, unsigned int transferID) = 0;
+	virtual void FileReceived(const char *fileName, unsigned int transferID) = 0;
 	virtual void FileDenied(const char *fileName, unsigned int transferID) = 0;
 	virtual void FileSent(char const*, unsigned int, bool) = 0;
 
@@ -387,7 +409,7 @@ public:                                         \
 	bool ReadFromBuffer(bf_read &buffer);       \
 	bool WriteToBuffer(bf_write &buffer);       \
 	const char *ToString() const { return ""; } \
-	int GetType() const { return msgtype; }     \
+	int GetType() const { return 0; }     \
 	const char *GetName() const { return #msgtype; }
 
 #define DECLARE_NET_MESSAGE(name)     \
@@ -420,18 +442,16 @@ public:
 	}
 
 	virtual ~CNetMessage() {};
-
-	virtual int GetGroup() const { return INetChannelInfo::GENERIC; }
-	INetChannel *GetNetChannel() const { return m_NetChannel; }
-
-	virtual void SetReliable(bool state) { m_bReliable = state; };
-	virtual bool IsReliable() const { return m_bReliable; };
 	virtual void SetNetChannel(INetChannel *netchan) { m_NetChannel = netchan; }
-	virtual bool Process()
-	{
-		Assert(0);
-		return false;
-	}; // no handler set
+	virtual void SetReliable(bool state) { m_bReliable = state; };
+	virtual bool Process() { return false; }; // no handler set
+	virtual bool ReadFromBuffer(bf_read &buffer) { return false; };
+	virtual bool WriteToBuffer(bf_write &buffer) { return false; };
+	virtual bool IsReliable() const { return m_bReliable; };
+	virtual int GetType(void) const { return 0; };
+	virtual int GetGroup() const { return INetChannelInfo::GENERIC; }
+	virtual const char *GetName(void) const { return ""; };
+	INetChannel *GetNetChannel() const { return m_NetChannel; }
 
 protected:
 	bool m_bReliable;		   // true if message should be send reliable
@@ -446,54 +466,146 @@ typedef enum
 	eQueryCvarValueStatus_CvarProtected = 3  // The cvar was marked with FCVAR_SERVER_CAN_NOT_QUERY, so the server is not allowed to have its value.
 } EQueryCvarValueStatus;
 
-class NET_SetConVar
+class NET_SetConVar : public CNetMessage
 {
 public:
-	NET_SetConVar(const char *name, const char *value);
+	DECLARE_NET_MESSAGE(SetConVar);
 
-private:
-	int32_t pad0[9];
+	int	GetGroup() const { return INetChannelInfo::STRINGCMD; }
+
+	NET_SetConVar() {}
+	NET_SetConVar(const char * name, const char * value)
+	{
+		cvar_t cvar;
+		strncpy(cvar.name, name, 260);
+		strncpy(cvar.value, value, 260);
+		m_ConVars.AddToTail(cvar);
+	}
+
+public:
+
+	typedef struct cvar_s
+	{
+		char	name[260];
+		char	value[260];
+	} cvar_t;
+
+	CUtlVector<cvar_t> m_ConVars;
 };
 
 class SVC_GetCvarValue : public CNetMessage
 {
 public:
-	bool ReadFromBuffer(bf_read &buffer);
-	bool WriteToBuffer(bf_write &buffer);
-	const char *ToString() const { return ""; }
-	int GetType() const { return 1; }
-	const char *GetName() const { return "SVC_GetCvarValue"; }
+	DECLARE_SVC_MESSAGE(GetCvarValue);
 
-	void *m_pMessageHandler;
-	bool Process() { return true; }
-
-	int m_iCookie;
-	const char *m_szCvarName; // The sender sets this, and it automatically points it at m_szCvarNameBuffer when receiving.
+	int					m_iCookie;
+	const char			*m_szCvarName;	// The sender sets this, and it automatically points it at m_szCvarNameBuffer when receiving.
 
 private:
-	char m_szCvarNameBuffer[256];
+	char		m_szCvarNameBuffer[256];
 };
 
 class CLC_RespondCvarValue : public CNetMessage
 {
 public:
-	bool ReadFromBuffer(bf_read &buffer);
-	bool WriteToBuffer(bf_write &buffer);
-	const char *ToString() const { return ""; }
-	int GetType() const { return 2; }
-	const char *GetName() const { return "CLC_RespondCvarValue"; }
+	DECLARE_CLC_MESSAGE(RespondCvarValue);
 
-	void *m_pMessageHandler;
-	bool Process() { return true; }
+	int						m_iCookie;
 
-	int m_iCookie;
+	const char				*m_szCvarName;
+	const char				*m_szCvarValue;	// The sender sets this, and it automatically points it at m_szCvarNameBuffer when receiving.
 
-	const char *m_szCvarName;
-	const char *m_szCvarValue; // The sender sets this, and it automatically points it at m_szCvarNameBuffer when receiving.
-
-	EQueryCvarValueStatus m_eStatusCode;
+	EQueryCvarValueStatus	m_eStatusCode;
 
 private:
-	char m_szCvarNameBuffer[256];
-	char m_szCvarValueBuffer[256];
+	char		m_szCvarNameBuffer[256];
+	char		m_szCvarValueBuffer[256];
+};
+
+bool CLC_RespondCvarValue::ReadFromBuffer(bf_read& buffer)
+{
+	return false;
+}
+
+bool CLC_RespondCvarValue::WriteToBuffer(bf_write& buffer)
+{
+	return false;
+}
+
+class NET_StringCmd : public CNetMessage
+{
+	DECLARE_NET_MESSAGE(StringCmd);
+
+	int	GetGroup() const { return INetChannelInfo::STRINGCMD; }
+
+	NET_StringCmd() { m_szCommand = NULL; };
+	NET_StringCmd(const char *cmd) { m_szCommand = cmd; };
+
+public:
+	const char	*m_szCommand;	// execute this command
+
+private:
+	char		m_szCommandBuffer[1024];	// buffer for received messages
+
+};
+
+class CLC_Move : public CNetMessage
+{
+	DECLARE_CLC_MESSAGE(Move);
+
+	int	GetGroup() const { return INetChannelInfo::MOVE; }
+
+	CLC_Move() { m_bReliable = false; }
+
+public:
+	int				m_nBackupCommands;
+	int				m_nNewCommands;
+	int				m_nLength;
+	bf_read			m_DataIn;
+	bf_write		m_DataOut;
+};
+
+class SVC_Print : public CNetMessage
+{
+	DECLARE_SVC_MESSAGE(Print);
+
+	SVC_Print() { m_bReliable = false; m_szText = NULL; };
+
+	SVC_Print(const char * text) { m_bReliable = false; m_szText = text; };
+
+public:
+	const char	*m_szText;	// show this text
+
+private:
+	char		m_szTextBuffer[2048];	// buffer for received messages
+};
+
+class SVC_ServerInfo : public CNetMessage
+{
+	DECLARE_SVC_MESSAGE(ServerInfo);
+
+	int	GetGroup() const { return INetChannelInfo::SIGNON; }
+
+public:	// member vars are public for faster handling
+	int			m_nProtocol;	// protocol version
+	int			m_nServerCount;	// number of changelevels since server start
+	bool		m_bIsDedicated;  // dedicated server ?	
+	bool		m_bIsHLTV;		// HLTV server ?
+	char		m_cOS;			// L = linux, W = Win32
+	CRC32_t		m_nMapCRC;		// server map CRC
+	CRC32_t		m_nClientCRC;	// client.dll CRC server is using
+	int			m_nMaxClients;	// max number of clients on server
+	int			m_nMaxClasses;	// max number of server classes
+	int			m_nPlayerSlot;	// our client slot number
+	float		m_fTickInterval;// server tick interval
+	const char	*m_szGameDir;	// game directory eg "tf2"
+	const char	*m_szMapName;	// name of current map 
+	const char	*m_szSkyName;	// name of current skybox 
+	const char	*m_szHostName;	// server name
+
+private:
+	char		m_szGameDirBuffer[256];// game directory eg "left4dead2"
+	char		m_szMapNameBuffer[256];// name of current map 
+	char		m_szSkyNameBuffer[256];// name of current skybox 
+	char		m_szHostNameBuffer[256];// name of current skybox 
 };

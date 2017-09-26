@@ -137,4 +137,11 @@ namespace indexes
 	const int FindMaterial = 71;
 	const int IsMaterialLoaded = 72;
 	const int FindTexture = 77;
+
+	// CBaseClientState
+	const int ProcessStringCmd = 2;
+	const int ProcessSetConVar = 3;
+	const int ProcessSendTable = 8;
+	const int ProcessCreateStringTable = 11;
+	const int ProcessGetCvarValue = 28;
 }

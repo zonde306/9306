@@ -1,4 +1,4 @@
-#pragma once
+Ôªø#pragma once
 #define  Assert( _exp ) ((void)0)
 
 class __declspec(align(16))VectorAligned : public Vector
@@ -7,7 +7,7 @@ public:
 	VectorAligned& operator=(const Vector &vOther)
 	{
 		Init(vOther.x, vOther.y, vOther.z);
-		w	= 0.f;
+		w = 0.f;
 		return *this;
 	}
 
@@ -21,8 +21,8 @@ struct Ray_t
 	VectorAligned  m_Delta;    // direction + length of the ray
 	VectorAligned  m_StartOffset;    // Add this to m_Start to get the actual ray start
 	VectorAligned  m_Extents;    // Describes an axis aligned box extruded along a ray
-	
-	// “™≤ª“™∂ºø…“‘µƒ
+
+	// Ë¶Å‰∏çË¶ÅÈÉΩÂèØ‰ª•ÁöÑ
 	// const matrix3x4_t *m_pWorldAxisTransform;
 
 	bool    m_IsRay;    // are the extents zero?
@@ -90,11 +90,11 @@ struct csurface_t
 
 struct cplane_t
 {
-    Vector normal;
-    float dist;
-    byte type;
-    byte signbits;
-    byte pad[2];
+	Vector normal;
+	float dist;
+	byte type;
+	byte signbits;
+	byte pad[2];
 };
 
 struct trace_t
@@ -126,14 +126,14 @@ enum TraceType_t
 class ITraceFilter
 {
 public:
-	virtual bool			ShouldHitEntity(void* pEntity, int mask) = 0;
+	virtual bool			ShouldHitEntity(IHandleEntity* pEntity, int mask) = 0;
 	virtual TraceType_t		GetTraceType() const = 0;
 };
 
 class CTraceFilter : public ITraceFilter
 {
 public:
-	bool ShouldHitEntity(void* pEntityHandle, int contentsMask)
+	bool ShouldHitEntity(IHandleEntity* pEntityHandle, int contentsMask)
 	{
 		return !(pEntityHandle == pSkip1);
 	}

@@ -7,7 +7,7 @@
 // https://github.com/ocornut/imgui
 
 #include <Windows.h>
-#include <imgui.h>
+#include "../imgui.h"
 struct IDirect3DDevice9;
 
 IMGUI_API bool			ImGui_ImplDX9_Init(void* hwnd, IDirect3DDevice9* device);

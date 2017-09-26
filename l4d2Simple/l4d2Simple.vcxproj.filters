@@ -28,6 +28,9 @@
     <Filter Include="头文件\imgui\dx9">
       <UniqueIdentifier>{a38b1bfd-8e6c-40a8-bb91-3840b1bdea36}</UniqueIdentifier>
     </Filter>
+    <Filter Include="头文件\stackwalker">
+      <UniqueIdentifier>{11f2db98-bea6-4597-afdb-3de495ef9540}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="libraries\interfaces.h">
@@ -213,6 +216,9 @@
     <ClInclude Include="structs\filesystem.h">
       <Filter>头文件\structs</Filter>
     </ClInclude>
+    <ClInclude Include="..\stackwalker\StackWalker.h">
+      <Filter>头文件\stackwalker</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="structs\checksum_md5.cpp">
@@ -238,6 +244,9 @@
     </ClCompile>
     <ClCompile Include="..\imgui\dx9\imgui_impl_dx9.cpp">
       <Filter>头文件\imgui\dx9</Filter>
+    </ClCompile>
+    <ClCompile Include="..\stackwalker\StackWalker.cpp">
+      <Filter>头文件\stackwalker</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

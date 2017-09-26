@@ -7,7 +7,7 @@
 // D3D 的函数 jmp 挂钩
 static std::unique_ptr<DetourXS> g_pDetourReset, g_pDetourPresent, g_pDetourEndScene,
 	g_pDetourDrawIndexedPrimitive, g_pDetourCreateQuery, g_pDetourCL_Move, g_pDetourDebugger,
-	g_pDetourCreateMove;
+	g_pDetourCreateMove, g_pDetourGetCvarValue, g_pDetourSetConVar;
 
 std::unique_ptr<CNetVars> g_pNetVars;
 CInterfaces g_interface;
@@ -64,7 +64,11 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved)
 				expInfo << "[SE] 未知异常";
 			}
 
-			Utils::log(expInfo.str().c_str());
+			/*
+			MyStackWalker sw;
+			sw.ShowCallstack(GetCurrentThread(), pExp->ContextRecord);
+			*/
+
 			throw std::exception(expInfo.str().c_str());
 		});
 
@@ -79,6 +83,12 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved)
 			expInfo << L"[IP] 普通异常：" << std::endl << L"\t信息：" << expression << std::endl <<
 				L"\t文件：" << file << L" (" << line << L")" << std::endl << L"\t函数：" << function;
 #endif
+
+			/*
+			MyStackWalker sw;
+			sw.ShowCallstack();
+			*/
+
 			Utils::log(expInfo.str().c_str());
 			throw std::exception(Utils::w2c(expInfo.str()).c_str());
 		});
@@ -86,7 +96,11 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved)
 		// 虚函数调用异常捕获
 		_set_purecall_handler([]() -> void
 		{
-			Utils::log("未知虚函数调用异常");
+			/*
+			MyStackWalker sw;
+			sw.ShowCallstack();
+			*/
+
 			throw std::exception("未知虚函数调用异常");
 		});
 
@@ -102,6 +116,8 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved)
 		DETOURXS_DESTORY(g_pDetourDebugger);
 		DETOURXS_DESTORY(g_pDetourCL_Move);
 		DETOURXS_DESTORY(g_pDetourCreateMove);
+		DETOURXS_DESTORY(g_pDetourGetCvarValue);
+		DETOURXS_DESTORY(g_pDetourSetConVar);
 
 		try
 		{
@@ -149,8 +165,8 @@ typedef void(__thiscall* FnPaintTraverse)(CPanel*, unsigned int, bool, bool);
 void __fastcall Hooked_PaintTraverse(CPanel*, void*, unsigned int, bool, bool);
 static FnPaintTraverse oPaintTraverse;
 
-typedef bool(__stdcall* FnCreateMoveShared)(float, CUserCmd*);
-bool __stdcall Hooked_CreateMoveShared(float, CUserCmd*);
+typedef bool(__thiscall* FnCreateMoveShared)(ClientModeShared*, float, CUserCmd*);
+bool __fastcall Hooked_CreateMoveShared(ClientModeShared*, void*, float, CUserCmd*);
 static FnCreateMoveShared oCreateMoveShared;
 
 typedef void(__stdcall* FnCreateMove)(int, float, bool);
@@ -236,6 +252,17 @@ FnSetPredictionRandomSeed SetPredictionRandomSeed;	// 设置预测随机数种�
 typedef CInput*(__thiscall* FnGetCurInput)(CInput*, int somevalue);
 FnGetCurInput GetCurrentInput;
 
+typedef ClientModeShared*(__cdecl *FnGetClientMode)();
+FnGetClientMode GetClientModeNormal;
+
+typedef bool(__thiscall* FnProcessGetCvarValue)(CBaseClientState*, SVC_GetCvarValue*);
+bool __fastcall Hooked_ProcessGetCvarValue(CBaseClientState*, void*, SVC_GetCvarValue*);
+FnProcessGetCvarValue oProcessGetCvarValue;
+
+typedef bool(__thiscall* FnProcessSetConVar)(CBaseClientState*, NET_SetConVar*);
+bool __fastcall Hooked_ProcessSetConVar(CBaseClientState*, void*, NET_SetConVar*);
+FnProcessSetConVar oProcessSetConVar;
+
 // -------------------------------- Cheats Function --------------------------------
 void thirdPerson(bool);
 void showSpectator();
@@ -256,6 +283,7 @@ CBaseEntity* g_pGameRulesProxy;											// 游戏规则实体，在这里会�
 CBaseEntity* g_pPlayerResource;											// 玩家资源，可以用来获取某些东西
 DWORD g_iClientBase, g_iEngineBase, g_iMaterialModules;					// 有用的 DLL 文件地址
 int* g_pPredictionRandomSeed;											// 随机数种子
+std::map<std::string, std::string> g_serverConVar;						// 来自于服务器的 ConVar
 
 std::string GetZombieClassName(CBaseEntity* player);
 bool IsValidVictim(CBaseEntity* entity);
@@ -300,6 +328,8 @@ DWORD WINAPI StartCheat(LPVOID params)
 
 	// 这个好像是不正确的...
 	g_interface.MoveHelper = nullptr;
+	g_interface.ClientMode = nullptr;
+	g_interface.ClientState = nullptr;
 
 	if ((oCL_Move = (FnCL_Move)Utils::FindPattern("engine.dll",
 		XorStr("55 8B EC B8 ? ? ? ? E8 ? ? ? ? A1 ? ? ? ? 33 C5 89 45 FC 53 56 57 E8"))) != nullptr)
@@ -365,20 +395,11 @@ DWORD WINAPI StartCheat(LPVOID params)
 	else
 		Utils::log("DispatchUserMessage not found");
 
-	typedef ClientModeShared*(*FnGetClientMode)();
-	FnGetClientMode GetClientModeNormal = nullptr;
 	if ((GetClientModeNormal = (FnGetClientMode)Utils::FindPattern("client.dll",
-		XorStr("8B 0D ? ? ? ? 8B 01 8B 90 ? ? ? ? FF D2 8B 04 85 ? ? ? ? C3"))) != nullptr &&
-		(g_interface.ClientMode = GetClientModeNormal()) != nullptr)
-	{
-		g_interface.ClientModeHook = std::make_unique<CVMTHookManager>(g_interface.ClientMode);
-		// printo("ClientModePtr", g_interface.ClientMode);
+		XorStr("8B 0D ? ? ? ? 8B 01 8B 90 ? ? ? ? FF D2 8B 04 85 ? ? ? ? C3"))) != nullptr)
 		Utils::log("GetClientMode = client.dll + 0x%X", (DWORD)GetClientModeNormal - g_iClientBase);
-		Utils::log("g_pClientMode = 0x%X", (DWORD)g_interface.ClientMode);
-		Utils::log("m_pChatElement = 0x%X", (DWORD)g_interface.ClientMode->GetHudChat());
-	}
 	else
-		Utils::log("ClientModeShared not found");
+		Utils::log("GetClientMode not found");
 
 	if ((g_pCallGetWpnData = (FnGetWpnData)Utils::FindPattern("client.dll",
 		XorStr("0F B7 81 ? ? ? ? 50 E8 ? ? ? ? 83 C4 04"))) != nullptr)
@@ -398,6 +419,33 @@ DWORD WINAPI StartCheat(LPVOID params)
 	else
 		Utils::log("CMatSystemSurface::FinishDrawing not found");
 
+	if((GetCurrentInput = (FnGetCurInput)Utils::FindPattern("client.dll",
+		XorStr("55 8B EC 8B 45 08 56 8B F1 83 F8 FF 75 10 8B 0D ? ? ? ? 8B 01 8B 90 ? ? ? ? FF D2 69 C0 ? ? ? ? 8D 44 30 34 5E 5D C2 04 00"))) != nullptr)
+		Utils::log("CInput::_GetCurInput = client.dll + 0x%X", (DWORD)GetCurrentInput - g_iClientBase);
+
+	/*
+	if ((oProcessGetCvarValue = (FnProcessGetCvarValue)Utils::FindPattern("engine.dll",
+		XorStr("55 8B EC 81 EC ? ? ? ? A1 ? ? ? ? 33 C5 89 45 FC 53 56 57 8B 7D 08 8B 47 10"))) != nullptr)
+	{
+		Utils::log("CBaseClientState::ProcessGetCvarValue = engine.dll + 0x%X", (DWORD)oProcessGetCvarValue - g_iEngineBase);
+		g_pDetourGetCvarValue = std::make_unique<DetourXS>(oProcessGetCvarValue, Hooked_ProcessGetCvarValue);
+		oProcessGetCvarValue = (FnProcessGetCvarValue)g_pDetourGetCvarValue->GetTrampoline();
+		Utils::log("Trampoline oProcessGetCvarValue = 0x%X", (DWORD)oProcessGetCvarValue);
+	}
+	else
+		Utils::log("CBaseClientState::ProcessGetCvarValue not found");
+
+	if ((oProcessSetConVar = (FnProcessSetConVar)Utils::FindPattern("engine.dll",
+		XorStr("55 8B EC 8B 49 08 8B 01 8B 50 18"))) != nullptr)
+	{
+		Utils::log("CBaseClientState::ProcessSetConVar = engine.dll + 0x%X", (DWORD)oProcessSetConVar - g_iEngineBase);
+		g_pDetourSetConVar = std::make_unique<DetourXS>(oProcessSetConVar, Hooked_ProcessSetConVar);
+		oProcessSetConVar = (FnProcessSetConVar)g_pDetourSetConVar->GetTrampoline();
+		Utils::log("Trampoline oProcessSetConVar = 0x%X", (DWORD)oProcessSetConVar);
+	}
+	else
+		Utils::log("CBaseClientState::ProcessSetConVar not found");
+
 	if ((oCreateMoveShared = (FnCreateMoveShared)Utils::FindPattern("client.dll",
 		XorStr("55 8B EC 6A FF E8 ? ? ? ? 83 C4 04 85 C0 75 06 B0 01"))) != nullptr)
 	{
@@ -406,10 +454,7 @@ DWORD WINAPI StartCheat(LPVOID params)
 		oCreateMoveShared = (FnCreateMoveShared)g_pDetourCreateMove->GetTrampoline();
 		Utils::log("Trampoline oCreateMoveShared = 0x%X", (DWORD)oCreateMoveShared);
 	}
-
-	if((GetCurrentInput = (FnGetCurInput)Utils::FindPattern("client.dll",
-		XorStr("55 8B EC 8B 45 08 56 8B F1 83 F8 FF 75 10 8B 0D ? ? ? ? 8B 01 8B 90 ? ? ? ? FF D2 69 C0 ? ? ? ? 8D 44 30 34 5E 5D C2 04 00"))) != nullptr)
-		Utils::log("CInput::_GetCurInput = client.dll + 0x%X", (DWORD)GetCurrentInput - g_iClientBase);
+	*/
 
 	if (g_interface.PanelHook && indexes::PaintTraverse > -1)
 	{
@@ -418,14 +463,12 @@ DWORD WINAPI StartCheat(LPVOID params)
 		Utils::log("oPaintTraverse = 0x%X", (DWORD)oPaintTraverse);
 	}
 
-	/*
 	if (g_interface.ClientModeHook && indexes::SharedCreateMove > -1)
 	{
 		oCreateMoveShared = (FnCreateMoveShared)g_interface.ClientModeHook->HookFunction(indexes::SharedCreateMove, Hooked_CreateMoveShared);
 		// g_interface.ClientModeHook->HookTable(true);
 		Utils::log("oCreateMoveShared = 0x%X", (DWORD)oCreateMoveShared);
 	}
-	*/
 
 	if (g_interface.ClientHook && indexes::CreateMove > -1)
 	{
@@ -515,7 +558,6 @@ DWORD WINAPI StartCheat(LPVOID params)
 
 	if (g_interface.Cvar)
 	{
-#ifdef USE_CVAR_CHANGE
 		g_conVar["sv_cheats"] = g_interface.Cvar->FindVar("sv_cheats");
 		g_conVar["r_drawothermodels"] = g_interface.Cvar->FindVar("r_drawothermodels");
 		g_conVar["cl_drawshadowtexture"] = g_interface.Cvar->FindVar("cl_drawshadowtexture");
@@ -532,6 +574,9 @@ DWORD WINAPI StartCheat(LPVOID params)
 		g_conVar["sv_maxupdaterate"] = g_interface.Cvar->FindVar("sv_maxupdaterate");
 		g_conVar["sv_minupdaterate"] = g_interface.Cvar->FindVar("sv_minupdaterate");
 		g_conVar["cl_interp_ratio"] = g_interface.Cvar->FindVar("cl_interp_ratio");
+		g_conVar["mat_hdr_enabled"] = g_interface.Cvar->FindVar("mat_hdr_enabled");
+		g_conVar["mat_hdr_level"] = g_interface.Cvar->FindVar("mat_hdr_level");
+		g_conVar["mat_texture_list"] = g_interface.Cvar->FindVar("mat_texture_list");
 
 		Utils::log("sv_cheats = 0x%X", (DWORD)g_conVar["sv_cheats"]);
 		Utils::log("r_drawothermodels = 0x%X", (DWORD)g_conVar["r_drawothermodels"]);
@@ -549,20 +594,10 @@ DWORD WINAPI StartCheat(LPVOID params)
 		Utils::log("sv_maxupdaterate = 0x%X", (DWORD)g_conVar["sv_maxupdaterate"]);
 		Utils::log("sv_minupdaterate = 0x%X", (DWORD)g_conVar["sv_minupdaterate"]);
 		Utils::log("cl_interp_ratio = 0x%X", (DWORD)g_conVar["cl_interp_ratio"]);
+		Utils::log("mat_hdr_enabled = 0x%X", (DWORD)g_conVar["mat_hdr_enabled"]);
+		Utils::log("mat_hdr_level = 0x%X", (DWORD)g_conVar["mat_hdr_level"]);
+		Utils::log("mat_texture_list = 0x%X", (DWORD)g_conVar["mat_texture_list"]);
 
-#else
-		g_conVar["sv_cheats"] = nullptr;
-		g_conVar["r_drawothermodels"] = nullptr;
-		g_conVar["cl_drawshadowtexture"] = nullptr;
-		g_conVar["mat_fullbright"] = nullptr;
-		g_conVar["sv_pure"] = nullptr;
-		g_conVar["sv_consistency"] = nullptr;
-		g_conVar["mp_gamemode"] = nullptr;
-		g_conVar["c_thirdpersonshoulder"] = nullptr;
-		g_conVar["c_thirdpersonshoulderheight"] = nullptr;
-		g_conVar["c_thirdpersonshoulderoffset"] = nullptr;
-		g_conVar["cl_mouseenable"] = nullptr;
-#endif
 	}
 
 	// 初始化 ImGui
@@ -610,39 +645,28 @@ DWORD WINAPI StartCheat(LPVOID params)
 			virtual void FireGameEvent(IGameEvent *event)
 			{
 				const char* eventName = event->GetName();
+				CBaseEntity* local = GetLocalClient();
+
 				if (_strcmpi(eventName, "player_death") == 0)
 				{
 					// 受害者（死者）
 					int victim = g_interface.Engine->GetPlayerForUserID(event->GetInt("userid"));
 					if (victim <= 0)
 						victim = event->GetInt("entityid");
+					if (victim <= 0)
+						return;
 
 					// 攻击者（击杀者）
 					int attacker = g_interface.Engine->GetPlayerForUserID(event->GetInt("attacker"));
 					if (attacker <= 0)
 						attacker = event->GetInt("attackerentid");
 
-					if (victim <= 0)
+					CBaseEntity* victimEntity = g_interface.ClientEntList->GetClientEntity(victim);
+					if (!IsValidVictim(victimEntity))
 						return;
 
-					CBaseEntity* entity = g_interface.ClientEntList->GetClientEntity(victim);
-					if (!IsValidVictim(entity))
-						return;
-
-					if ((DWORD)entity == (DWORD)g_pCurrentAimbot)
+					if ((DWORD)victimEntity == (DWORD)g_pCurrentAimbot)
 						g_pCurrentAimbot = nullptr;
-
-					/*
-					Utils::log("player %d death, killed by %d%s", victim, attacker,
-					(event->GetBool("headshot") ? " | headshot" : ""));
-					*/
-
-					if (g_pDrawRender)
-					{
-						g_pDrawRender->PushRenderText(DrawManager::BLUE, "player %s killed by %d%s",
-							GetZombieClassName(entity).c_str(), attacker,
-							(event->GetBool("headshot") ? " + headshot" : ""));
-					}
 				}
 				else if (_strcmpi(eventName, "infected_death") == 0)
 				{
@@ -650,26 +674,12 @@ DWORD WINAPI StartCheat(LPVOID params)
 					if (victim <= 0)
 						return;
 
-					int attacker = g_interface.Engine->GetPlayerForUserID(event->GetInt("attacker"));
-
 					CBaseEntity* entity = g_interface.ClientEntList->GetClientEntity(victim);
 					if (!IsValidVictim(entity))
 						return;
 
 					if ((DWORD)entity == (DWORD)g_pCurrentAimbot)
 						g_pCurrentAimbot = nullptr;
-
-					/*
-					Utils::log("infected %d death, killed by %d%s", victim, attacker,
-					(event->GetBool("headshot") ? " | headshot" : ""));
-					*/
-
-					if (g_pDrawRender)
-					{
-						g_pDrawRender->PushRenderText(DrawManager::BLUE, "infected %s killed by %d%s",
-							GetZombieClassName(entity).c_str(), attacker,
-							(event->GetBool("headshot") ? " + headshot" : ""));
-					}
 				}
 				else if (_strcmpi(eventName, "player_spawn") == 0)
 				{
@@ -971,17 +981,58 @@ DWORD WINAPI StartCheat(LPVOID params)
 						g_interface.Engine->ClientCmd("play \"weapons/shotgun_chrome/gunfire/shotgun_fire_1.wav\"");
 
 				}
+				else if (_strcmpi(eventName, "player_hurt") == 0)
+				{
+					if (local == nullptr || !local->IsAlive())
+						return;
+					
+					if (event->GetInt("dmg_health") <= 0)
+						return;
+
+					int victim = g_interface.Engine->GetPlayerForUserID(event->GetInt("userid"));
+					if (victim == 0)
+						return;
+
+					CBaseEntity* entity = g_interface.ClientEntList->GetClientEntity(victim);
+					if (!IsValidVictim(entity))
+						return;
+
+					// 被攻击自动瞄准
+					if (entity->GetTeam() != local->GetTeam())
+						g_pCurrentAimbot = entity;
+				}
+				else if (_strcmpi(eventName, "tongue_grab") == 0)
+				{
+					if (local == nullptr || !local->IsAlive())
+						return;
+
+					int victim = g_interface.Engine->GetPlayerForUserID(event->GetInt("victim"));
+					int attacker = g_interface.Engine->GetPlayerForUserID(event->GetInt("userid"));
+					if (victim == 0 || attacker == 0)
+						return;
+
+					CBaseEntity* victimEntity = g_interface.ClientEntList->GetClientEntity(victim);
+					CBaseEntity* attackerEntity = g_interface.ClientEntList->GetClientEntity(attacker);
+					if (!IsValidVictim(victimEntity) || !IsValidVictim(attackerEntity))
+						return;
+
+					// 被拉自动瞄准
+					if((DWORD)victimEntity == (DWORD)local)
+						g_pCurrentAimbot = attackerEntity;
+				}
 			}
 		};
 
 		// 注册事件监听器
 		EventListener* listener = new EventListener();
-		g_interface.GameEvent->AddListener(listener, "player_spawn", false);
+		// g_interface.GameEvent->AddListener(listener, "player_spawn", false);
 		g_interface.GameEvent->AddListener(listener, "player_death", false);
 		g_interface.GameEvent->AddListener(listener, "infected_death", false);
 		g_interface.GameEvent->AddListener(listener, "map_transition", false);
 		g_interface.GameEvent->AddListener(listener, "mission_lost", false);
 		g_interface.GameEvent->AddListener(listener, "weapon_fire", false);
+		g_interface.GameEvent->AddListener(listener, "player_hurt", false);
+		g_interface.GameEvent->AddListener(listener, "tongue_grab", false);
 
 		/*
 		g_interface.GameEvent->AddListener(listener, "player_connect", false);
@@ -2384,7 +2435,7 @@ HRESULT WINAPI Hooked_Present(IDirect3DDevice9* device, const RECT* source, cons
 						}
 					}
 				}
-				else if (classId == ET_WeaponSpawn || classId == ET_WeaponAmmoSpawn)
+				else if (classId == ET_WeaponSpawn)
 				{
 					// 其他东西
 					if (dist > 1000.0f)
@@ -2401,8 +2452,34 @@ HRESULT WINAPI Hooked_Present(IDirect3DDevice9* device, const RECT* source, cons
 							IsGrenadeWeapon(weaponId) && Config::bDrawGrenadeItem ||
 							IsAmmoStack(weaponId) && Config::bDrawAmmoStack)
 							ss << WeaponIdToAlias(weaponId);
-}
 					}
+				}
+				else
+				{
+					if (dist > 1000.0f)
+						continue;
+					
+					if (classId == ET_WeaponAmmoPack || classId == ET_WeaponAmmoSpawn)
+						ss << "ammo_stack";
+					else if (classId == ET_WeaponPipeBomb)
+						ss << "pipe_bomb";
+					else if (classId == ET_WeaponMolotov)
+						ss << "molotov";
+					else if (classId == ET_WeaponVomitjar)
+						ss << "vomitjar";
+					else if (classId == ET_WeaponFirstAidKit)
+						ss << "first_aid_kit";
+					else if (classId == ET_WeaponDefibrillator)
+						ss << "defibrillator";
+					else if (classId == ET_WeaponPainPills)
+						ss << "pain_pills";
+					else if (classId == ET_WeaponAdrenaline)
+						ss << "adrenaline";
+					else if (classId == ET_WeaponMelee)
+						ss << entity->GetNetProp<const char*>("m_strMapSetScriptName", "DT_TerrorMeleeWeapon");
+					else if (classId == ET_WeaponMagnum)
+						ss << "pistol_magnum";
+				}
 
 				if (!ss.str().empty())
 				{
@@ -2410,10 +2487,10 @@ HRESULT WINAPI Hooked_Present(IDirect3DDevice9* device, const RECT* source, cons
 
 					g_pDrawRender->AddText(color, foot.x, head.y, true, ss.str().c_str());
 				}
-				}
+			}
 
 			// 自动瞄准寻找目标
-			if (Config::bAimbot && (!targetSelected || !(g_pUserCommands->buttons & IN_ATTACK)) &&
+			if (Config::bAimbot && (!targetSelected || g_pUserCommands == nullptr || !(g_pUserCommands->buttons & IN_ATTACK)) &&
 				((team == 2 && (IsSpecialInfected(classId) || classId == ET_INFECTED)) ||
 				(team == 3 && IsSurvivor(classId))))
 			{
@@ -3699,34 +3776,12 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 		Utils::log("Hooked_FrameStageNotify trigged.");
 	}
 
-	/*
-	QAngle punch, velocity;
-	CBaseEntity* client = GetLocalClient();
-	*/
+	oFrameStageNotify(stage);
 
 	if (stage == FRAME_RENDER_START && g_interface.Engine->IsInGame())
 	{
-		/*
-		if (client != nullptr && client->IsAlive())
-		{
-			punch = client->GetLocalNetProp<Vector>("m_vecPunchAngle");
-			velocity = client->GetLocalNetProp<Vector>("m_vecPunchAngleVel");
-		}
-		*/
-
 		// 在这里可以使用 DebugOverlay 来进行 3D 绘制
 	}
-
-	oFrameStageNotify(stage);
-
-	/*
-	if (Config::bNoRecoil && client != nullptr && client->IsAlive() && punch.IsValid() && velocity.IsValid())
-	{
-		// 去除屏幕晃动
-		client->SetLocalNetProp("m_vecPunchAngle", punch);
-		client->SetLocalNetProp("m_vecPunchAngleVel", velocity);
-	}
-	*/
 
 	static time_t nextUpdate = 0;
 	time_t currentTime = time(NULL);
@@ -3799,7 +3854,20 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 #endif
 
 #ifdef USE_CVAR_CHANGE
-				if (g_conVar["mat_fullbright"] != nullptr)
+				if (g_conVar["mat_hdr_enabled"] != nullptr && g_conVar["mat_hdr_level"] != nullptr)
+				{
+					if (Config::bCvarFullBright)
+					{
+						g_conVar["mat_hdr_enabled"]->SetValue(0);
+						g_conVar["mat_hdr_level"]->SetValue(0);
+					}
+					else
+					{
+						g_conVar["mat_hdr_enabled"]->SetValue(1);
+						g_conVar["mat_hdr_level"]->SetValue(2);
+					}
+				}
+				else if (g_conVar["mat_fullbright"] != nullptr)
 				{
 					if (Config::bCvarFullBright)
 						g_conVar["mat_fullbright"]->SetValue(1);
@@ -3824,11 +3892,9 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 
 			static bool oldGameMode = false;
 
-			/*
 			if (GetAsyncKeyState(VK_PRIOR) & 0x01)
 				Config::bCvarGameMode = !Config::bCvarGameMode;
-			*/
-
+			
 			if (oldGameMode != Config::bCvarGameMode)
 			{
 #ifdef USE_CVAR_CHANGE
@@ -4107,6 +4173,7 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 				g_pDrawRender->PushRenderText(DrawManager::WHITE, "force exit proccess timer stopped");
 		}
 
+		/*
 		if (GetAsyncKeyState(VK_PRIOR) & 0x01)
 		{
 			if (g_interface.Input->CAM_IsThirdPerson())
@@ -4114,15 +4181,16 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 			else
 				g_interface.Input->CAM_ToThirdPerson();
 		}
+		*/
 
 		if (GetAsyncKeyState(VK_DELETE) & 0x01)
 			g_interface.Engine->ClientCmd("disconnect");
 	}
 }
 
-void __fastcall Hooked_RunCommand(CPrediction* ecx, void* edx, CBaseEntity* pEntity, CUserCmd* pCmd, CMoveHelper* moveHelper)
+void __fastcall Hooked_RunCommand(CPrediction* _ecx, void* _edx, CBaseEntity* pEntity, CUserCmd* pCmd, CMoveHelper* moveHelper)
 {
-	oRunCommand(ecx, pEntity, pCmd, moveHelper);
+	oRunCommand(_ecx, pEntity, pCmd, moveHelper);
 
 	static bool showHint = true;
 	if (showHint || g_interface.MoveHelper == nullptr)
@@ -4134,9 +4202,28 @@ void __fastcall Hooked_RunCommand(CPrediction* ecx, void* edx, CBaseEntity* pEnt
 	g_interface.MoveHelper = moveHelper;
 }
 
-bool __stdcall Hooked_CreateMoveShared(float flInputSampleTime, CUserCmd* pCmd)
+bool __fastcall Hooked_CreateMoveShared(ClientModeShared* _ecx, void* _edx, float flInputSampleTime, CUserCmd* pCmd)
 {
-	oCreateMoveShared(flInputSampleTime, pCmd);
+	oCreateMoveShared(_ecx, flInputSampleTime, pCmd);
+
+	if (g_interface.ClientMode == nullptr)
+	{
+		DETOURXS_DESTORY(g_pDetourCreateMove);
+		g_interface.ClientMode = _ecx;
+		if (g_interface.ClientModeHook)
+		{
+			g_interface.ClientModeHook->HookTable(false);
+			g_interface.ClientModeHook.release();
+		}
+
+		g_interface.ClientModeHook = std::make_unique<CVMTHookManager>(g_interface.ClientMode);
+		oCreateMoveShared = (FnCreateMoveShared)g_interface.ClientModeHook->HookFunction(indexes::SharedCreateMove, Hooked_CreateMoveShared);
+		g_interface.ClientModeHook->HookTable(true);
+
+		Utils::log("oCreateMoveShared = 0x%X", (DWORD)oCreateMoveShared);
+		Utils::log("ClientMode = 0x%X", (DWORD)_ecx);
+	}
+
 	CBaseEntity* client = GetLocalClient();
 
 	if (!client || !pCmd || pCmd->command_number == 0)
@@ -4221,6 +4308,19 @@ void __stdcall Hooked_CL_Move(float accumulated_extra_samples, bool bFinalTick)
 		};
 	};
 
+	/*
+	if (g_interface.ClientMode == nullptr)
+	{
+		g_interface.ClientMode = GetClientModeNormal();
+		g_interface.ClientModeHook = std::make_unique<CVMTHookManager>(g_interface.ClientMode);
+		oCreateMoveShared = (FnCreateMoveShared)g_interface.ClientModeHook->HookFunction(indexes::SharedCreateMove, Hooked_CreateMoveShared);
+		g_interface.ClientModeHook->HookTable(true);
+		Utils::log("g_pClientMode = 0x%X", (DWORD)g_interface.ClientMode);
+		Utils::log("ClientModeShared::CreateMove = client.dll + 0x%X", (DWORD)oCreateMoveShared + g_iClientBase);
+		Utils::log("m_pChatElement = 0x%X", (DWORD)g_interface.ClientMode->GetHudChat());
+	}
+	*/
+
 	// 默认的 1 次调用，如果不调用会导致游戏冻结
 	// 参数 bFinalTick 相当于 bSendPacket
 	CL_Move(accumulated_extra_samples, bFinalTick);
@@ -4292,7 +4392,7 @@ void __stdcall Hooked_DrawModelExecute(const DrawModelState_t &state,
 	g_interface.ModelRender->ForcedMaterialOverride(nullptr);
 }
 
-void __fastcall Hooked_EnginePaint(CEngineVGui *ecx, void *edx, PaintMode_t mode)
+void __fastcall Hooked_EnginePaint(CEngineVGui *_ecx, void *_edx, PaintMode_t mode)
 {
 	static bool showHint = true;
 	if (showHint)
@@ -4301,7 +4401,7 @@ void __fastcall Hooked_EnginePaint(CEngineVGui *ecx, void *edx, PaintMode_t mode
 		Utils::log("Hooked_EnginePaint trigged.");
 	}
 	
-	oEnginePaint(ecx, mode);
+	oEnginePaint(_ecx, mode);
 
 	if (mode & PAINT_UIPANELS)
 	{
@@ -4313,7 +4413,7 @@ void __fastcall Hooked_EnginePaint(CEngineVGui *ecx, void *edx, PaintMode_t mode
 	}
 }
 
-bool __fastcall Hooked_EngineKeyEvent(CEngineVGui *ecx, void *edx, const InputEvent_t &event)
+bool __fastcall Hooked_EngineKeyEvent(CEngineVGui *_ecx, void *_edx, const InputEvent_t &event)
 {
 	static bool showHint = true;
 	if (showHint)
@@ -4322,10 +4422,132 @@ bool __fastcall Hooked_EngineKeyEvent(CEngineVGui *ecx, void *edx, const InputEv
 		Utils::log("Hooked_EngineKeyEvent trigged.");
 	}
 	
-	bool result = oEngineKeyEvent(ecx, event);
+	bool result = oEngineKeyEvent(_ecx, event);
 
 	bool isDown = event.m_nType != IE_ButtonReleased;
 	ButtonCode_t code = (ButtonCode_t)event.m_nData;
 	
 	return result;
+}
+
+bool __fastcall Hooked_ProcessGetCvarValue(CBaseClientState *_ecx, void *_edx, SVC_GetCvarValue *msg)
+{
+	if (g_interface.ClientState == nullptr)
+	{
+		DETOURXS_DESTORY(g_pDetourGetCvarValue);
+		DETOURXS_DESTORY(g_pDetourSetConVar);
+		g_interface.ClientState = _ecx;
+
+		if (g_interface.ClientStateHook)
+		{
+			g_interface.ClientStateHook->HookTable(false);
+			g_interface.ClientStateHook.release();
+		}
+
+		g_interface.ClientStateHook = std::make_unique<CVMTHookManager>(g_interface.ClientState);
+		oProcessGetCvarValue = (FnProcessGetCvarValue)g_interface.ClientStateHook->HookFunction(indexes::ProcessGetCvarValue, Hooked_ProcessGetCvarValue);
+		oProcessSetConVar = (FnProcessSetConVar)g_interface.ClientStateHook->HookFunction(indexes::ProcessSetConVar, Hooked_ProcessSetConVar);
+		g_interface.ClientStateHook->HookTable(true);
+
+		Utils::log("oProcessGetCvarValue = 0x%X", (DWORD)oProcessGetCvarValue);
+		Utils::log("oProcessSetConVar = 0x%X", (DWORD)oProcessSetConVar);
+		Utils::log("ClientState = 0x%X", (DWORD)_ecx);
+	}
+	
+	CLC_RespondCvarValue returnMsg;
+	returnMsg.m_iCookie = msg->m_iCookie;
+	returnMsg.m_szCvarName = msg->m_szCvarName;
+	returnMsg.m_szCvarValue = "";
+	returnMsg.m_eStatusCode = eQueryCvarValueStatus_ValueIntact;
+
+	Utils::log("[Cvar] GetCvarValue: wants cvar %s", msg->m_szCvarName);
+
+	char tempValue[256];
+	ConVar* cvar = g_interface.Cvar->FindVar(msg->m_szCvarName);
+	tempValue[0] = '\0';
+
+	if (cvar != nullptr)
+	{
+		if (cvar->IsFlagSet(FCVAR_SERVER_CANNOT_QUERY))
+		{
+			// 这玩意不可以查询
+			returnMsg.m_eStatusCode = eQueryCvarValueStatus_ValueIntact;
+		}
+		else
+		{
+			returnMsg.m_eStatusCode = eQueryCvarValueStatus_ValueIntact;
+
+			if (g_serverConVar.find(msg->m_szCvarName) != g_serverConVar.end())
+			{
+				// 把服务器设置过的 Cvar 发送回去
+				strcpy_s(tempValue, g_serverConVar[msg->m_szCvarName].c_str());
+				returnMsg.m_szCvarValue = tempValue;
+			}
+			else
+			{
+				// 发送默认的 Cvar 给服务端，而不是自己的
+				// 服务器一般情况下不会发现问题的...
+				strcpy_s(tempValue, cvar->GetDefault());
+				returnMsg.m_szCvarValue = tempValue;
+			}
+		}
+	}
+	else
+	{
+		// 服务器查询了一个不存在的 Cvar
+		returnMsg.m_eStatusCode = eQueryCvarValueStatus_CvarNotFound;
+		returnMsg.m_szCvarValue = tempValue;
+	}
+
+	Utils::log("[Cvar] %s return %s", returnMsg.m_szCvarName, returnMsg.m_szCvarValue);
+
+	// 把查询结果发送回去
+	msg->GetNetChannel()->SendNetMsg(returnMsg);
+
+	return true;
+}
+
+bool __fastcall Hooked_ProcessSetConVar(CBaseClientState *_ecx, void *_edx, NET_SetConVar *msg)
+{
+	if (g_interface.ClientState == nullptr)
+	{
+		DETOURXS_DESTORY(g_pDetourGetCvarValue);
+		DETOURXS_DESTORY(g_pDetourSetConVar);
+		g_interface.ClientState = _ecx;
+
+		if (g_interface.ClientStateHook)
+		{
+			g_interface.ClientStateHook->HookTable(false);
+			g_interface.ClientStateHook.release();
+		}
+
+		g_interface.ClientStateHook = std::make_unique<CVMTHookManager>(g_interface.ClientState);
+		oProcessGetCvarValue = (FnProcessGetCvarValue)g_interface.ClientStateHook->HookFunction(indexes::ProcessGetCvarValue, Hooked_ProcessGetCvarValue);
+		oProcessSetConVar = (FnProcessSetConVar)g_interface.ClientStateHook->HookFunction(indexes::ProcessSetConVar, Hooked_ProcessSetConVar);
+		g_interface.ClientStateHook->HookTable(true);
+
+		Utils::log("oProcessGetCvarValue = 0x%X", (DWORD)oProcessGetCvarValue);
+		Utils::log("oProcessSetConVar = 0x%X", (DWORD)oProcessSetConVar);
+		Utils::log("ClientState = 0x%X", (DWORD)_ecx);
+	}
+	
+	for (auto& cvar : msg->m_ConVars)
+	{
+		Utils::log("[Cvar] SetCvarValue: wants cvar %s", cvar.name);
+		if (g_serverConVar.find(cvar.name) != g_serverConVar.end())
+		{
+			// 修改已经改过的值
+			Utils::log("[SvrCvar] changing from %s to %s", g_serverConVar[cvar.name], cvar.value);
+		}
+		else
+		{
+			// 第一次设置
+			Utils::log("[SvrCvar] setting to %s", cvar.value);
+		}
+
+		// 将服务器的更改进行记录，等服务器查询的时候把记录还回去
+		g_serverConVar[cvar.name] = cvar.value;
+	}
+
+	return true;
 }
