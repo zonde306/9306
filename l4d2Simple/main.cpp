@@ -263,6 +263,10 @@ typedef bool(__thiscall* FnProcessSetConVar)(CBaseClientState*, NET_SetConVar*);
 bool __fastcall Hooked_ProcessSetConVar(CBaseClientState*, void*, NET_SetConVar*);
 FnProcessSetConVar oProcessSetConVar;
 
+typedef int(__thiscall* FnKeyInput)(ClientModeShared*, int, ButtonCode_t, const char*);
+int __fastcall Hooked_KeyInput(ClientModeShared*, void*, int, ButtonCode_t, const char*);
+FnKeyInput oKeyInput;
+
 // -------------------------------- Cheats Function --------------------------------
 void thirdPerson(bool);
 void showSpectator();
@@ -434,6 +438,7 @@ DWORD WINAPI StartCheat(LPVOID params)
 	}
 	else
 		Utils::log("CBaseClientState::ProcessGetCvarValue not found");
+	*/
 
 	if ((oProcessSetConVar = (FnProcessSetConVar)Utils::FindPattern("engine.dll",
 		XorStr("55 8B EC 8B 49 08 8B 01 8B 50 18"))) != nullptr)
@@ -454,8 +459,7 @@ DWORD WINAPI StartCheat(LPVOID params)
 		oCreateMoveShared = (FnCreateMoveShared)g_pDetourCreateMove->GetTrampoline();
 		Utils::log("Trampoline oCreateMoveShared = 0x%X", (DWORD)oCreateMoveShared);
 	}
-	*/
-
+	
 	if (g_interface.PanelHook && indexes::PaintTraverse > -1)
 	{
 		oPaintTraverse = (FnPaintTraverse)g_interface.PanelHook->HookFunction(indexes::PaintTraverse, Hooked_PaintTraverse);
@@ -2620,7 +2624,7 @@ HRESULT WINAPI Hooked_CreateQuery(IDirect3DDevice9* device, D3DQUERYTYPE type, I
 }
 
 // -------------------------------- Game Hooked Function --------------------------------
-void __fastcall Hooked_PaintTraverse(CPanel* pPanel, void* _edx, unsigned int panel, bool forcePaint, bool allowForce)
+void __fastcall Hooked_PaintTraverse(CPanel* _ecx, void* _edx, unsigned int panel, bool forcePaint, bool allowForce)
 {
 	static bool showHint = true;
 	if (showHint)
@@ -2629,7 +2633,7 @@ void __fastcall Hooked_PaintTraverse(CPanel* pPanel, void* _edx, unsigned int pa
 		Utils::log("Hooked_PaintTraverse trigged.");
 	}
 
-	oPaintTraverse(pPanel, panel, forcePaint, allowForce);
+	oPaintTraverse(_ecx, panel, forcePaint, allowForce);
 
 	static unsigned int MatSystemTopPanel = 0;
 	static unsigned int FocusOverlayPanel = 0;
@@ -3794,279 +3798,6 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 
 		if (g_interface.Engine->IsConnected())
 		{
-			static bool oldWireframe = false;
-			if (GetAsyncKeyState(VK_INSERT) & 0x01)
-				Config::bCvarWireframe = !Config::bCvarWireframe;
-
-			if (oldWireframe != Config::bCvarWireframe)
-			{
-#ifdef USE_CVAR_CHANGE
-				CVAR_MAKE_FLAGS("r_drawothermodels");
-				CVAR_MAKE_FLAGS("cl_drawshadowtexture");
-#endif
-
-#ifdef USE_CVAR_CHANGE
-				if (g_conVar["r_drawothermodels"] != nullptr && g_conVar["cl_drawshadowtexture"] != nullptr)
-				{
-					if (Config::bCvarWireframe)
-					{
-						g_conVar["r_drawothermodels"]->SetValue(2);
-						g_conVar["cl_drawshadowtexture"]->SetValue(1);
-					}
-					else
-					{
-						g_conVar["r_drawothermodels"]->SetValue(1);
-						g_conVar["cl_drawshadowtexture"]->SetValue(0);
-					}
-				}
-				else
-				{
-#endif
-					if (Config::bCvarWireframe)
-					{
-						Utils::writeMemory(2, g_iClientBase + r_drawothermodels);
-						Utils::writeMemory(1, g_iClientBase + cl_drawshadowtexture);
-					}
-					else
-					{
-						Utils::writeMemory(1, g_iClientBase + r_drawothermodels);
-						Utils::writeMemory(0, g_iClientBase + cl_drawshadowtexture);
-					}
-
-					g_interface.Engine->ClientCmd("echo \"r_drawothermodels set %d\"",
-						Utils::readMemory<int>(g_iClientBase + r_drawothermodels));
-					g_interface.Engine->ClientCmd("echo \"cl_drawshadowtexture set %d\"",
-						Utils::readMemory<int>(g_iClientBase + cl_drawshadowtexture));
-#ifdef USE_CVAR_CHANGE
-				}
-#endif
-				oldWireframe = Config::bCvarWireframe;
-			}
-
-			static bool oldFullBright = false;
-			if (GetAsyncKeyState(VK_HOME) & 0x01)
-				Config::bCvarFullBright = !Config::bCvarFullBright;
-
-			if (oldFullBright != Config::bCvarFullBright)
-			{
-#ifdef USE_CVAR_CHANGE
-				CVAR_MAKE_FLAGS("mat_fullbright");
-#endif
-
-#ifdef USE_CVAR_CHANGE
-				if (g_conVar["mat_hdr_enabled"] != nullptr && g_conVar["mat_hdr_level"] != nullptr)
-				{
-					if (Config::bCvarFullBright)
-					{
-						g_conVar["mat_hdr_enabled"]->SetValue(0);
-						g_conVar["mat_hdr_level"]->SetValue(0);
-					}
-					else
-					{
-						g_conVar["mat_hdr_enabled"]->SetValue(1);
-						g_conVar["mat_hdr_level"]->SetValue(2);
-					}
-				}
-				else if (g_conVar["mat_fullbright"] != nullptr)
-				{
-					if (Config::bCvarFullBright)
-						g_conVar["mat_fullbright"]->SetValue(1);
-					else
-						g_conVar["mat_fullbright"]->SetValue(0);
-				}
-				else
-				{
-#endif
-					if (Config::bCvarFullBright)
-						Utils::writeMemory(1, g_iMaterialModules + mat_fullbright);
-					else
-						Utils::writeMemory(0, g_iMaterialModules + mat_fullbright);
-
-					g_interface.Engine->ClientCmd("echo \"mat_fullbright set %d\"",
-						Utils::readMemory<int>(g_iMaterialModules + mat_fullbright));
-#ifdef USE_CVAR_CHANGE
-				}
-#endif
-				oldFullBright = Config::bCvarFullBright;
-			}
-
-			static bool oldGameMode = false;
-
-			if (GetAsyncKeyState(VK_PRIOR) & 0x01)
-				Config::bCvarGameMode = !Config::bCvarGameMode;
-			
-			if (oldGameMode != Config::bCvarGameMode)
-			{
-#ifdef USE_CVAR_CHANGE
-				CVAR_MAKE_FLAGS("mp_gamemode");
-#endif
-
-#ifdef USE_CVAR_CHANGE
-				if (g_conVar["mp_gamemode"] != nullptr)
-				{
-					const char* mode = g_conVar["mp_gamemode"]->GetString();
-					if (_strcmpi(mode, "versus") == 0 || _strcmpi(mode, "realismversus") == 0)
-					{
-						g_conVar["mp_gamemode"]->SetValue("coop");
-						strcpy_s(g_conVar["mp_gamemode"]->m_pszString, g_conVar["mp_gamemode"]->m_StringLength, "coop");
-					}
-					else
-					{
-						g_conVar["mp_gamemode"]->SetValue("versus");
-						strcpy_s(g_conVar["mp_gamemode"]->m_pszString, g_conVar["mp_gamemode"]->m_StringLength, "versus");
-					}
-
-					g_interface.Engine->ClientCmd("echo \"[ConVar] mp_gamemode set %s\"",
-						g_conVar["mp_gamemode"]->GetString());
-				}
-				else
-				{
-#endif
-					char* mode = Utils::readMemory<char*>(g_iClientBase + mp_gamemode);
-					if (mode != nullptr)
-					{
-						DWORD oldProtect = NULL;
-
-						if (VirtualProtect(mode, sizeof(char) * 16, PAGE_EXECUTE_READWRITE, &oldProtect) == TRUE)
-						{
-							if (_strcmpi(mode, "versus") == 0 || _strcmpi(mode, "realismversus") == 0)
-								strcpy_s(mode, 16, "coop");
-							else
-								strcpy_s(mode, 16, "versus");
-							VirtualProtect(mode, sizeof(char) * 16, oldProtect, &oldProtect);
-						}
-						else
-							printf("VirtualProtect 0x%X Fail!\n", (DWORD)mode);
-
-						g_interface.Engine->ClientCmd("echo \"mp_gamemode set %s\"", mode);
-					}
-#ifdef USE_CVAR_CHANGE
-				}
-#endif
-				oldGameMode = Config::bCvarGameMode;
-			}
-
-			static bool oldCheats = false;
-			if (GetAsyncKeyState(VK_NEXT) & 0x01)
-				Config::bCvarCheats = !Config::bCvarCheats;
-
-			if (oldCheats != Config::bCvarCheats)
-			{
-#ifdef USE_CVAR_CHANGE
-				CVAR_MAKE_FLAGS("sv_cheats");
-#endif
-
-#ifdef USE_CVAR_CHANGE
-				if (g_conVar["sv_cheats"] != nullptr)
-				{
-					if (Config::bCvarCheats)
-					{
-						g_conVar["sv_cheats"]->SetValue(1);
-						g_conVar["sv_cheats"]->m_fValue = 1.0f;
-						g_conVar["sv_cheats"]->m_nValue = 1;
-					}
-					else
-						g_conVar["sv_cheats"]->SetValue(0);
-
-					g_interface.Engine->ClientCmd("echo \"[ConVar] sv_cheats set %d\"",
-						g_conVar["sv_cheats"]->GetInt());
-				}
-#endif
-
-				if (Config::bCvarCheats)
-					Utils::writeMemory(1, g_iEngineBase + sv_cheats);
-				else
-					Utils::writeMemory(0, g_iEngineBase + sv_cheats);
-
-				g_interface.Engine->ClientCmd("echo \"sv_cheats set %d\"",
-					Utils::readMemory<int>(g_iEngineBase + sv_cheats));
-
-				oldCheats = Config::bCvarCheats;
-			}
-
-			static bool oldThrid = false;
-			if (oldThrid != Config::bThirdPersons)
-			{
-				thirdPerson(Config::bThirdPersons);
-				oldThrid = Config::bThirdPersons;
-			}
-
-			// 显示全部玩家
-			/*
-			if (GetAsyncKeyState(VK_CAPITAL) & 0x01)
-			showSpectator();
-			*/
-
-			// 打开/关闭 自动连跳的自动保持速度
-			if (GetAsyncKeyState(VK_F8) & 0x01)
-			{
-				Config::bAutoStrafe = !Config::bAutoStrafe;
-				g_interface.Engine->ClientCmd("echo \"[segt] auto strafe set %s\"",
-					(Config::bAutoStrafe ? "enable" : "disabled"));
-
-				if (g_pDrawRender != nullptr)
-				{
-					g_pDrawRender->PushRenderText(DrawManager::WHITE, "auto strafe %s",
-						(Config::bAutoStrafe ? "enable" : "disable"));
-				}
-			}
-
-			// 打开/关闭 自动开枪
-			if (GetAsyncKeyState(VK_F9) & 0x01)
-			{
-				Config::bTriggerBot = !Config::bTriggerBot;
-				g_interface.Engine->ClientCmd("echo \"[segt] trigger bot set %s\"",
-					(Config::bTriggerBot ? "enable" : "disabled"));
-
-				if (g_pDrawRender != nullptr)
-				{
-					g_pDrawRender->PushRenderText(DrawManager::WHITE, "trigger bot %s",
-						(Config::bTriggerBot ? "enable" : "disable"));
-				}
-			}
-
-			// 打开/关闭 自动瞄准
-			if (GetAsyncKeyState(VK_F10) & 0x01)
-			{
-				Config::bAimbot = !Config::bAimbot;
-				g_interface.Engine->ClientCmd("echo \"[segt] aim bot set %s\"",
-					(Config::bAimbot ? "enable" : "disabled"));
-
-				if (g_pDrawRender != nullptr)
-				{
-					g_pDrawRender->PushRenderText(DrawManager::WHITE, "auto aim %s",
-						(Config::bAimbot ? "enable" : "disable"));
-				}
-			}
-
-			// 打开/关闭 空格自动连跳
-			if (GetAsyncKeyState(VK_F11) & 0x01)
-			{
-				Config::bBunnyHop = !Config::bBunnyHop;
-				g_interface.Engine->ClientCmd("echo \"[segt] auto bunnyHop set %s\"",
-					(Config::bBunnyHop ? "enable" : "disabled"));
-
-				if (g_pDrawRender != nullptr)
-				{
-					g_pDrawRender->PushRenderText(DrawManager::WHITE, "auto bhop %s",
-						(Config::bBunnyHop ? "enable" : "disable"));
-				}
-			}
-
-			// 打开/关闭 静音瞄准
-			if (GetAsyncKeyState(VK_F12) & 0x01)
-			{
-				Config::bSilentAimbot = !Config::bSilentAimbot;
-				g_interface.Engine->ClientCmd("echo \"[segt] silent aim %s\"",
-					(Config::bSilentAimbot ? "enable" : "disabled"));
-
-				if (g_pDrawRender != nullptr)
-				{
-					g_pDrawRender->PushRenderText(DrawManager::WHITE, "silent aimbot %s",
-						(Config::bSilentAimbot ? "enable" : "disable"));
-				}
-			}
-
 			// 去除 CRC 验证
 			if (Config::bCrcCheckBypass)
 			{
@@ -4097,6 +3828,7 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 			if (!connected)
 			{
 				g_pGameRulesProxy = nullptr;
+				g_pPlayerResource = nullptr;
 				g_pCurrentAimbot = nullptr;
 				g_pCurrentAiming = nullptr;
 				g_iCurrentAiming = 0;
@@ -4110,49 +3842,13 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 		{
 			connected = false;
 			g_pGameRulesProxy = nullptr;
+			g_pPlayerResource = nullptr;
 			g_pCurrentAimbot = nullptr;
 			g_pCurrentAiming = nullptr;
 			g_iCurrentAiming = 0;
+			g_serverConVar.clear();
 
 			Utils::log("*** disconnected ***");
-		}
-
-		/*
-		if (GetAsyncKeyState(VK_ADD) & 0x8000)
-		{
-			g_interface.Engine->ClientCmd("alias fastmelee_loop \"+attack; slot1; wait 1; -attack; slot2; wait %d; fastmelee_launcher\"", ++fmWait);
-			g_interface.Engine->ClientCmd("echo \"fastmelee wait set %d\"", fmWait);
-
-			if (g_pDrawRender != nullptr)
-				g_pDrawRender->PushRenderText(DrawManager::WHITE, "fast melee wait tick set %d", fmWait);
-		}
-
-		if (GetAsyncKeyState(VK_SUBTRACT) & 0x8000)
-		{
-			g_interface.Engine->ClientCmd("alias fastmelee_loop \"+attack; slot1; wait 1; -attack; slot2; wait %d; fastmelee_launcher\"", --fmWait);
-			g_interface.Engine->ClientCmd("echo \"fastmelee wait set %d\"", fmWait);
-
-			if (g_pDrawRender != nullptr)
-				g_pDrawRender->PushRenderText(DrawManager::WHITE, "fast melee wait tick set %d", fmWait);
-		}
-		*/
-
-		if (GetAsyncKeyState(VK_MULTIPLY) & 0x8000)
-		{
-			Config::fAimbotFov += 1.0f;
-			g_interface.Engine->ClientCmd("echo \"aimbot fov set %.2f\"", Config::fAimbotFov);
-
-			if (g_pDrawRender != nullptr)
-				g_pDrawRender->PushRenderText(DrawManager::WHITE, "aimbot angles set %.0f", Config::fAimbotFov);
-		}
-
-		if (GetAsyncKeyState(VK_DIVIDE) & 0x8000)
-		{
-			Config::fAimbotFov -= 1.0f;
-			g_interface.Engine->ClientCmd("echo \"aimbot fov set %.2f\"", Config::fAimbotFov);
-
-			if (g_pDrawRender != nullptr)
-				g_pDrawRender->PushRenderText(DrawManager::WHITE, "aimbot angles set %.0f", Config::fAimbotFov);
 		}
 
 		static byte iExitGame = 0;
@@ -4163,26 +3859,17 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 				ExitProcess(0);
 
 			if (g_pDrawRender != nullptr)
-				g_pDrawRender->PushRenderText(DrawManager::WHITE, "force exit proccess timer (%d/3)", iExitGame);
+				g_pDrawRender->PushRenderText(DrawManager::WHITE, "exit proccess timer (%d/3)", iExitGame);
 		}
 		else if (iExitGame != 0)
 		{
 			// 按住不足 3 秒就放开则取消计时
 			iExitGame = 0;
 			if (g_pDrawRender != nullptr)
-				g_pDrawRender->PushRenderText(DrawManager::WHITE, "force exit proccess timer stopped");
+				g_pDrawRender->PushRenderText(DrawManager::WHITE, "exit proccess timer stopped");
 		}
 
-		/*
-		if (GetAsyncKeyState(VK_PRIOR) & 0x01)
-		{
-			if (g_interface.Input->CAM_IsThirdPerson())
-				g_interface.Input->CAM_ToFirstPerson();
-			else
-				g_interface.Input->CAM_ToThirdPerson();
-		}
-		*/
-
+		// 快速离开当前服务器
 		if (GetAsyncKeyState(VK_DELETE) & 0x01)
 			g_interface.Engine->ClientCmd("disconnect");
 	}
@@ -4218,9 +3905,11 @@ bool __fastcall Hooked_CreateMoveShared(ClientModeShared* _ecx, void* _edx, floa
 
 		g_interface.ClientModeHook = std::make_unique<CVMTHookManager>(g_interface.ClientMode);
 		oCreateMoveShared = (FnCreateMoveShared)g_interface.ClientModeHook->HookFunction(indexes::SharedCreateMove, Hooked_CreateMoveShared);
+		oKeyInput = (FnKeyInput)g_interface.ClientModeHook->HookFunction(indexes::KeyInput, Hooked_KeyInput);
 		g_interface.ClientModeHook->HookTable(true);
 
 		Utils::log("oCreateMoveShared = 0x%X", (DWORD)oCreateMoveShared);
+		Utils::log("oKeyInput = 0x%X", (DWORD)oKeyInput);
 		Utils::log("ClientMode = 0x%X", (DWORD)_ecx);
 	}
 
@@ -4233,7 +3922,7 @@ bool __fastcall Hooked_CreateMoveShared(ClientModeShared* _ecx, void* _edx, floa
 	if (showHint && bSendPacket)
 	{
 		showHint = false;
-		Utils::log("Hooked_CreateMoveShared success");
+		Utils::log("Hooked_CreateMoveShared trigged");
 		Utils::log("Input->pCmd = 0x%X", (DWORD)pCmd);
 		Utils::log("CL_Move->bSendPacket = 0x%X | %d", (DWORD)bSendPacket, *bSendPacket);
 	}
@@ -4244,6 +3933,326 @@ bool __fastcall Hooked_CreateMoveShared(ClientModeShared* _ecx, void* _edx, floa
 int __stdcall Hooked_InKeyEvent(int eventcode, ButtonCode_t keynum, const char *pszCurrentBinding)
 {
 	return oInKeyEvent(eventcode, keynum, pszCurrentBinding);
+}
+
+int __fastcall Hooked_KeyInput(ClientModeShared* _ecx, void* _edx, int down, ButtonCode_t keynum, const char* pszCurrentBinding)
+{
+	int result = oKeyInput(_ecx, down, keynum, pszCurrentBinding);
+
+	static bool showHint = true;
+	if (showHint)
+	{
+		showHint = false;
+		Utils::log("Hooked_KeyInput trigged.");
+	}
+
+	if (!down)
+	{
+		static bool oldWireframe = false;
+		if (keynum == KEY_INSERT)
+			Config::bCvarWireframe = !Config::bCvarWireframe;
+
+		if (oldWireframe != Config::bCvarWireframe)
+		{
+#ifdef USE_CVAR_CHANGE
+			CVAR_MAKE_FLAGS("r_drawothermodels");
+			CVAR_MAKE_FLAGS("cl_drawshadowtexture");
+#endif
+
+#ifdef USE_CVAR_CHANGE
+			if (g_conVar["r_drawothermodels"] != nullptr && g_conVar["cl_drawshadowtexture"] != nullptr)
+			{
+				if (Config::bCvarWireframe)
+				{
+					g_conVar["r_drawothermodels"]->SetValue(2);
+					g_conVar["cl_drawshadowtexture"]->SetValue(1);
+				}
+				else
+				{
+					g_conVar["r_drawothermodels"]->SetValue(1);
+					g_conVar["cl_drawshadowtexture"]->SetValue(0);
+				}
+			}
+			else
+			{
+#endif
+				if (Config::bCvarWireframe)
+				{
+					Utils::writeMemory(2, g_iClientBase + r_drawothermodels);
+					Utils::writeMemory(1, g_iClientBase + cl_drawshadowtexture);
+				}
+				else
+				{
+					Utils::writeMemory(1, g_iClientBase + r_drawothermodels);
+					Utils::writeMemory(0, g_iClientBase + cl_drawshadowtexture);
+				}
+
+				g_interface.Engine->ClientCmd("echo \"r_drawothermodels set %d\"",
+					Utils::readMemory<int>(g_iClientBase + r_drawothermodels));
+				g_interface.Engine->ClientCmd("echo \"cl_drawshadowtexture set %d\"",
+					Utils::readMemory<int>(g_iClientBase + cl_drawshadowtexture));
+#ifdef USE_CVAR_CHANGE
+			}
+#endif
+			oldWireframe = Config::bCvarWireframe;
+		}
+
+		static bool oldFullBright = false;
+		if (keynum == KEY_HOME)
+			Config::bCvarFullBright = !Config::bCvarFullBright;
+
+		if (oldFullBright != Config::bCvarFullBright)
+		{
+#ifdef USE_CVAR_CHANGE
+			CVAR_MAKE_FLAGS("mat_fullbright");
+#endif
+
+#ifdef USE_CVAR_CHANGE
+			if (g_conVar["mat_hdr_enabled"] != nullptr && g_conVar["mat_hdr_level"] != nullptr)
+			{
+				if (Config::bCvarFullBright)
+				{
+					g_conVar["mat_hdr_enabled"]->SetValue(0);
+					g_conVar["mat_hdr_level"]->SetValue(0);
+				}
+				else
+				{
+					g_conVar["mat_hdr_enabled"]->SetValue(1);
+					g_conVar["mat_hdr_level"]->SetValue(2);
+				}
+			}
+			else if (g_conVar["mat_fullbright"] != nullptr)
+			{
+				if (Config::bCvarFullBright)
+					g_conVar["mat_fullbright"]->SetValue(1);
+				else
+					g_conVar["mat_fullbright"]->SetValue(0);
+			}
+			else
+			{
+#endif
+				if (Config::bCvarFullBright)
+					Utils::writeMemory(1, g_iMaterialModules + mat_fullbright);
+				else
+					Utils::writeMemory(0, g_iMaterialModules + mat_fullbright);
+
+				g_interface.Engine->ClientCmd("echo \"mat_fullbright set %d\"",
+					Utils::readMemory<int>(g_iMaterialModules + mat_fullbright));
+#ifdef USE_CVAR_CHANGE
+			}
+#endif
+			oldFullBright = Config::bCvarFullBright;
+		}
+
+		static bool oldGameMode = false;
+
+		if (keynum == KEY_PAGEUP)
+			Config::bCvarGameMode = !Config::bCvarGameMode;
+
+		if (oldGameMode != Config::bCvarGameMode)
+		{
+#ifdef USE_CVAR_CHANGE
+			CVAR_MAKE_FLAGS("mp_gamemode");
+#endif
+
+#ifdef USE_CVAR_CHANGE
+			if (g_conVar["mp_gamemode"] != nullptr)
+			{
+				const char* mode = g_conVar["mp_gamemode"]->GetString();
+				if (_strcmpi(mode, "versus") == 0 || _strcmpi(mode, "realismversus") == 0)
+				{
+					g_conVar["mp_gamemode"]->SetValue("coop");
+					strcpy_s(g_conVar["mp_gamemode"]->m_pszString, g_conVar["mp_gamemode"]->m_StringLength, "coop");
+				}
+				else
+				{
+					g_conVar["mp_gamemode"]->SetValue("versus");
+					strcpy_s(g_conVar["mp_gamemode"]->m_pszString, g_conVar["mp_gamemode"]->m_StringLength, "versus");
+				}
+
+				g_interface.Engine->ClientCmd("echo \"[ConVar] mp_gamemode set %s\"",
+					g_conVar["mp_gamemode"]->GetString());
+			}
+			else
+			{
+#endif
+				char* mode = Utils::readMemory<char*>(g_iClientBase + mp_gamemode);
+				if (mode != nullptr)
+				{
+					DWORD oldProtect = NULL;
+
+					if (VirtualProtect(mode, sizeof(char) * 16, PAGE_EXECUTE_READWRITE, &oldProtect) == TRUE)
+					{
+						if (_strcmpi(mode, "versus") == 0 || _strcmpi(mode, "realismversus") == 0)
+							strcpy_s(mode, 16, "coop");
+						else
+							strcpy_s(mode, 16, "versus");
+						VirtualProtect(mode, sizeof(char) * 16, oldProtect, &oldProtect);
+					}
+					else
+						printf("VirtualProtect 0x%X Fail!\n", (DWORD)mode);
+
+					g_interface.Engine->ClientCmd("echo \"mp_gamemode set %s\"", mode);
+				}
+#ifdef USE_CVAR_CHANGE
+			}
+#endif
+			oldGameMode = Config::bCvarGameMode;
+		}
+
+		static bool oldCheats = false;
+		if (keynum == KEY_PAGEDOWN)
+			Config::bCvarCheats = !Config::bCvarCheats;
+
+		if (oldCheats != Config::bCvarCheats)
+		{
+#ifdef USE_CVAR_CHANGE
+			CVAR_MAKE_FLAGS("sv_cheats");
+#endif
+
+#ifdef USE_CVAR_CHANGE
+			if (g_conVar["sv_cheats"] != nullptr)
+			{
+				if (Config::bCvarCheats)
+				{
+					g_conVar["sv_cheats"]->SetValue(1);
+					g_conVar["sv_cheats"]->m_fValue = 1.0f;
+					g_conVar["sv_cheats"]->m_nValue = 1;
+				}
+				else
+					g_conVar["sv_cheats"]->SetValue(0);
+
+				g_interface.Engine->ClientCmd("echo \"[ConVar] sv_cheats set %d\"",
+					g_conVar["sv_cheats"]->GetInt());
+			}
+#endif
+
+			if (Config::bCvarCheats)
+				Utils::writeMemory(1, g_iEngineBase + sv_cheats);
+			else
+				Utils::writeMemory(0, g_iEngineBase + sv_cheats);
+
+			g_interface.Engine->ClientCmd("echo \"sv_cheats set %d\"",
+				Utils::readMemory<int>(g_iEngineBase + sv_cheats));
+
+			oldCheats = Config::bCvarCheats;
+		}
+
+		static bool oldThrid = false;
+		if (oldThrid != Config::bThirdPersons)
+		{
+			thirdPerson(Config::bThirdPersons);
+			oldThrid = Config::bThirdPersons;
+		}
+
+		/*
+		if (keynum == KEY_PAGEUP)
+		{
+			if (g_interface.Input->CAM_IsThirdPerson())
+				g_interface.Input->CAM_ToFirstPerson();
+			else
+				g_interface.Input->CAM_ToThirdPerson();
+		}
+		*/
+		
+		// 显示全部玩家
+		/*
+		if (keynum == KEY_CAPSLOCK)
+			showSpectator();
+		*/
+
+		// 打开/关闭 自动连跳的自动保持速度
+		if (keynum == KEY_F8)
+		{
+			Config::bAutoStrafe = !Config::bAutoStrafe;
+			g_interface.Engine->ClientCmd("echo \"[segt] auto strafe set %s\"",
+				(Config::bAutoStrafe ? "enable" : "disabled"));
+
+			if (g_pDrawRender != nullptr)
+			{
+				g_pDrawRender->PushRenderText(DrawManager::WHITE, "auto strafe %s",
+					(Config::bAutoStrafe ? "enable" : "disable"));
+			}
+		}
+
+		// 打开/关闭 自动开枪
+		if (keynum == KEY_F9)
+		{
+			Config::bTriggerBot = !Config::bTriggerBot;
+			g_interface.Engine->ClientCmd("echo \"[segt] trigger bot set %s\"",
+				(Config::bTriggerBot ? "enable" : "disabled"));
+
+			if (g_pDrawRender != nullptr)
+			{
+				g_pDrawRender->PushRenderText(DrawManager::WHITE, "trigger bot %s",
+					(Config::bTriggerBot ? "enable" : "disable"));
+			}
+		}
+
+		// 打开/关闭 自动瞄准
+		if (keynum == KEY_F10)
+		{
+			Config::bAimbot = !Config::bAimbot;
+			g_interface.Engine->ClientCmd("echo \"[segt] aim bot set %s\"",
+				(Config::bAimbot ? "enable" : "disabled"));
+
+			if (g_pDrawRender != nullptr)
+			{
+				g_pDrawRender->PushRenderText(DrawManager::WHITE, "auto aim %s",
+					(Config::bAimbot ? "enable" : "disable"));
+			}
+		}
+
+		// 打开/关闭 空格自动连跳
+		if (keynum == KEY_F11)
+		{
+			Config::bBunnyHop = !Config::bBunnyHop;
+			g_interface.Engine->ClientCmd("echo \"[segt] auto bunnyHop set %s\"",
+				(Config::bBunnyHop ? "enable" : "disabled"));
+
+			if (g_pDrawRender != nullptr)
+			{
+				g_pDrawRender->PushRenderText(DrawManager::WHITE, "auto bhop %s",
+					(Config::bBunnyHop ? "enable" : "disable"));
+			}
+		}
+
+		// 打开/关闭 静音瞄准
+		if (keynum == KEY_F12)
+		{
+			Config::bSilentAimbot = !Config::bSilentAimbot;
+			g_interface.Engine->ClientCmd("echo \"[segt] silent aim %s\"",
+				(Config::bSilentAimbot ? "enable" : "disabled"));
+
+			if (g_pDrawRender != nullptr)
+			{
+				g_pDrawRender->PushRenderText(DrawManager::WHITE, "silent aimbot %s",
+					(Config::bSilentAimbot ? "enable" : "disable"));
+			}
+		}
+	}
+	else
+	{
+		if (keynum == KEY_PAD_PLUS)
+		{
+			Config::fAimbotFov += 1.0f;
+			g_interface.Engine->ClientCmd("echo \"aimbot fov set %.2f\"", Config::fAimbotFov);
+
+			if (g_pDrawRender != nullptr)
+				g_pDrawRender->PushRenderText(DrawManager::WHITE, "aimbot angles set %.0f", Config::fAimbotFov);
+		}
+
+		if (keynum == KEY_PAD_MINUS)
+		{
+			Config::fAimbotFov -= 1.0f;
+			g_interface.Engine->ClientCmd("echo \"aimbot fov set %.2f\"", Config::fAimbotFov);
+
+			if (g_pDrawRender != nullptr)
+				g_pDrawRender->PushRenderText(DrawManager::WHITE, "aimbot angles set %.0f", Config::fAimbotFov);
+		}
+	}
+
+	return result;
 }
 
 void __stdcall Hooked_DrawModel(PVOID context, PVOID state, const ModelRenderInfo_t& pInfo, matrix3x4_t* pCustomBoneToWorld)
@@ -4432,6 +4441,7 @@ bool __fastcall Hooked_EngineKeyEvent(CEngineVGui *_ecx, void *_edx, const Input
 
 bool __fastcall Hooked_ProcessGetCvarValue(CBaseClientState *_ecx, void *_edx, SVC_GetCvarValue *msg)
 {
+	/*
 	if (g_interface.ClientState == nullptr)
 	{
 		DETOURXS_DESTORY(g_pDetourGetCvarValue);
@@ -4453,14 +4463,13 @@ bool __fastcall Hooked_ProcessGetCvarValue(CBaseClientState *_ecx, void *_edx, S
 		Utils::log("oProcessSetConVar = 0x%X", (DWORD)oProcessSetConVar);
 		Utils::log("ClientState = 0x%X", (DWORD)_ecx);
 	}
+	*/
 	
 	CLC_RespondCvarValue returnMsg;
 	returnMsg.m_iCookie = msg->m_iCookie;
 	returnMsg.m_szCvarName = msg->m_szCvarName;
 	returnMsg.m_szCvarValue = "";
 	returnMsg.m_eStatusCode = eQueryCvarValueStatus_ValueIntact;
-
-	Utils::log("[Cvar] GetCvarValue: wants cvar %s", msg->m_szCvarName);
 
 	char tempValue[256];
 	ConVar* cvar = g_interface.Cvar->FindVar(msg->m_szCvarName);
@@ -4499,7 +4508,7 @@ bool __fastcall Hooked_ProcessGetCvarValue(CBaseClientState *_ecx, void *_edx, S
 		returnMsg.m_szCvarValue = tempValue;
 	}
 
-	Utils::log("[Cvar] %s return %s", returnMsg.m_szCvarName, returnMsg.m_szCvarValue);
+	Utils::log("[GCV] %s returns %s", returnMsg.m_szCvarName, returnMsg.m_szCvarValue);
 
 	// 把查询结果发送回去
 	msg->GetNetChannel()->SendNetMsg(returnMsg);
@@ -4533,16 +4542,18 @@ bool __fastcall Hooked_ProcessSetConVar(CBaseClientState *_ecx, void *_edx, NET_
 	
 	for (auto& cvar : msg->m_ConVars)
 	{
-		Utils::log("[Cvar] SetCvarValue: wants cvar %s", cvar.name);
+		if (cvar.name[0] == '\0')
+			continue;
+		
 		if (g_serverConVar.find(cvar.name) != g_serverConVar.end())
 		{
 			// 修改已经改过的值
-			Utils::log("[SvrCvar] changing from %s to %s", g_serverConVar[cvar.name], cvar.value);
+			Utils::log("[SCV] %s changing from %s to %s", cvar.name, g_serverConVar[cvar.name].c_str(), cvar.value);
 		}
 		else
 		{
 			// 第一次设置
-			Utils::log("[SvrCvar] setting to %s", cvar.value);
+			Utils::log("[SCV] %s setting to %s", cvar.name, cvar.value);
 		}
 
 		// 将服务器的更改进行记录，等服务器查询的时候把记录还回去

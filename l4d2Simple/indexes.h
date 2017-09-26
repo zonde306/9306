@@ -117,6 +117,7 @@ namespace indexes
 	// ClientModeShared
 	const int SharedCreateMove = 27;
 	const int GetMessagePanel = 24;
+	const int KeyInput = 21;
 
 	// CBaseHudChat
 	const int Printf = 22;
