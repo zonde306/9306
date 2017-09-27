@@ -17,6 +17,8 @@
 #define DegreesToRadians DEG2RAD
 #endif
 
+extern VMatrix* g_pWorldToScreenMatrix;
+
 enum
 {
 	PITCH = 0,	// up / down
@@ -480,14 +482,29 @@ bool WorldToScreen(const Vector &point, Vector &out)
 	
 	int m_iWidth, m_iHeight;
 	g_interface.Engine->GetScreenSize(m_iWidth, m_iHeight);
-	const VMatrix &worldToScreen = g_interface.Engine->WorldToScreenMatrix();
-	float w = worldToScreen[3][0] * point[0] + worldToScreen[3][1] * point[1] + worldToScreen[3][2] * point[2] + worldToScreen[3][3];
+
+	if (g_pWorldToScreenMatrix == nullptr)
+		g_pWorldToScreenMatrix = &g_interface.Engine->WorldToScreenMatrix();
+
+	float w = (*g_pWorldToScreenMatrix)[3][0] * point[0] +
+		(*g_pWorldToScreenMatrix)[3][1] * point[1] +
+		(*g_pWorldToScreenMatrix)[3][2] * point[2] +
+		(*g_pWorldToScreenMatrix)[3][3];
+	
 	out.z = 0;
 	if (w > 0.01)
 	{
 		float w1 = 1 / w;
-		out.x = m_iWidth / 2 + (0.5 * ((worldToScreen[0][0] * point[0] + worldToScreen[0][1] * point[1] + worldToScreen[0][2] * point[2] + worldToScreen[0][3]) * w1) * m_iWidth + 0.5);
-		out.y = m_iHeight / 2 - (0.5 * ((worldToScreen[1][0] * point[0] + worldToScreen[1][1] * point[1] + worldToScreen[1][2] * point[2] + worldToScreen[1][3]) * w1) * m_iHeight + 0.5);
+		out.x = m_iWidth / 2 + (0.5 * (((*g_pWorldToScreenMatrix)[0][0] * point[0] +
+			(*g_pWorldToScreenMatrix)[0][1] * point[1] +
+			(*g_pWorldToScreenMatrix)[0][2] * point[2] +
+			(*g_pWorldToScreenMatrix)[0][3]) * w1) * m_iWidth + 0.5);
+
+		out.y = m_iHeight / 2 - (0.5 * (((*g_pWorldToScreenMatrix)[1][0] * point[0] +
+			(*g_pWorldToScreenMatrix)[1][1] * point[1] +
+			(*g_pWorldToScreenMatrix)[1][2] * point[2] +
+			(*g_pWorldToScreenMatrix)[1][3]) * w1) * m_iHeight + 0.5);
+
 		return true;
 	}
 	return false;
