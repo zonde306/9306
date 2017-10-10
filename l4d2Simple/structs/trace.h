@@ -133,17 +133,40 @@ public:
 class CTraceFilter : public ITraceFilter
 {
 public:
-	bool ShouldHitEntity(IHandleEntity* pEntityHandle, int contentsMask)
+	virtual bool ShouldHitEntity(IHandleEntity* pEntityHandle, int contentsMask)
 	{
 		return !(pEntityHandle == pSkip1);
 	}
 
-	TraceType_t GetTraceType() const
+	virtual TraceType_t GetTraceType() const
 	{
 		return TRACE_EVERYTHING;
 	}
 
 	void* pSkip1;
+};
+
+class CTraceFilterSimple : public CTraceFilter
+{
+public:
+	CTraceFilterSimple(const IClientEntity *passentity, int collisionGroup)
+	{
+		m_pPassEnt = passentity;
+		m_collisionGroup = collisionGroup;
+	}
+
+	virtual bool ShouldHitEntity(IClientEntity *pHandleEntity, int contentsMask)
+	{
+		return !(pHandleEntity == m_pPassEnt);
+	}
+	virtual void SetPassEntity(const IClientEntity *pPassEntity) { m_pPassEnt = pPassEntity; }
+	virtual void SetCollisionGroup(int iCollisionGroup) { m_collisionGroup = iCollisionGroup; }
+
+	const IClientEntity *GetPassEntity(void) { return m_pPassEnt; }
+
+private:
+	const IClientEntity *m_pPassEnt;
+	int m_collisionGroup;
 };
 
 class CTrace

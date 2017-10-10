@@ -26,10 +26,27 @@ static std::unique_ptr<D3D9Hooker> g_pDeviceHooker;
 
 DWORD WINAPI StartCheat(LPVOID params);
 
+extern "C" __declspec(dllexport)
+LRESULT WINAPI InitWndProc(int code, WPARAM wparam, LPARAM lparam)
+{
+	return CallNextHookEx(nullptr, code, wparam, lparam);
+}
+
 BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved)
 {
 	if (reason == DLL_PROCESS_ATTACH)
 	{
+		char curPath[MAX_PATH];
+		GetModuleFileNameA(GetModuleHandleA(NULL), curPath, MAX_PATH);
+		std::string strPath = curPath;
+		if (strPath.empty() ||
+			_stricmp(strPath.substr(strPath.rfind('\\') + 1).c_str(), "left4dead2.exe") != 0)
+		{
+			// 不是目标进程，不做任何事情
+			OutputDebugStringW(L"当前进程不是目标进程");
+			return FALSE;
+		}
+
 		g_hMyInstance = module;
 		DisableThreadLibraryCalls(module);
 
@@ -586,6 +603,10 @@ DWORD WINAPI StartCheat(LPVOID params)
 		g_conVar["mat_hdr_enabled"] = g_interface.Cvar->FindVar("mat_hdr_enabled");
 		g_conVar["mat_hdr_level"] = g_interface.Cvar->FindVar("mat_hdr_level");
 		g_conVar["mat_texture_list"] = g_interface.Cvar->FindVar("mat_texture_list");
+		g_conVar["r_dynamic"] = g_interface.Cvar->FindVar("r_dynamic");
+		g_conVar["r_dynamiclighting"] = g_interface.Cvar->FindVar("r_dynamiclighting");
+		g_conVar["mat_picmip"] = g_interface.Cvar->FindVar("mat_picmip");
+		g_conVar["mat_showlowresimage"] = g_interface.Cvar->FindVar("mat_showlowresimage");
 
 		Utils::log("sv_cheats = 0x%X", (DWORD)g_conVar["sv_cheats"]);
 		Utils::log("r_drawothermodels = 0x%X", (DWORD)g_conVar["r_drawothermodels"]);
@@ -606,7 +627,10 @@ DWORD WINAPI StartCheat(LPVOID params)
 		Utils::log("mat_hdr_enabled = 0x%X", (DWORD)g_conVar["mat_hdr_enabled"]);
 		Utils::log("mat_hdr_level = 0x%X", (DWORD)g_conVar["mat_hdr_level"]);
 		Utils::log("mat_texture_list = 0x%X", (DWORD)g_conVar["mat_texture_list"]);
-
+		Utils::log("r_dynamic = 0x%X", (DWORD)g_conVar["r_dynamic"]);
+		Utils::log("r_dynamiclighting = 0x%X", (DWORD)g_conVar["r_dynamiclighting"]);
+		Utils::log("mat_picmip = 0x%X", (DWORD)g_conVar["mat_picmip"]);
+		Utils::log("mat_showlowresimage = 0x%X", (DWORD)g_conVar["mat_showlowresimage"]);
 	}
 
 	// 初始化 ImGui
@@ -1430,6 +1454,29 @@ void bindAlias(int wait)
 	g_interface.Engine->ClientCmd("alias \"lerp_50\" \"rate 30000;cl_cmdrate 100;cl_updaterate 100;cl_interp 0.0501;cl_interp_ratio -1;alias lerp_change lerp_66;echo Lerp set to 50.1 (rate 30000, cl_cmdrate 100, cl_updaterate 100, cl_interp 0.0501, cl_interp_ratio -1).\";");
 	g_interface.Engine->ClientCmd("alias \"lerp_66\" \"rate 30000;cl_cmdrate 100;cl_updaterate 100;cl_interp 0.0667;cl_interp_ratio -1;alias lerp_change lerp_0;echo Lerp set to 66.7 (rate 30000, cl_cmdrate 100, cl_updaterate 100, cl_interp 0.0667, cl_interp_ratio -1).\";");
 	g_interface.Engine->ClientCmd("echo \"echo \"========= alias end =========\"\"");
+
+	if (g_conVar["r_dynamic"])
+	{
+		CVAR_MAKE_FLAGS("r_dynamic");
+		g_conVar["r_dynamic"]->SetValue(0);
+		Utils::log("r_dynamic setting %d", g_conVar["r_dynamic"]->GetInt());
+	}
+
+	if (g_conVar["r_dynamiclighting"])
+	{
+		CVAR_MAKE_FLAGS("r_dynamiclighting");
+		g_conVar["r_dynamiclighting"]->SetValue(0);
+		Utils::log("r_dynamiclighting setting %d", g_conVar["r_dynamiclighting"]->GetInt());
+	}
+
+	/*
+	if (g_conVar["mat_picmip"])
+	{
+		CVAR_MAKE_FLAGS("mat_picmip");
+		g_conVar["mat_picmip"]->SetValue(4);
+		Utils::log("mat_picmip setting %d", g_conVar["mat_picmip"]->GetInt());
+	}
+	*/
 }
 
 static CMoveData g_predMoveData;
@@ -1885,11 +1932,14 @@ bool IsTargetVisible(CBaseEntity* entity, Vector end, Vector start)
 		return false;
 	}
 
+	/*
 	// 检查是否为指定目标
 	if ((DWORD)trace.m_pEnt != (DWORD)entity || trace.hitbox <= 0)
 		return false;
+	*/
 
-	return true;
+	// return (trace.m_pEnt == entity || trace.fraction == 0.97f);
+	return (trace.m_pEnt == entity || trace.fraction == 1.0f);
 }
 
 // -------------------------------- D3D9 Device Hooked Function --------------------------------

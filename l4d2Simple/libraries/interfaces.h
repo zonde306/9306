@@ -4,7 +4,7 @@
 void CInterfaces::GetInterfaces()
 {
 	Engine = (CEngine*)GetPointer("engine.dll", "VEngineClient");
-	Trace = (CTrace*)GetPointer("engine.dll", "EngineTraceClient");
+	Trace = (IEngineTrace*)GetPointer("engine.dll", "EngineTraceClient");
 	Client = (CClient*)GetPointer("client.dll", "VClient");
 	ClientEntList = (CClientEntityList*)GetPointer("client.dll", "VClientEntityList");
 	ModelInfo = (CModelInfo*)GetPointer("engine.dll", "VModelInfoClient");

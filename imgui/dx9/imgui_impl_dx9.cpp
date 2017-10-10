@@ -1,4 +1,4 @@
-// ImGui Win32 + DirectX9 binding
+ï»¿// ImGui Win32 + DirectX9 binding
 // In this binding, ImTextureID is used to store a 'LPDIRECT3DTEXTURE9' texture identifier. Read the FAQ about ImTextureID in imgui.cpp.
 
 // You can copy and use unmodified imgui_impl_* files in your project. See main.cpp for an example of using this.
@@ -92,11 +92,11 @@ LRESULT WINAPI ImGui_WindowProccess(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
 			g_pCallbackOnMenuToggle(g_bIsShowMenu);
 	}
 
-	// ½«ÏûÏ¢×ªÒÆµ½ ImGui Àï£¬ºöÂÔÔ­À´µÄÄÇ¸ö
+	// å°†æ¶ˆæ¯è½¬ç§»åˆ° ImGui é‡Œï¼Œå¿½ç•¥åŸæ¥çš„é‚£ä¸ª
 	if (g_bIsShowMenu && ImGui_ImplDX9_WndProcHandler(hWnd, uMsg, wParam, lParam))
 		return true;
 
-	// µ÷ÓÃÔ­À´µÄ WndProc
+	// è°ƒç”¨åŸæ¥çš„ WndProc
 	return CallWindowProcA(g_pOldWindowProccess, hWnd, uMsg, wParam, lParam);
 }
 

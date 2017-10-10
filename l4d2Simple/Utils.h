@@ -660,7 +660,7 @@ void DrawManager::CreateObjects()
 	GetWindowsDirectoryA(systemPath, MAX_PATH);
 
 	std::string fontPath(systemPath);
-	fontPath += "\\Fonts\\msyhul.ttf";
+	fontPath += "\\Fonts\\msyhl.ttc";
 
 	Utils::log("font %s loading...", fontPath.c_str());
 	m_imFonts.AddFontFromFileTTF(fontPath.c_str(), m_iFontSize, nullptr, m_imFonts.GetGlyphRangesChinese());

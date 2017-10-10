@@ -119,6 +119,7 @@ class CVMTHookManager;
 class IMaterialSystem;
 class CEngineVGui;
 class CBaseClientState;
+class IEngineTrace;
 
 class CInterfaces
 {
@@ -130,7 +131,7 @@ public:
 	CModelInfo *ModelInfo;
 	CPanel* Panel;
 	CSurface* Surface;
-	CTrace* Trace;
+	IEngineTrace* Trace;
 	CGlobalVarsBase* Globals;
 
 	CPlayerInfoManager* PlayerInfo;
