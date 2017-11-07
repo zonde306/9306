@@ -10,6 +10,7 @@
 #include "d3dumddi.h"
 #include <dwmapi.h>
 
+#include <squirrel.h>
 #include <cstdio>
 #include <cstdlib>
 #include <ctime>
@@ -29,9 +30,12 @@
 
 #include "../stackwalker/StackWalker.h"
 #include "../imgui/dx9/imgui_impl_dx9.h"
+
 #pragma comment(lib, "d3d9")
 #pragma comment(lib, "d3dx9")
 #pragma comment(lib, "dwmapi")
+#pragma comment(lib, "sqstdlib_static")
+#pragma comment(lib, "squirrel_static")
 
 #ifdef _DEBUG
 #include <DbgHelp.h>
@@ -168,6 +172,7 @@ public:
 
 // 各类接口
 extern CInterfaces g_interface;
+extern std::string g_sCurPath;
 
 namespace Config
 {
@@ -207,7 +212,7 @@ namespace Config
 
 	bool bBunnyHop = true;
 	bool bAutoStrafe = false;
-	bool bNoRecoil = false;
+	bool bNoRecoil = true;
 	bool bRapidFire = true;
 	bool bCrcCheckBypass = true;
 	bool bCvarFullBright = false;
@@ -221,6 +226,7 @@ namespace Config
 	float fAimbotRCSY = 2.0f;
 
 	int iFastMeleeTick = 10;
+	bool bMustFastMelee = false;
 
 	bool bTeleport = false;
 	bool bAirStuck = false;
@@ -230,6 +236,7 @@ namespace Config
 #include "./definitions.h"
 #include "./indexes.h"
 #include "./libraries/xorstr.h"
+#include "./drawmanager.h"
 
 #include "./libraries/vmt.h"
 #include "./detours/detourxs.h"
@@ -266,3 +273,4 @@ namespace Config
 #include "./structs/event.h"
 #include "./structs/render.h"
 #include "./libraries/math.h"
+#include "./binding.h"

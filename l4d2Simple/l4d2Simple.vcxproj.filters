@@ -31,6 +31,18 @@
     <Filter Include="头文件\stackwalker">
       <UniqueIdentifier>{11f2db98-bea6-4597-afdb-3de495ef9540}</UniqueIdentifier>
     </Filter>
+    <Filter Include="头文件\squirrel3">
+      <UniqueIdentifier>{f92a9c16-54e6-40b0-b36a-5fa5684c99e8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="头文件\squirrel3\squall">
+      <UniqueIdentifier>{261eb978-e253-48b3-80fb-7dacc6f6ffc7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="头文件\sqbinding">
+      <UniqueIdentifier>{0128d133-a3c2-410f-aa23-182ad8b5716a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="源文件\sqbinding">
+      <UniqueIdentifier>{604282a5-11a8-4c80-9757-3fe0cb881053}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="libraries\interfaces.h">
@@ -219,6 +231,108 @@
     <ClInclude Include="..\stackwalker\StackWalker.h">
       <Filter>头文件\stackwalker</Filter>
     </ClInclude>
+    <ClInclude Include="..\squirrel3\include\sqconfig.h">
+      <Filter>头文件\squirrel3</Filter>
+    </ClInclude>
+    <ClInclude Include="..\squirrel3\include\sqstdaux.h">
+      <Filter>头文件\squirrel3</Filter>
+    </ClInclude>
+    <ClInclude Include="..\squirrel3\include\sqstdblob.h">
+      <Filter>头文件\squirrel3</Filter>
+    </ClInclude>
+    <ClInclude Include="..\squirrel3\include\sqstdio.h">
+      <Filter>头文件\squirrel3</Filter>
+    </ClInclude>
+    <ClInclude Include="..\squirrel3\include\sqstdmath.h">
+      <Filter>头文件\squirrel3</Filter>
+    </ClInclude>
+    <ClInclude Include="..\squirrel3\include\sqstdstring.h">
+      <Filter>头文件\squirrel3</Filter>
+    </ClInclude>
+    <ClInclude Include="..\squirrel3\include\sqstdsystem.h">
+      <Filter>头文件\squirrel3</Filter>
+    </ClInclude>
+    <ClInclude Include="..\squirrel3\include\squirrel.h">
+      <Filter>头文件\squirrel3</Filter>
+    </ClInclude>
+    <ClInclude Include="..\squall\squall_any.hpp">
+      <Filter>头文件\squirrel3\squall</Filter>
+    </ClInclude>
+    <ClInclude Include="..\squall\squall_call.hpp">
+      <Filter>头文件\squirrel3\squall</Filter>
+    </ClInclude>
+    <ClInclude Include="..\squall\squall_closure.hpp">
+      <Filter>头文件\squirrel3\squall</Filter>
+    </ClInclude>
+    <ClInclude Include="..\squall\squall_closure_decl.hpp">
+      <Filter>头文件\squirrel3\squall</Filter>
+    </ClInclude>
+    <ClInclude Include="..\squall\squall_coroutine.hpp">
+      <Filter>头文件\squirrel3\squall</Filter>
+    </ClInclude>
+    <ClInclude Include="..\squall\squall_defun.hpp">
+      <Filter>头文件\squirrel3\squall</Filter>
+    </ClInclude>
+    <ClInclude Include="..\squall\squall_defvar.hpp">
+      <Filter>头文件\squirrel3\squall</Filter>
+    </ClInclude>
+    <ClInclude Include="..\squall\squall_exception.hpp">
+      <Filter>头文件\squirrel3\squall</Filter>
+    </ClInclude>
+    <ClInclude Include="..\squall\squall_klass.hpp">
+      <Filter>头文件\squirrel3\squall</Filter>
+    </ClInclude>
+    <ClInclude Include="..\squall\squall_klass_table.hpp">
+      <Filter>头文件\squirrel3\squall</Filter>
+    </ClInclude>
+    <ClInclude Include="..\squall\squall_make_function.hpp">
+      <Filter>头文件\squirrel3\squall</Filter>
+    </ClInclude>
+    <ClInclude Include="..\squall\squall_partial_apply.hpp">
+      <Filter>头文件\squirrel3\squall</Filter>
+    </ClInclude>
+    <ClInclude Include="..\squall\squall_stack_operation.hpp">
+      <Filter>头文件\squirrel3\squall</Filter>
+    </ClInclude>
+    <ClInclude Include="..\squall\squall_table.hpp">
+      <Filter>头文件\squirrel3\squall</Filter>
+    </ClInclude>
+    <ClInclude Include="..\squall\squall_table_base.hpp">
+      <Filter>头文件\squirrel3\squall</Filter>
+    </ClInclude>
+    <ClInclude Include="..\squall\squall_utility.hpp">
+      <Filter>头文件\squirrel3\squall</Filter>
+    </ClInclude>
+    <ClInclude Include="..\squall\squall_vm.hpp">
+      <Filter>头文件\squirrel3\squall</Filter>
+    </ClInclude>
+    <ClInclude Include="..\squall\squall_vmstd.hpp">
+      <Filter>头文件\squirrel3\squall</Filter>
+    </ClInclude>
+    <ClInclude Include="peb.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="binding.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="sqbinding\vector.h">
+      <Filter>头文件\sqbinding</Filter>
+    </ClInclude>
+    <ClInclude Include="sqbinding\qangle.h">
+      <Filter>头文件\sqbinding</Filter>
+    </ClInclude>
+    <ClInclude Include="sqbinding\draw.h">
+      <Filter>头文件\sqbinding</Filter>
+    </ClInclude>
+    <ClInclude Include="drawmanager.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="sqbinding\surface.h">
+      <Filter>头文件\sqbinding</Filter>
+    </ClInclude>
+    <ClInclude Include="sqbinding\debugoverlay.h">
+      <Filter>头文件\sqbinding</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="structs\checksum_md5.cpp">
@@ -247,6 +361,30 @@
     </ClCompile>
     <ClCompile Include="..\stackwalker\StackWalker.cpp">
       <Filter>头文件\stackwalker</Filter>
+    </ClCompile>
+    <ClCompile Include="peb.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="binding.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="sqbinding\vector.cpp">
+      <Filter>源文件\sqbinding</Filter>
+    </ClCompile>
+    <ClCompile Include="sqbinding\qangle.cpp">
+      <Filter>源文件\sqbinding</Filter>
+    </ClCompile>
+    <ClCompile Include="sqbinding\draw.cpp">
+      <Filter>源文件\sqbinding</Filter>
+    </ClCompile>
+    <ClCompile Include="drawmanager.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="sqbinding\surface.cpp">
+      <Filter>源文件\sqbinding</Filter>
+    </ClCompile>
+    <ClCompile Include="sqbinding\debugoverlay.cpp">
+      <Filter>源文件\sqbinding</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

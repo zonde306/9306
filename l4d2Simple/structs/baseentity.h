@@ -202,8 +202,8 @@ public:
 	template<typename T>
 	inline T& SetLocalNetProp(const std::string& prop, const T& value, size_t element = 0)
 	{
-		return (*(T*)(this + this->GetNetPropOffset("DT_BasePlayer", "m_Local") +
-			this->GetNetPropOffset("DT_BasePlayer", prop) + element * sizeof(T)) = value);
+		return (*(T*)(this + this->GetNetPropOffset("DT_CSPlayer", "m_Local") +
+			this->GetNetPropOffset("DT_CSPlayer", prop) + element * sizeof(T)) = value);
 	}
 
 	Vector& GetAbsOrigin()

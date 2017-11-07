@@ -1,5 +1,7 @@
 #pragma once
+#include <Windows.h>
 #include "crc32.h"
+#include "vector.h"
 
 /*
 class CUserCmd

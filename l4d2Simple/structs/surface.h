@@ -1,4 +1,8 @@
-#pragma once
+ï»¿#pragma once
+#include <Windows.h>
+#include <cstdio>
+#include "../indexes.h"
+#include "../libraries/vmt.h"
 
 enum FontDrawType_t
 {
@@ -165,7 +169,7 @@ public:
 		}
 		catch(...)
 		{
-			Utils::log("%s (%d) ´íÎó£º³¢ÊÔ»æÖÆÎÄ±¾Ê§°Ü 0x%X", __FILE__, __LINE__, (DWORD)this);
+			// Utils::log("%s (%d) é”™è¯¯ï¼šå°è¯•ç»˜åˆ¶æ–‡æœ¬å¤±è´¥ 0x%X", __FILE__, __LINE__, (DWORD)this);
 			return false;
 		}
 
@@ -223,7 +227,7 @@ public:
 
 		for (i = 0; i < 5; i++)
 		{
-			// Schräg links
+			// Schré‹‘ links
 			FillRGBA(x, y, 1, 1, 255, 255, 255, 255);
 			x--;
 			y++;
@@ -234,7 +238,7 @@ public:
 
 		for (i = 0; i < 5; i++)
 		{
-			// Schräg rechts
+			// Schré‹‘ rechts
 			if (i != 0)
 				FillRGBA(x + w, y, 1, 1, 255, 255, 255, 255);
 
@@ -252,8 +256,8 @@ public:
 		if (CurHealth > MaxHealth)
 			CurHealth = MaxHealth;
 
-		float mx = MaxHealth / 2;
-		float wx = CurHealth / 2;
+		float mx = MaxHealth / 2.0f;
+		float wx = CurHealth / 2.0f;
 
 		if (mx == 0)
 			return;

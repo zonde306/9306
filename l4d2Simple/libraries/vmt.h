@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include <cassert>
+#include <exception>
 
 class CVMT
 {
@@ -66,9 +67,9 @@ public:
 		}
 		catch(...)
 		{
-			Utils::log("%s (%d) 错误：获取 0x%X 的虚函数表失败 %d", __FILE__, __LINE__, Instance, Index);
-			Utils::log("VirtualPointer = 0x%X", VirtualPointer);
-			Utils::log("VirtualFunction = 0x%X", VirtualFunction);
+			// Utils::log("%s (%d) 错误：获取 0x%X 的虚函数表失败 %d", __FILE__, __LINE__, Instance, Index);
+			// Utils::log("VirtualPointer = 0x%X", VirtualPointer);
+			// Utils::log("VirtualFunction = 0x%X", VirtualFunction);
 
 #ifdef _DEBUG
 			MyStackWalker sw;
@@ -87,7 +88,7 @@ public:
 
 };
 
-CVMT VMT;
+extern CVMT VMT;
 #define k_page_writeable (PAGE_READWRITE | PAGE_EXECUTE_READWRITE)
 #define k_page_readable (k_page_writeable|PAGE_READONLY|PAGE_WRITECOPY|PAGE_EXECUTE_READ|PAGE_EXECUTE_WRITECOPY)
 #define k_page_offlimits (PAGE_GUARD|PAGE_NOACCESS)
@@ -210,7 +211,7 @@ private:
 			sw.ShowCallstack();
 #endif
 
-			Utils::log("%s (%d) 错误：遍历虚函数表失败 0x%X 索引为 %d", __FILE__, __LINE__, (DWORD)table, index--);
+			// Utils::log("%s (%d) 错误：遍历虚函数表失败 0x%X 索引为 %d", __FILE__, __LINE__, (DWORD)table, index--);
 		}
 		
 		return index;

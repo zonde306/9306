@@ -1,4 +1,7 @@
 ﻿#include "main.h"
+#include "peb.h"
+#include "./sqbinding/vector.h"
+#include "./sqbinding/qangle.h"
 
 #define USE_PLAYER_INFO
 #define USE_CVAR_CHANGE
@@ -11,15 +14,16 @@ static std::unique_ptr<DetourXS> g_pDetourReset, g_pDetourPresent, g_pDetourEndS
 
 std::unique_ptr<CNetVars> g_pNetVars;
 CInterfaces g_interface;
+std::string g_sCurPath;
+
+CCRC gCRC;
+CVMT VMT;
 
 // D3D Device 虚表挂钩
 static std::unique_ptr<CVMTHookManager> g_pVMTDevice;
 
-// 当前 dll 文件实例
-HINSTANCE g_hMyInstance;
-
 // D3D EndScene 绘制工具
-static std::unique_ptr<DrawManager> g_pDrawRender;
+std::unique_ptr<DrawManager> g_pDrawRender;
 
 // D3D9 Device 钩子
 static std::unique_ptr<D3D9Hooker> g_pDeviceHooker;
@@ -31,6 +35,10 @@ LRESULT WINAPI InitWndProc(int code, WPARAM wparam, LPARAM lparam)
 {
 	return CallNextHookEx(nullptr, code, wparam, lparam);
 }
+
+_se_translator_function g_pfnOldSeHandler;
+_invalid_parameter_handler g_pfnOldParamHandler;
+_purecall_handler g_pfnOldPurecallHander;
 
 BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved)
 {
@@ -47,11 +55,16 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved)
 			return FALSE;
 		}
 
-		g_hMyInstance = module;
+		char buffer[MAX_PATH];
+		GetModuleFileNameA(module, buffer, MAX_PATH);
+		std::string tmp = buffer;
+		g_sCurPath = tmp.substr(0, tmp.rfind('\\'));
+
 		DisableThreadLibraryCalls(module);
+		// HideDll(module);
 
 		// se异常捕获器
-		_set_se_translator([](unsigned int expCode, EXCEPTION_POINTERS* pExp) -> void
+		g_pfnOldSeHandler = _set_se_translator([](unsigned int expCode, EXCEPTION_POINTERS* pExp) -> void
 		{
 			std::stringstream expInfo;
 			switch (expCode)
@@ -86,12 +99,16 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved)
 			sw.ShowCallstack(GetCurrentThread(), pExp->ContextRecord);
 			*/
 
-			throw std::exception(expInfo.str().c_str());
+			Utils::log(expInfo.str().c_str());
+			// throw std::exception(expInfo.str().c_str());
+
+			if(g_pfnOldSeHandler)
+				g_pfnOldSeHandler(expCode, pExp);
 		});
 
 		// 异常捕获器带参数
-		_set_invalid_parameter_handler([](const wchar_t* expression, const wchar_t* function,
-			const wchar_t* file, unsigned int line, uintptr_t pReserved) -> void
+		g_pfnOldParamHandler = _set_invalid_parameter_handler([](const wchar_t* expression,
+			const wchar_t* function, const wchar_t* file, unsigned int line, uintptr_t pReserved) -> void
 		{
 			std::wstringstream expInfo;
 #ifndef _DEBUG
@@ -107,18 +124,25 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved)
 			*/
 
 			Utils::log(expInfo.str().c_str());
-			throw std::exception(Utils::w2c(expInfo.str()).c_str());
+			// throw std::exception(Utils::w2c(expInfo.str()).c_str());
+
+			if(g_pfnOldParamHandler)
+				g_pfnOldParamHandler(expression, function, file, line, pReserved);
 		});
 
 		// 虚函数调用异常捕获
-		_set_purecall_handler([]() -> void
+		g_pfnOldPurecallHander = _set_purecall_handler([]() -> void
 		{
 			/*
 			MyStackWalker sw;
 			sw.ShowCallstack();
 			*/
 
-			throw std::exception("未知虚函数调用异常");
+			Utils::log("未知虚函数异常");
+			// throw std::exception("未知虚函数调用异常");
+
+			if(g_pfnOldPurecallHander)
+				g_pfnOldPurecallHander();
 		});
 
 		CreateThread(NULL, NULL, StartCheat, module, NULL, NULL);
@@ -356,6 +380,7 @@ DWORD WINAPI StartCheat(LPVOID params)
 	g_interface.MoveHelper = nullptr;
 	g_interface.ClientMode = nullptr;
 	g_interface.ClientState = nullptr;
+	// sqb::Initialization();
 
 	if ((oCL_Move = (FnCL_Move)Utils::FindPattern("engine.dll",
 		XorStr("55 8B EC B8 ? ? ? ? E8 ? ? ? ? A1 ? ? ? ? 33 C5 89 45 FC 53 56 57 E8"))) != nullptr)
@@ -994,25 +1019,29 @@ DWORD WINAPI StartCheat(LPVOID params)
 				}
 				else if (_strcmpi(eventName, "weapon_fire") == 0)
 				{
-					if (g_conVar["c_thirdpersonshoulder"] == nullptr ||
-						g_conVar["c_thirdpersonshoulder"]->GetInt() <= 0)
-						return;
-
 					int client = g_interface.Engine->GetPlayerForUserID(event->GetInt("userid"));
 					const char* weapon = event->GetString("weapon");
 					if (client != g_interface.Engine->GetLocalPlayer() ||
 						weapon == nullptr || weapon[0] == '\0')
 						return;
 
-					if (_strcmpi(weapon, "autoshotgun") == 0)
-						g_interface.Engine->ClientCmd("play \"weapons/auto_shotgun/gunfire/auto_shotgun_fire_1.wav\"");
-					else if (_strcmpi(weapon, "shotgun_spas") == 0)
-						g_interface.Engine->ClientCmd("play \"weapons/auto_shotgun_spas/gunfire/shotgun_fire_1.wav\"");
-					else if (_strcmpi(weapon, "pumpshotgun") == 0)
-						g_interface.Engine->ClientCmd("play \"weapons/shotgun/gunfire/shotgun_fire_1.wav\"");
-					else if (_strcmpi(weapon, "shotgun_chrome") == 0)
-						g_interface.Engine->ClientCmd("play \"weapons/shotgun_chrome/gunfire/shotgun_fire_1.wav\"");
-
+					if (g_conVar["c_thirdpersonshoulder"] != nullptr &&
+						g_conVar["c_thirdpersonshoulder"]->GetInt() > 0)
+					{
+						if (_strcmpi(weapon, "autoshotgun") == 0)
+							g_interface.Engine->ClientCmd("play \"weapons/auto_shotgun/gunfire/auto_shotgun_fire_1.wav\"");
+						else if (_strcmpi(weapon, "shotgun_spas") == 0)
+							g_interface.Engine->ClientCmd("play \"weapons/auto_shotgun_spas/gunfire/shotgun_fire_1.wav\"");
+						else if (_strcmpi(weapon, "pumpshotgun") == 0)
+							g_interface.Engine->ClientCmd("play \"weapons/shotgun/gunfire/shotgun_fire_1.wav\"");
+						else if (_strcmpi(weapon, "shotgun_chrome") == 0)
+							g_interface.Engine->ClientCmd("play \"weapons/shotgun_chrome/gunfire/shotgun_fire_1.wav\"");
+					}
+					if (Config::bNoRecoil)
+					{
+						local->SetNetProp<int>("m_iShotsFired", 0, "DT_CSPlayer");
+						local->SetLocalNetProp<QAngle>("m_vecPunchAngle", QAngle(0.0f, 0.0f, 0.0f));
+					}
 				}
 				else if (_strcmpi(eventName, "player_hurt") == 0)
 				{
@@ -1083,6 +1112,8 @@ DWORD WINAPI StartCheat(LPVOID params)
 		*/
 	}
 
+	// 加载配置文件
+	sqb::CheatStart();
 	return 0;
 }
 
@@ -1967,7 +1998,10 @@ HRESULT WINAPI Hooked_Reset(IDirect3DDevice9* device, D3DPRESENT_PARAMETERS* pp)
 
 	HRESULT result = oReset(device, pp);
 
-	g_pDrawRender->OnResetDevice();
+	int width, height;
+	g_interface.Engine->GetScreenSize(width, height);
+
+	g_pDrawRender->OnResetDevice(width, height);
 	ImGui_ImplDX9_CreateDeviceObjects();
 
 	return result;
@@ -2574,6 +2608,7 @@ HRESULT WINAPI Hooked_Present(IDirect3DDevice9* device, const RECT* source, cons
 finish_draw:
 #endif
 
+	sqb::Present(g_pDrawRender.get());
 	g_pDrawRender->FinishImGuiRender();
 
 	return oPresent(device, source, dest, window, region);
@@ -2602,6 +2637,7 @@ HRESULT WINAPI Hooked_EndScene(IDirect3DDevice9* device)
 	g_pDrawRender->BeginRendering();
 
 	g_bNewFrame = true;
+	sqb::EndScene(g_pDrawRender.get());
 
 	// 还原备份的设置
 	g_pDrawRender->EndRendering();
@@ -2638,7 +2674,8 @@ HRESULT WINAPI Hooked_DrawIndexedPrimitive(IDirect3DDevice9* device, D3DPRIMITIV
 			Config::bBufferMedical && l4d2_healthitem(stride, numVertices, primitiveCount) ||
 			Config::bBufferSpecial && l4d2_special(stride, numVertices, primitiveCount) ||
 			Config::bBufferSurvivor && l4d2_survivor(stride, numVertices, primitiveCount) ||
-			Config::bBufferWeapon && l4d2_weapons(stride, numVertices, primitiveCount))
+			Config::bBufferWeapon && l4d2_weapons(stride, numVertices, primitiveCount) ||
+			sqb::DrawIndexedPrimitive(stride, numVertices, primitiveCount))
 		{
 			static DWORD oldZEnable;
 			device->GetRenderState(D3DRS_ZENABLE, &oldZEnable);
@@ -2674,6 +2711,12 @@ HRESULT WINAPI Hooked_CreateQuery(IDirect3DDevice9* device, D3DQUERYTYPE type, I
 	if (type == D3DQUERYTYPE_OCCLUSION)
 	type = D3DQUERYTYPE_TIMESTAMP;
 	*/
+
+	if (type == D3DQUERYTYPE_OCCLUSION)
+	{
+		if(sqb::CreateQuery((SQInteger)type) == D3DQUERYTYPE_TIMESTAMP)
+			type = D3DQUERYTYPE_TIMESTAMP;
+	}
 
 	return oCreateQuery(device, type, query);
 }
@@ -2723,12 +2766,16 @@ void __fastcall Hooked_PaintTraverse(CPanel* _ecx, void* _edx, unsigned int pane
 		
 		// 在这里获取不会出错
 		g_pWorldToScreenMatrix = &g_interface.Engine->WorldToScreenMatrix();
+
+		sqb::PaintTraverse(_SC("FocusOverlayPanel"), g_interface.Surface);
 	}
 
 	// 每一帧调 很多次 在这里不能做消耗较大的事情
 	if (MatSystemTopPanel > 0 && panel == MatSystemTopPanel)
 	{
 		// 在这里绘制会导致游戏里 fps 非常低，因此必须要做出限制
+
+		sqb::PaintTraverse(_SC("MatSystemTopPanel"), g_interface.Surface);
 	}
 }
 
@@ -3160,9 +3207,14 @@ end_trigger_bot:
 	// 后坐力检测
 	if (Config::bNoRecoil)
 	{
+		/*
 		Vector punch = client->GetLocalNetProp<Vector>("m_vecPunchAngle");
 		if(punch.IsValid() && punch.Length2D() > 0.0f)
 			pCmd->viewangles -= punch * 2.0f;
+		*/
+
+		client->SetNetProp<int>("m_iShotsFired", 0, "DT_CSPlayer");
+		client->SetLocalNetProp<QAngle>("m_vecPunchAngle", QAngle(0.0f, 0.0f, 0.0f));
 	}
 
 	// 无扩散 (扩散就是子弹射击时不在同一个点上)
@@ -3234,7 +3286,9 @@ end_trigger_bot:
 	}
 
 	// 近战武器快速攻击
-	if (myTeam == 2 && GetAsyncKeyState(VK_XBUTTON2) & 0x8000)
+	if (myTeam == 2 && ((GetAsyncKeyState(VK_CAPITAL) & 0x8000) ||
+		(GetAsyncKeyState(VK_XBUTTON2) & 0x8000) || 
+		(Config::bMustFastMelee && (GetAsyncKeyState(VK_LBUTTON) & 0x8000))))
 	{
 		static enum FastMeleeStatus
 		{
@@ -3260,7 +3314,7 @@ end_trigger_bot:
 			if (weaponId == Weapon_Melee && nextAttack > serverTime)
 			{
 				// 在攻击之后切换到主武器
-				g_interface.Engine->ClientCmd("slot1");
+				g_interface.Engine->ClientCmd("lastinv");
 				fms = FMS_Secondary;
 			}
 			else
@@ -3270,7 +3324,7 @@ end_trigger_bot:
 			if (weaponId != Weapon_Melee)
 			{
 				// 在主武器时切换到近战武器
-				g_interface.Engine->ClientCmd("slot2");
+				g_interface.Engine->ClientCmd("lastinv");
 				fms = FMS_None;
 			}
 			else
@@ -3283,7 +3337,7 @@ end_trigger_bot:
 			ignoreTick = 0;
 			fms = FMS_None;
 
-			g_interface.Engine->ClientCmd("echo \"fastmelee stopped\"");
+			g_interface.Engine->ClientCmd("echo \"fastmelee reset\"");
 		}
 	}
 
@@ -3328,6 +3382,7 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 	if (stage == FRAME_RENDER_START && g_interface.Engine->IsInGame())
 	{
 		// 在这里可以使用 DebugOverlay 来进行 3D 绘制
+		sqb::FrameStageNotify(stage, g_interface.DebugOverlay);
 	}
 
 	static time_t nextUpdate = 0;
@@ -3469,6 +3524,9 @@ bool __fastcall Hooked_CreateMoveShared(ClientModeShared* _ecx, void* _edx, floa
 		Utils::log("Input->pCmd = 0x%X", (DWORD)pCmd);
 		Utils::log("CL_Move->bSendPacket = 0x%X | %d", (DWORD)bSendPacket, *bSendPacket);
 	}
+
+	if (!sqb::CreateMove(pCmd, (*bSendPacket ? SQTrue : SQFalse)))
+		*bSendPacket = false;
 
 	return false;
 }
@@ -3773,6 +3831,20 @@ int __fastcall Hooked_KeyInput(ClientModeShared* _ecx, void* _edx, int down, But
 					(Config::bSilentAimbot ? "enable" : "disable"));
 			}
 		}
+
+		// 打开/关闭 速砍
+		if (keynum == KEY_F7)
+		{
+			Config::bMustFastMelee = !Config::bMustFastMelee;
+			g_interface.Engine->ClientCmd("echo \"[segt] fast melee %s\"",
+				(Config::bMustFastMelee ? "enable" : "disabled"));
+
+			if (g_pDrawRender != nullptr)
+			{
+				g_pDrawRender->PushRenderText(DrawManager::WHITE, "fast melee %s",
+					(Config::bMustFastMelee ? "enable" : "disable"));
+			}
+		}
 	}
 	else
 	{
@@ -3794,6 +3866,8 @@ int __fastcall Hooked_KeyInput(ClientModeShared* _ecx, void* _edx, int down, But
 				g_pDrawRender->PushRenderText(DrawManager::WHITE, "aimbot angles set %.0f", Config::fAimbotFov);
 		}
 	}
+
+	sqb::KeyInput(keynum, down > 0, pszCurrentBinding);
 
 	return result;
 }
@@ -4469,6 +4543,8 @@ void __fastcall Hooked_EnginePaint(CEngineVGui *_ecx, void *_edx, PaintMode_t mo
 	finish_draw:
 #endif
 
+		sqb::Paint(mode);
+
 		PaintFinishDrawing(g_interface.Surface);
 	}
 }
@@ -4551,6 +4627,13 @@ bool __fastcall Hooked_ProcessGetCvarValue(CBaseClientState *_ecx, void *_edx, S
 				returnMsg.m_szCvarValue = tempValue;
 			}
 		}
+
+		const SQChar* s = sqb::ProcessGetCvarValue(returnMsg.m_szCvarName, cvar->GetString());
+		if (s != nullptr)
+		{
+			strcpy_s(tempValue, s);
+			returnMsg.m_szCvarValue = tempValue;
+		}
 	}
 	else
 	{
@@ -4605,6 +4688,12 @@ bool __fastcall Hooked_ProcessSetConVar(CBaseClientState *_ecx, void *_edx, NET_
 		{
 			// 第一次设置
 			Utils::log("[SCV] %s setting to %s", cvar.name, cvar.value);
+		}
+
+		const SQChar* s = sqb::ProcessSetConVar(cvar.name, cvar.value);
+		if (s != nullptr)
+		{
+			strcpy_s(cvar.value, s);
 		}
 
 		// 将服务器的更改进行记录，等服务器查询的时候把记录还回去

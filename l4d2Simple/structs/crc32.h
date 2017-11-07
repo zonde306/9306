@@ -192,5 +192,6 @@ public:
 		return crc;
 	}
 };
-CCRC gCRC;
+
+extern CCRC gCRC;
 #endif // CHECKSUM_CRC_H
