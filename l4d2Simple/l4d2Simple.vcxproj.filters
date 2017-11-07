@@ -397,7 +397,7 @@
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="detours\LDE64.asm">
-      <Filter>源文件</Filter>
+      <Filter>头文件\detours</Filter>
     </CustomBuild>
   </ItemGroup>
 </Project>
