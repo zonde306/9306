@@ -11,7 +11,7 @@
 // D3D 的函数 jmp 挂钩
 static std::unique_ptr<DetourXS> g_pDetourReset, g_pDetourPresent, g_pDetourEndScene,
 	g_pDetourDrawIndexedPrimitive, g_pDetourCreateQuery, g_pDetourCL_Move, g_pDetourDebugger,
-	g_pDetourCreateMove, g_pDetourGetCvarValue, g_pDetourSetConVar;
+	g_pDetourCreateMove, g_pDetourGetCvarValue, g_pDetourSetConVar, g_pDetourQueryPerformanceCounter;
 static std::unique_ptr<SPLICE_ENTRY> g_pSpliceQueryPerformanceCounter;
 
 std::unique_ptr<CNetVars> g_pNetVars;
@@ -170,6 +170,7 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved)
 			DETOURXS_DESTORY(g_pDetourCreateMove);
 			DETOURXS_DESTORY(g_pDetourGetCvarValue);
 			DETOURXS_DESTORY(g_pDetourSetConVar);
+			DETOURXS_DESTORY(g_pDetourQueryPerformanceCounter);
 
 			VMTHOOK_DESTORY(g_interface.ClientModeHook);
 			VMTHOOK_DESTORY(g_interface.PanelHook);
@@ -213,7 +214,9 @@ typedef HRESULT(WINAPI* FnPresent)(IDirect3DDevice9*, const RECT*, const RECT*, 
 HRESULT WINAPI Hooked_Present(IDirect3DDevice9*, const RECT*, const RECT*, HWND, const RGNDATA*);
 static FnPresent oPresent;
 
+typedef BOOL(WINAPI* FnQueryPerformanceCounter)(LARGE_INTEGER*);
 BOOL WINAPI Hooked_QueryPerformanceCounter(LARGE_INTEGER*);
+static FnQueryPerformanceCounter oQueryPerformanceCounter;
 
 // -------------------------------- Virtual Function Hook --------------------------------
 typedef void(__thiscall* FnPaintTraverse)(CPanel*, unsigned int, bool, bool);
@@ -1127,8 +1130,15 @@ DWORD WINAPI StartCheat(LPVOID params)
 	sqb::CheatStart();
 	loadConfig();
 
+	/*
 	g_pSpliceQueryPerformanceCounter = std::unique_ptr<SPLICE_ENTRY>(
 		SpliceHookFunction(QueryPerformanceCounter, Hooked_QueryPerformanceCounter));
+	*/
+
+	/*
+	g_pDetourQueryPerformanceCounter = std::make_unique<DetourXS>(QueryPerformanceCounter, Hooked_QueryPerformanceCounter);
+	oQueryPerformanceCounter = (FnQueryPerformanceCounter)g_pDetourQueryPerformanceCounter->GetTrampoline();
+	*/
 
 	return 0;
 }
@@ -1174,8 +1184,8 @@ BOOL WINAPI Hooked_QueryPerformanceCounter(LARGE_INTEGER* lpPerformanceCount)
 		oldFakeValue = oldRealValue = lpPerformanceCount->QuadPart;
 	}
 
-	BOOL result = (((BOOL(WINAPI*)(LARGE_INTEGER*))g_pSpliceQueryPerformanceCounter->trampoline)
-		(lpPerformanceCount));
+	// BOOL result = (((BOOL(WINAPI*)(LARGE_INTEGER*))g_pSpliceQueryPerformanceCounter->trampoline)(lpPerformanceCount));
+	BOOL result = oQueryPerformanceCounter(lpPerformanceCount);
 
 	LONGLONG newValue = lpPerformanceCount->QuadPart;
 	if (Config::bSpeedHackActive)
@@ -4433,7 +4443,7 @@ void __stdcall Hooked_CL_Move(float accumulated_extra_samples, bool bFinalTick)
 	// 参数 bFinalTick 相当于 bSendPacket
 	CL_Move(accumulated_extra_samples, bFinalTick);
 
-	if (g_bIsKeyPressing[VK_CAPITAL])
+	if (Config::bSpeedHack && g_bIsKeyPressing[VK_CAPITAL])
 	{
 		static bool showSpeed = true;
 		if (showSpeed)
