@@ -2,6 +2,7 @@
 #include "peb.h"
 #include "./sqbinding/vector.h"
 #include "./sqbinding/qangle.h"
+#include "./detours/splice.h"
 
 #define USE_PLAYER_INFO
 #define USE_CVAR_CHANGE
@@ -11,6 +12,7 @@
 static std::unique_ptr<DetourXS> g_pDetourReset, g_pDetourPresent, g_pDetourEndScene,
 	g_pDetourDrawIndexedPrimitive, g_pDetourCreateQuery, g_pDetourCL_Move, g_pDetourDebugger,
 	g_pDetourCreateMove, g_pDetourGetCvarValue, g_pDetourSetConVar;
+static std::unique_ptr<SPLICE_ENTRY> g_pSpliceQueryPerformanceCounter;
 
 std::unique_ptr<CNetVars> g_pNetVars;
 CInterfaces g_interface;
@@ -47,8 +49,8 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved)
 		char curPath[MAX_PATH];
 		GetModuleFileNameA(GetModuleHandleA(NULL), curPath, MAX_PATH);
 		std::string strPath = curPath;
-		if (strPath.empty() ||
-			_stricmp(strPath.substr(strPath.rfind('\\') + 1).c_str(), "left4dead2.exe") != 0)
+		strPath = strPath.substr(strPath.rfind('\\') + 1);
+		if (strPath.empty() || _stricmp(strPath.c_str(), "left4dead2.exe") != 0)
 		{
 			// 不是目标进程，不做任何事情
 			OutputDebugStringW(L"当前进程不是目标进程");
@@ -152,6 +154,12 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved)
 		// 到这里时可能是因为主动退出游戏，内存已经释放掉了
 		try
 		{
+			if (g_pSpliceQueryPerformanceCounter)
+			{
+				SpliceUnHookFunction(g_pSpliceQueryPerformanceCounter.get());
+				g_pSpliceQueryPerformanceCounter.release();
+			}
+			
 			DETOURXS_DESTORY(g_pDetourReset);
 			DETOURXS_DESTORY(g_pDetourPresent);
 			DETOURXS_DESTORY(g_pDetourEndScene);
@@ -204,6 +212,8 @@ static FnReset oReset;
 typedef HRESULT(WINAPI* FnPresent)(IDirect3DDevice9*, const RECT*, const RECT*, HWND, const RGNDATA*);
 HRESULT WINAPI Hooked_Present(IDirect3DDevice9*, const RECT*, const RECT*, HWND, const RGNDATA*);
 static FnPresent oPresent;
+
+BOOL WINAPI Hooked_QueryPerformanceCounter(LARGE_INTEGER*);
 
 // -------------------------------- Virtual Function Hook --------------------------------
 typedef void(__thiscall* FnPaintTraverse)(CPanel*, unsigned int, bool, bool);
@@ -316,6 +326,7 @@ FnKeyInput oKeyInput;
 void thirdPerson(bool);
 void showSpectator();
 void bindAlias(int);
+void loadConfig();
 
 // -------------------------------- Golbals Variable --------------------------------
 static int g_iCurrentAiming = 0;										// 当前正在瞄准的玩家的 ID
@@ -1114,6 +1125,11 @@ DWORD WINAPI StartCheat(LPVOID params)
 
 	// 加载配置文件
 	sqb::CheatStart();
+	loadConfig();
+
+	g_pSpliceQueryPerformanceCounter = std::unique_ptr<SPLICE_ENTRY>(
+		SpliceHookFunction(QueryPerformanceCounter, Hooked_QueryPerformanceCounter));
+
 	return 0;
 }
 
@@ -1148,6 +1164,30 @@ void ResetDeviceHook(IDirect3DDevice9* device)
 	Utils::log("oEndScene = d3d9.dll + 0x%X", (DWORD)oEndScene - d3d9);
 	Utils::log("oDrawIndexedPrimitive = d3d9.dll + 0x%X", (DWORD)oDrawIndexedPrimitive - d3d9);
 	Utils::log("oCreateQuery = d3d9.dll + 0x%X", (DWORD)oCreateQuery - d3d9);
+}
+
+BOOL WINAPI Hooked_QueryPerformanceCounter(LARGE_INTEGER* lpPerformanceCount)
+{
+	static LONGLONG oldFakeValue = 0, oldRealValue = 0;
+	if (oldFakeValue == 0 || oldRealValue == 0)
+	{
+		oldFakeValue = oldRealValue = lpPerformanceCount->QuadPart;
+	}
+
+	BOOL result = (((BOOL(WINAPI*)(LARGE_INTEGER*))g_pSpliceQueryPerformanceCounter->trampoline)
+		(lpPerformanceCount));
+
+	LONGLONG newValue = lpPerformanceCount->QuadPart;
+	if (Config::bSpeedHackActive)
+		newValue = oldFakeValue + (LONGLONG)((newValue - oldRealValue) * Config::fSpeedHackSpeed);
+	else
+		newValue = oldFakeValue + (LONGLONG)((newValue - oldRealValue) * 1.0f);
+
+	oldRealValue = lpPerformanceCount->QuadPart;
+	oldFakeValue = newValue;
+
+	lpPerformanceCount->QuadPart = newValue;
+	return result;
 }
 
 void thirdPerson(bool active)
@@ -1508,6 +1548,427 @@ void bindAlias(int wait)
 		Utils::log("mat_picmip setting %d", g_conVar["mat_picmip"]->GetInt());
 	}
 	*/
+}
+
+void loadConfig()
+{
+	if (g_sCurPath.empty())
+		return;
+
+	// 去除空白字符和注释
+	static auto trimSpec = [](std::string& s) -> void
+	{
+		if (s.empty() || s.length() < 2)
+		{
+			s.clear();
+			return;
+		}
+
+		if (s[0] == '/' && s[1] == '/')
+		{
+			s.clear();
+			return;
+		}
+
+		size_t delim = s.find("//");
+		if (delim != std::string::npos)
+			s = s.substr(0, delim);
+
+		s = Utils::trim(s);
+	};
+
+	static auto getKeyValue = [](const std::string& s) -> std::pair<std::string, std::string>
+	{
+		size_t parse = s.find(' ');
+		if (parse == std::string::npos)
+			parse = s.find('\t');
+		if (parse == std::string::npos)
+			return std::make_pair<std::string, std::string>("", "");
+
+		std::string key = s.substr(0, parse);
+		std::string value = s.substr(parse);
+		key = Utils::trim(key);
+		value = Utils::trim(value);
+
+		return std::make_pair<std::string, std::string>(std::move(key), std::move(value));
+	};
+
+	std::string line;
+	std::ifstream file(g_sCurPath + XorStr("\\convars.cfg"), std::ios::in|std::ios::beg);
+	if (file.is_open())
+	{
+		while (file.good())
+		{
+			std::getline(file, line);
+
+			trimSpec(line);
+			if (line.empty())
+				continue;
+			
+			std::pair<std::string, std::string> kv = getKeyValue(line);
+			if (kv.first.empty())
+				continue;
+
+			ConVar* cvar = g_interface.Cvar->FindVar(kv.first.c_str());
+			if (cvar != nullptr && !cvar->IsCommand() && cvar->IsRegistered())
+			{
+				if (cvar->IsFlagSet(FCVAR_CHEAT | FCVAR_SPONLY | FCVAR_REPLICATED | FCVAR_NOT_CONNECTED | FCVAR_SERVER_CAN_EXECUTE))
+					cvar->RemoveFlags(FCVAR_CHEAT | FCVAR_SPONLY | FCVAR_REPLICATED | FCVAR_NOT_CONNECTED | FCVAR_SERVER_CAN_EXECUTE);
+				if (!cvar->IsFlagSet(FCVAR_SERVER_CANNOT_QUERY))
+					cvar->AddFlags(FCVAR_SERVER_CANNOT_QUERY);
+
+				if(!kv.second.empty())
+					cvar->SetValue(kv.second.c_str());
+				else
+					cvar->SetValue(cvar->GetDefault());
+			}
+
+			ConCommand* cmd = g_interface.Cvar->FindCommand(kv.first.c_str());
+			if (cmd != nullptr && cmd->IsCommand() && cmd->IsRegistered())
+			{
+				if (cmd->IsFlagSet(FCVAR_CHEAT | FCVAR_SPONLY | FCVAR_REPLICATED | FCVAR_NOT_CONNECTED | FCVAR_SERVER_CAN_EXECUTE))
+					cmd->RemoveFlags(FCVAR_CHEAT | FCVAR_SPONLY | FCVAR_REPLICATED | FCVAR_NOT_CONNECTED | FCVAR_SERVER_CAN_EXECUTE);
+				if (!cmd->IsFlagSet(FCVAR_SERVER_CANNOT_QUERY))
+					cmd->AddFlags(FCVAR_SERVER_CANNOT_QUERY);
+
+				if (!kv.second.empty())
+					g_interface.Engine->ClientCmd("%s %s", kv.first.c_str(), kv.second.c_str());
+				else
+					g_interface.Engine->ClientCmd(kv.first.c_str());
+			}
+		}
+
+		file.close();
+	}
+
+	file = std::ifstream(g_sCurPath + XorStr("\\config.cfg"), std::ios::in | std::ios::beg);
+	if (file.is_open())
+	{
+		while (file.good())
+		{
+			std::getline(file, line);
+
+			trimSpec(line);
+			if (line.empty())
+				continue;
+
+			std::pair<std::string, std::string> kv = getKeyValue(line);
+			if (kv.first.empty())
+				continue;
+
+			if (kv.first == XorStr("aimbot") || kv.first == XorStr("autoaim"))
+			{
+				if (kv.second.empty())
+					Config::bAimbot = true;
+				else
+					Config::bAimbot = !!atoi(kv.second.c_str());
+			}
+
+			else if (kv.first == XorStr("aim_fov") || kv.first == XorStr("aimbot_fov"))
+			{
+				if (kv.second.empty())
+					Config::fAimbotFov = 25.0f;
+				else
+					Config::fAimbotFov = (float)atof(kv.second.c_str());
+			}
+
+			else if (kv.first == XorStr("aim_pred") || kv.first == XorStr("aimbot_pred"))
+			{
+				if (kv.second.empty())
+					Config::bAimbotPred = true;
+				else
+					Config::bAimbotPred = !!atoi(kv.second.c_str());
+			}
+
+			else if (kv.first == XorStr("aim_rcs") || kv.first == XorStr("aimbot_rcs"))
+			{
+				if (kv.second.empty())
+					Config::bAimbotRCS = true;
+				else
+					Config::bAimbotRCS = !!atoi(kv.second.c_str());
+			}
+
+			else if (kv.first == XorStr("aim_silent") || kv.first == XorStr("aimbot_silent"))
+			{
+				if (kv.second.empty())
+					Config::bSilentAimbot = true;
+				else
+					Config::bSilentAimbot = !!atoi(kv.second.c_str());
+			}
+
+			else if (kv.first == XorStr("trigger") || kv.first == XorStr("triggerbot") ||
+				kv.first == XorStr("autofire"))
+			{
+				if (kv.second.empty())
+					Config::bTriggerBot = true;
+				else
+					Config::bTriggerBot = !!atoi(kv.second.c_str());
+			}
+
+			else if (kv.first == XorStr("trigger_head") || kv.first == XorStr("triggerbot_head"))
+			{
+				if (kv.second.empty())
+					Config::bTriggerBotHead = true;
+				else
+					Config::bTriggerBotHead = !!atoi(kv.second.c_str());
+			}
+
+			else if (kv.first == XorStr("firendlyfire") || kv.first == XorStr("firendly"))
+			{
+				if (kv.second.empty())
+					Config::bAnitFirendlyFire = true;
+				else
+					Config::bAnitFirendlyFire = !!atoi(kv.second.c_str());
+			}
+
+			else if (kv.first == XorStr("nospread") || kv.first == XorStr("spread"))
+			{
+				if (kv.second.empty())
+					Config::bNoSpread = true;
+				else
+					Config::bNoSpread = !!atoi(kv.second.c_str());
+			}
+
+			else if (kv.first == XorStr("norecoil") || kv.first == XorStr("recoil"))
+			{
+				if (kv.second.empty())
+					Config::bNoRecoil = true;
+				else
+					Config::bNoRecoil = !!atoi(kv.second.c_str());
+			}
+
+			else if (kv.first == XorStr("rapidfire") || kv.first == XorStr("autopistol"))
+			{
+				if (kv.second.empty())
+					Config::bNoRecoil = true;
+				else
+					Config::bNoRecoil = !!atoi(kv.second.c_str());
+			}
+
+			else if (kv.first == XorStr("bunnyhop") || kv.first == XorStr("bhop"))
+			{
+				if (kv.second.empty())
+					Config::bBunnyHop = true;
+				else
+					Config::bBunnyHop = !!atoi(kv.second.c_str());
+			}
+
+			else if (kv.first == XorStr("autostrafe") || kv.first == XorStr("strafe"))
+			{
+				if (kv.second.empty())
+					Config::bAutoStrafe = true;
+				else
+					Config::bAutoStrafe = !!atoi(kv.second.c_str());
+			}
+
+			else if (kv.first == XorStr("anticrc") || kv.first == XorStr("crc"))
+			{
+				if (kv.second.empty())
+					Config::bCrcCheckBypass = true;
+				else
+					Config::bCrcCheckBypass = !!atoi(kv.second.c_str());
+			}
+
+			else if (kv.first == XorStr("fastmelee") || kv.first == XorStr("automelee"))
+			{
+				if (kv.second.empty())
+					Config::bMustFastMelee = true;
+				else
+					Config::bMustFastMelee = !!atoi(kv.second.c_str());
+			}
+
+			else if (kv.first == XorStr("esp_bone") || kv.first == XorStr("draw_bone") ||
+				kv.first == XorStr("bone"))
+			{
+				if (kv.second.empty())
+					Config::bDrawBone = true;
+				else
+					Config::bDrawBone = !!atoi(kv.second.c_str());
+			}
+
+			else if (kv.first == XorStr("esp_box") || kv.first == XorStr("draw_box") ||
+				kv.first == XorStr("box"))
+			{
+				if (kv.second.empty())
+					Config::bDrawBox = true;
+				else
+					Config::bDrawBox = !!atoi(kv.second.c_str());
+			}
+
+			else if (kv.first == XorStr("esp_name") || kv.first == XorStr("draw_name") ||
+				kv.first == XorStr("name"))
+			{
+				if (kv.second.empty())
+					Config::bDrawName = true;
+				else
+					Config::bDrawName = !!atoi(kv.second.c_str());
+			}
+
+			else if (kv.first == XorStr("esp_distance") || kv.first == XorStr("draw_distance") ||
+				kv.first == XorStr("distance"))
+			{
+				if (kv.second.empty())
+					Config::bDrawDist = true;
+				else
+					Config::bDrawDist = !!atoi(kv.second.c_str());
+			}
+
+			else if (kv.first == XorStr("esp_ammo") || kv.first == XorStr("draw_ammo") ||
+				kv.first == XorStr("ammo"))
+			{
+				if (kv.second.empty())
+					Config::bDrawAmmo = true;
+				else
+					Config::bDrawAmmo = !!atoi(kv.second.c_str());
+			}
+
+			else if (kv.first == XorStr("esp_crosshair") || kv.first == XorStr("draw_crosshair") ||
+				kv.first == XorStr("crosshair"))
+			{
+				if (kv.second.empty())
+					Config::bDrawCrosshairs = true;
+				else
+					Config::bDrawCrosshairs = !!atoi(kv.second.c_str());
+			}
+
+			else if (kv.first == XorStr("esp_spectator") || kv.first == XorStr("draw_spectator") ||
+				kv.first == XorStr("spectator"))
+			{
+				if (kv.second.empty())
+					Config::bDrawSpectator = true;
+				else
+					Config::bDrawSpectator = !!atoi(kv.second.c_str());
+			}
+
+			else if (kv.first == XorStr("zbuff_survivor") || kv.first == XorStr("wallhack_survivor") ||
+				kv.first == XorStr("d3d_survivor"))
+			{
+				if (kv.second.empty())
+					Config::bBufferSurvivor = true;
+				else
+					Config::bBufferSurvivor = !!atoi(kv.second.c_str());
+			}
+
+			else if (kv.first == XorStr("zbuff_special") || kv.first == XorStr("wallhack_special") ||
+				kv.first == XorStr("d3d_special"))
+			{
+				if (kv.second.empty())
+					Config::bBufferSpecial = true;
+				else
+					Config::bBufferSpecial = !!atoi(kv.second.c_str());
+			}
+
+			else if (kv.first == XorStr("zbuff_common") || kv.first == XorStr("wallhack_common") ||
+				kv.first == XorStr("d3d_common"))
+			{
+				if (kv.second.empty())
+					Config::bBufferCommon = true;
+				else
+					Config::bBufferCommon = !!atoi(kv.second.c_str());
+			}
+
+			else if (kv.first == XorStr("zbuff_weapon") || kv.first == XorStr("wallhack_weapon") ||
+				kv.first == XorStr("d3d_weapon"))
+			{
+				if (kv.second.empty())
+					Config::bBufferWeapon = true;
+				else
+					Config::bBufferWeapon = !!atoi(kv.second.c_str());
+			}
+
+			else if (kv.first == XorStr("zbuff_grenade") || kv.first == XorStr("wallhack_grenade") ||
+				kv.first == XorStr("d3d_grenade"))
+			{
+				if (kv.second.empty())
+					Config::bBufferGrenade = true;
+				else
+					Config::bBufferGrenade = !!atoi(kv.second.c_str());
+			}
+
+			else if (kv.first == XorStr("zbuff_pack") || kv.first == XorStr("wallhack_pack") ||
+				kv.first == XorStr("d3d_pack"))
+			{
+				if (kv.second.empty())
+					Config::bBufferMedical = true;
+				else
+					Config::bBufferMedical = !!atoi(kv.second.c_str());
+			}
+
+			else if (kv.first == XorStr("zbuff_carry") || kv.first == XorStr("wallhack_carry") ||
+				kv.first == XorStr("d3d_carry"))
+			{
+				if (kv.second.empty())
+					Config::bBufferCarry = true;
+				else
+					Config::bBufferCarry = !!atoi(kv.second.c_str());
+			}
+
+			else if (kv.first == XorStr("esp_t1") || kv.first == XorStr("draw_t1") ||
+				kv.first == XorStr("t1"))
+			{
+				if (kv.second.empty())
+					Config::bDrawT1Weapon = true;
+				else
+					Config::bDrawT1Weapon = !!atoi(kv.second.c_str());
+			}
+
+			else if (kv.first == XorStr("esp_t2") || kv.first == XorStr("draw_t2") ||
+				kv.first == XorStr("t2"))
+			{
+				if (kv.second.empty())
+					Config::bDrawT2Weapon = true;
+				else
+					Config::bDrawT2Weapon = !!atoi(kv.second.c_str());
+			}
+
+			else if (kv.first == XorStr("esp_t3") || kv.first == XorStr("draw_t3") ||
+				kv.first == XorStr("t3"))
+			{
+				if (kv.second.empty())
+					Config::bDrawT3Weapon = true;
+				else
+					Config::bDrawT3Weapon = !!atoi(kv.second.c_str());
+			}
+
+			else if (kv.first == XorStr("esp_melee") || kv.first == XorStr("draw_melee") ||
+				kv.first == XorStr("melee"))
+			{
+				if (kv.second.empty())
+					Config::bDrawMeleeWeapon = true;
+				else
+					Config::bDrawMeleeWeapon = !!atoi(kv.second.c_str());
+			}
+
+			else if (kv.first == XorStr("esp_pack") || kv.first == XorStr("draw_pack") ||
+				kv.first == XorStr("pack"))
+			{
+				if (kv.second.empty())
+					Config::bDrawMedicalItem = true;
+				else
+					Config::bDrawMedicalItem = !!atoi(kv.second.c_str());
+			}
+
+			else if (kv.first == XorStr("esp_grenade") || kv.first == XorStr("draw_grenade") ||
+				kv.first == XorStr("grenade"))
+			{
+				if (kv.second.empty())
+					Config::bDrawGrenadeItem = true;
+				else
+					Config::bDrawGrenadeItem = !!atoi(kv.second.c_str());
+			}
+
+			else if (kv.first == XorStr("esp_ammo") || kv.first == XorStr("draw_ammo") ||
+				kv.first == XorStr("ammo"))
+			{
+				if (kv.second.empty())
+					Config::bDrawAmmoStack = true;
+				else
+					Config::bDrawAmmoStack = !!atoi(kv.second.c_str());
+			}
+		}
+
+		file.close();
+	}
 }
 
 static CMoveData g_predMoveData;
@@ -3366,6 +3827,12 @@ end_trigger_bot:
 
 	// 将当前按钮保存到全局变量，用于检查一些东西
 	g_pUserCommands = pCmd;
+
+	// 加速效果
+	if (Config::bSpeedHack && (pCmd->buttons & IN_USE))
+		Config::bSpeedHackActive = true;
+	else
+		Config::bSpeedHackActive = false;
 }
 
 void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
@@ -3430,6 +3897,7 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 				g_pCurrentAimbot = nullptr;
 				g_pCurrentAiming = nullptr;
 				g_iCurrentAiming = 0;
+				loadConfig();
 
 				Utils::log("*** connected ***");
 			}
@@ -3843,6 +4311,20 @@ int __fastcall Hooked_KeyInput(ClientModeShared* _ecx, void* _edx, int down, But
 			{
 				g_pDrawRender->PushRenderText(DrawManager::WHITE, "fast melee %s",
 					(Config::bMustFastMelee ? "enable" : "disable"));
+			}
+		}
+
+		// 打开/关闭 加速
+		if (keynum == KEY_F6)
+		{
+			Config::bSpeedHack = !Config::bSpeedHack;
+			g_interface.Engine->ClientCmd("echo \"[segt] speed hack %s\"",
+				(Config::bSpeedHack ? "enable" : "disabled"));
+
+			if (g_pDrawRender != nullptr)
+			{
+				g_pDrawRender->PushRenderText(DrawManager::WHITE, "speed hack %s",
+					(Config::bSpeedHack ? "enable" : "disable"));
 			}
 		}
 	}

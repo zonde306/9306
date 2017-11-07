@@ -188,6 +188,8 @@
     <ClInclude Include="d3dumddi.h" />
     <ClInclude Include="definitions.h" />
     <ClInclude Include="detours\detourxs.h" />
+    <ClInclude Include="detours\opcodes.h" />
+    <ClInclude Include="detours\splice.h" />
     <ClInclude Include="drawmanager.h" />
     <ClInclude Include="indexes.h" />
     <ClInclude Include="libraries\buffer.h" />
@@ -254,6 +256,7 @@
     <ClCompile Include="binding.cpp" />
     <ClCompile Include="d3dfont\D3DFont.cpp" />
     <ClCompile Include="detours\detourxs.cpp" />
+    <ClCompile Include="detours\splice.cpp" />
     <ClCompile Include="drawmanager.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="peb.cpp" />

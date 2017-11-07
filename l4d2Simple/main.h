@@ -220,10 +220,13 @@ namespace Config
 	bool bCvarGameMode = false;
 	bool bCvarCheats = false;
 	bool bThirdPersons = false;
+	bool bSpeedHackActive = false;
+	bool bSpeedHack = false;
 
 	float fAimbotFov = 30.0f;
 	float fAimbotRCSX = 2.0f;
 	float fAimbotRCSY = 2.0f;
+	float fSpeedHackSpeed = 8.0f;
 
 	int iFastMeleeTick = 10;
 	bool bMustFastMelee = false;

@@ -333,6 +333,12 @@
     <ClInclude Include="sqbinding\debugoverlay.h">
       <Filter>头文件\sqbinding</Filter>
     </ClInclude>
+    <ClInclude Include="detours\splice.h">
+      <Filter>头文件\detours</Filter>
+    </ClInclude>
+    <ClInclude Include="detours\opcodes.h">
+      <Filter>头文件\detours</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="structs\checksum_md5.cpp">
@@ -385,6 +391,9 @@
     </ClCompile>
     <ClCompile Include="sqbinding\debugoverlay.cpp">
       <Filter>源文件\sqbinding</Filter>
+    </ClCompile>
+    <ClCompile Include="detours\splice.cpp">
+      <Filter>头文件\detours</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
