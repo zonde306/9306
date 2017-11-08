@@ -124,6 +124,9 @@ class IMaterialSystem;
 class CEngineVGui;
 class CBaseClientState;
 class IEngineTrace;
+class INetChannelInfo;
+
+extern INetChannelInfo* g_pNetChannelInfo;
 
 class CInterfaces
 {
@@ -209,6 +212,7 @@ namespace Config
 	bool bTriggerBot = false;
 	bool bTriggerBotHead = false;
 	bool bAnitFirendlyFire = true;
+	bool bForwardTrack = true;
 
 	bool bBunnyHop = true;
 	bool bAutoStrafe = false;

@@ -332,6 +332,15 @@ void bindAlias(int);
 void loadConfig();
 
 // -------------------------------- Golbals Variable --------------------------------
+struct BacktrackingRecord
+{
+	int tick;
+	Vector position;
+	BacktrackingRecord(int tick, const Vector& position) : tick(tick), position(position)
+	{
+	}
+};
+
 static int g_iCurrentAiming = 0;										// 当前正在瞄准的玩家的 ID
 static bool g_bNewFrame = false;										// 现在是否运行在新的一帧
 static bool* g_pbSendPacket;											// 数据包是否发送到服务器
@@ -348,6 +357,9 @@ DWORD g_iClientBase, g_iEngineBase, g_iMaterialModules;					// 有用的 DLL 文
 int* g_pPredictionRandomSeed;											// 随机数种子
 std::map<std::string, std::string> g_serverConVar;						// 来自于服务器的 ConVar
 VMatrix* g_pWorldToScreenMatrix;										// 屏幕绘制用的
+INetChannelInfo* g_pNetChannelInfo;										// 获取延迟信息
+std::vector<BacktrackingRecord> g_aaBacktrack[64];						// 延迟预测
+int g_iBacktrackTarget = -1;											// 当前最接近准星的敌人
 
 std::string GetZombieClassName(CBaseEntity* player);
 bool IsValidVictim(CBaseEntity* entity);
@@ -3301,6 +3313,7 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 	int myTeam = client->GetTeam();
 	int weaponId = (weapon != nullptr ? weapon->GetWeaponID() : 0);
 	int flags = client->GetNetProp<int>("m_fFlags", "DT_BasePlayer");
+	int clip = (weapon != nullptr ? weapon->GetNetProp<int>("m_iClip1", "DT_BaseCombatWeapon") : 0);
 
 	// 自动连跳
 	if (Config::bBunnyHop && (GetAsyncKeyState(VK_SPACE) & 0x8000))
@@ -3492,7 +3505,7 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 		bool runAimbot = false;
 
 		// 目标在另一个地方选择
-		if (g_pCurrentAimbot != nullptr && IsGunWeapon(weaponId) && nextAttack <= serverTime)
+		if (g_pCurrentAimbot != nullptr && IsGunWeapon(weaponId) && nextAttack <= serverTime && clip > 0)
 		{
 			// 鐩爣浣嶇疆
 			Vector position;
@@ -3614,7 +3627,7 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 end_aimbot:
 
 	// 自动开枪
-	if (Config::bTriggerBot && !(pCmd->buttons & IN_USE) && IsGunWeapon(weaponId))
+	if (Config::bTriggerBot && !(pCmd->buttons & IN_USE) && IsGunWeapon(weaponId) && clip > 0)
 	{
 #ifdef _DEBUG_OUTPUT
 		if (g_pCurrentAiming != nullptr)
@@ -3712,6 +3725,23 @@ end_trigger_bot:
 			*g_pPredictionRandomSeed = seed;
 			pCmd->viewangles.x -= horizontal;
 			pCmd->viewangles.y -= vertical;
+		}
+	}
+
+	// 延迟预测，获得最精准的射击效果
+	if (g_iBacktrackTarget != -1 && (pCmd->buttons & IN_ATTACK) && nextAttack <= serverTime && clip > 0)
+	{
+		float bestFov = FLT_MAX;
+		for (const BacktrackingRecord& tick : g_aaBacktrack[g_iBacktrackTarget])
+		{
+			Vector calcAngle = CalcAngle(client->GetEyePosition(), tick.position);
+			calcAngle -= client->GetLocalNetProp<Vector>("m_vecPunchAngle");
+			float fov = GetAnglesFieldOfView(pCmd->viewangles, calcAngle);
+			if (fov < bestFov)
+			{
+				bestFov = fov;
+				pCmd->tick_count = tick.tick;
+			}
 		}
 	}
 
@@ -4589,6 +4619,10 @@ void __fastcall Hooked_EnginePaint(CEngineVGui *_ecx, void *_edx, PaintMode_t mo
 			ss.setf(std::ios::fixed);
 			ss.precision(0);
 
+			// 延迟预测用，选择最接近准星的敌人
+			float bestFov = FLT_MAX;
+			g_iBacktrackTarget = -1;
+
 			if (Config::bDrawCrosshairs)
 			{
 				int width, height;
@@ -4731,6 +4765,32 @@ void __fastcall Hooked_EnginePaint(CEngineVGui *_ecx, void *_edx, PaintMode_t mo
 				// 目标的头部的位置
 				headbox = (IsSurvivor(classId) || IsSpecialInfected(classId) || IsCommonInfected(classId) ?
 					GetHeadHitboxPosition(entity) : origin);
+
+				// 延迟预测
+				if (i < 64 && g_pUserCommands != nullptr)
+				{
+					if (g_aaBacktrack[i].size() > 20)
+						g_aaBacktrack[i].pop_back();
+
+					if (g_aaBacktrack[i].empty() || g_aaBacktrack[i].front().tick != g_pUserCommands->tick_count)
+					{
+						/*
+						BacktrackingRecord curRecord = BacktrackingRecord(g_pUserCommands->tick_count, headbox);
+						g_aaBacktrack[i].insert(g_aaBacktrack[i].begin(), curRecord);
+						*/
+
+						g_aaBacktrack[i].emplace(g_aaBacktrack[i].begin(), g_pUserCommands->tick_count, headbox);
+
+						Vector calcAngle = CalcAngle(myEyeOrigin, headbox);
+						calcAngle -= local->GetLocalNetProp<Vector>("m_vecPunchAngle");
+						float fov = GetAnglesFieldOfView(g_pUserCommands->viewangles, calcAngle);
+						if (fov < bestFov)
+						{
+							bestFov = fov;
+							g_iBacktrackTarget = i;
+						}
+					}
+				}
 
 				// 检查目标是否在屏幕内
 				if (!headbox.IsValid() || !WorldToScreen(headbox, head) ||
@@ -5139,6 +5199,9 @@ bool __fastcall Hooked_ProcessGetCvarValue(CBaseClientState *_ecx, void *_edx, S
 	// 把查询结果发送回去
 	msg->GetNetChannel()->SendNetMsg(returnMsg);
 
+	if (g_pNetChannelInfo == nullptr)
+		g_pNetChannelInfo = msg->GetNetChannel();
+
 	return true;
 }
 
@@ -5190,6 +5253,16 @@ bool __fastcall Hooked_ProcessSetConVar(CBaseClientState *_ecx, void *_edx, NET_
 
 		// 将服务器的更改进行记录，等服务器查询的时候把记录还回去
 		g_serverConVar[cvar.name] = cvar.value;
+
+		// 对于需要同步的 ConVar 可以进行更改
+		if (!_stricmp(cvar.name, "mp_gamemode") || !_stricmp(cvar.name, "z_difficulty") ||
+			!_stricmp(cvar.name, "sv_maxupdaterate") || !_stricmp(cvar.name, "sv_minupdaterate")
+			/*!_stricmp(cvar.name, "sv_disable_glow_survivors") ||*/
+			/*!_stricmp(cvar.name, "sv_disable_glow_faritems")*/)
+		{
+			// 这些 ConVar 不同步会影响游戏体验，所以需要进行同步
+			oProcessSetConVar(_ecx, msg);
+		}
 	}
 
 	return true;

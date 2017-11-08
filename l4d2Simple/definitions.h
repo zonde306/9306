@@ -222,6 +222,16 @@ inline void AssertValidReadWritePtr(const void* ptr, int count = 1) { }
 #define HITBOX_WITCH			10
 
 /**
+* Network flow directions.
+*/
+enum NetFlow
+{
+	NetFlow_Outgoing = 0,	/**< Outgoing traffic */
+	NetFlow_Incoming,		/**< Incoming traffic */
+	NetFlow_Both,			/**< Both values added together */
+};
+
+/**
 * @endsection
 */
 
