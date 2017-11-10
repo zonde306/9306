@@ -67,19 +67,6 @@ public:
 	static void log(const wchar_t* text, ...);
 };
 
-class MyStackWalker : public StackWalker
-{
-public:
-	MyStackWalker() : StackWalker() {};
-
-protected:
-	virtual void OnOutput(LPCSTR szText) override
-	{
-		Utils::log(szText);
-		StackWalker::OnOutput(szText);
-	}
-};
-
 struct RecvProp;
 struct RecvTable;
 #undef GetProp
@@ -179,6 +166,7 @@ extern std::string g_sCurPath;
 
 namespace Config
 {
+	// 屏幕绘制：玩家
 	bool bDrawBox = true;
 	bool bDrawBone = true;
 	bool bDrawName = true;
@@ -187,6 +175,7 @@ namespace Config
 	bool bDrawCrosshairs = true;
 	bool bDrawSpectator = true;
 
+	// 屏幕绘制：实体
 	bool bDrawT1Weapon = true;
 	bool bDrawT2Weapon = true;
 	bool bDrawT3Weapon = true;
@@ -195,6 +184,7 @@ namespace Config
 	bool bDrawGrenadeItem = true;
 	bool bDrawAmmoStack = true;
 
+	// Direct3D 顶点透视
 	bool bBufferSurvivor = false;
 	bool bBufferSpecial = false;
 	bool bBufferCommon = false;
@@ -203,6 +193,7 @@ namespace Config
 	bool bBufferMedical = false;
 	bool bBufferCarry = false;
 
+	// 瞄准辅助
 	bool bNoSpread = true;
 	bool bAimbot = false;
 	bool bAimbotKey = true;
@@ -213,11 +204,15 @@ namespace Config
 	bool bTriggerBotHead = false;
 	bool bAnitFirendlyFire = true;
 	bool bForwardTrack = true;
+	bool bBackTrack = false;
 
+	// 自动操作
 	bool bBunnyHop = true;
 	bool bAutoStrafe = false;
 	bool bNoRecoil = true;
 	bool bRapidFire = true;
+
+	// 杂项
 	bool bCrcCheckBypass = true;
 	bool bCvarFullBright = false;
 	bool bCvarWireframe = false;
@@ -235,6 +230,7 @@ namespace Config
 	int iFastMeleeTick = 10;
 	bool bMustFastMelee = false;
 
+	// 不稳定的功能
 	bool bTeleport = false;
 	bool bAirStuck = false;
 	bool bPositionAdjustment = true;

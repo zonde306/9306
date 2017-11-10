@@ -46,17 +46,17 @@ namespace sqVector
 	SQInteger _typeof(HSQUIRRELVM v);
 
 #define GET_VECTOR(v,x,y,z,_idx)		{\
-		sq_pushstring(v, "x", -1);\
+		sq_pushstring(v, _SC("x"), -1);\
 		if(SQ_SUCCEEDED(sq_get(v, 1))) {\
 			sq_getfloat(v, -1, &x);\
 			sq_poptop(v);\
 		}\
-		sq_pushstring(v, "y", -1);\
+		sq_pushstring(v, _SC("y"), -1);\
 		if(SQ_SUCCEEDED(sq_get(v, 1))) {\
 			sq_getfloat(v, -1, &y);\
 			sq_poptop(v);\
 		}\
-		sq_pushstring(v, "z", -1);\
+		sq_pushstring(v, _SC("z"), -1);\
 		if(SQ_SUCCEEDED(sq_get(v, 1))) {\
 			sq_getfloat(v, -1, &z);\
 			sq_poptop(v);\
@@ -64,17 +64,17 @@ namespace sqVector
 	}
 
 #define GET_VECTOR2(v,vec,_idx)		{\
-		sq_pushstring(v, "x", -1);\
+		sq_pushstring(v, _SC("x"), -1);\
 		if(SQ_SUCCEEDED(sq_get(v, 1))) {\
 			sq_getfloat(v, -1, &(vec.x));\
 			sq_poptop(v);\
 		}\
-		sq_pushstring(v, "y", -1);\
+		sq_pushstring(v, _SC("y"), -1);\
 		if(SQ_SUCCEEDED(sq_get(v, 1))) {\
 			sq_getfloat(v, -1, &(vec.y));\
 			sq_poptop(v);\
 		}\
-		sq_pushstring(v, "z", -1);\
+		sq_pushstring(v, _SC("z"), -1);\
 		if(SQ_SUCCEEDED(sq_get(v, 1))) {\
 			sq_getfloat(v, -1, &(vec.z));\
 			sq_poptop(v);\

@@ -30,7 +30,7 @@
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v141</PlatformToolset>
-    <CharacterSet>Unicode</CharacterSet>
+    <CharacterSet>NotSet</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
@@ -72,15 +72,15 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);G:\Program Files\dxsdk\Include;H:\\VSProject\l4d2Simple\imgui;$(IncludePath)</IncludePath>
-    <LibraryPath>G:\Program Files\dxsdk\Lib\x86;$(LibraryPath)</LibraryPath>
+    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);G:\Program Files\dxsdk\Include;../imgui;../squall;../squirrel3/include;../stackwalker;$(IncludePath)</IncludePath>
+    <LibraryPath>G:\Program Files\dxsdk\Lib\x86;../squirrel3/project/sqstdlib/Debug/;../squirrel3/project/squirrel/Debug/;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);G:\\Program Files\dxsdk\Include;../imgui;../squall;../squirrel3/include;$(IncludePath)</IncludePath>
+    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);G:\\Program Files\dxsdk\Include;../imgui;../squall;../squirrel3/include;../stackwalker;$(IncludePath)</IncludePath>
     <LibraryPath>G:\Program Files\dxsdk\Lib\x86;../squirrel3/project/squirrel/Release;../squirrel3/project/sqstdlib/Release;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">

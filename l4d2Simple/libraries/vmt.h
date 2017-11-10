@@ -1,6 +1,23 @@
 ﻿#pragma once
+#include <string>
+#include <vector>
 #include <cassert>
 #include <exception>
+#include <StackWalker.h>
+
+class MyStackWalker : public StackWalker
+{
+public:
+	MyStackWalker() : StackWalker() {};
+
+protected:
+	virtual void OnOutput(LPCSTR szText) override
+	{
+		// Utils::log(szText);
+		OutputDebugStringA(szText);
+		StackWalker::OnOutput(szText);
+	}
+};
 
 class CVMT
 {

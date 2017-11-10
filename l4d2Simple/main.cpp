@@ -358,7 +358,7 @@ int* g_pPredictionRandomSeed;											// 随机数种子
 std::map<std::string, std::string> g_serverConVar;						// 来自于服务器的 ConVar
 VMatrix* g_pWorldToScreenMatrix;										// 屏幕绘制用的
 INetChannelInfo* g_pNetChannelInfo;										// 获取延迟信息
-std::vector<BacktrackingRecord> g_aaBacktrack[64];						// 延迟预测
+std::vector<BacktrackingRecord> g_aaBacktrack[64];						// 后预测
 int g_iBacktrackTarget = -1;											// 当前最接近准星的敌人
 
 std::string GetZombieClassName(CBaseEntity* player);
@@ -2303,9 +2303,9 @@ Vector GetHeadHitboxPosition(CBaseEntity* entity)
 }
 
 // 速度预测
-inline Vector VelocityExtrapolate(CBaseEntity* player, const Vector& aimpos)
+inline Vector VelocityExtrapolate(CBaseEntity* player, const Vector& aimpos, int tick = 1)
 {
-	return aimpos + (player->GetVelocity() * g_interface.Globals->interval_per_tick);
+	return aimpos + (player->GetVelocity() * (g_interface.Globals->interval_per_tick * tick));
 }
 
 // 获取当前正在瞄准的敌人
@@ -2321,8 +2321,11 @@ CBaseEntity* GetAimingTarget(int* hitbox = nullptr)
 
 	Vector src = client->GetEyePosition(), dst;
 
-	// 速度预测，防止移动时不精准
-	src = VelocityExtrapolate(client, src);
+	// 速度预测和延迟预测，提升精准度
+	if(g_pNetChannelInfo != nullptr)
+		src = VelocityExtrapolate(client, src, FORWARD_TRACK);
+	else
+		src = VelocityExtrapolate(client, src);
 
 	filter.pSkip1 = client;
 	g_interface.Engine->GetViewAngles(dst);
@@ -3547,8 +3550,17 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 				// 速度预测
 				if (Config::bAimbotPred)
 				{
-					myOrigin = VelocityExtrapolate(client, myOrigin);
-					position = VelocityExtrapolate(g_pCurrentAimbot, position);
+					if (Config::bForwardTrack && g_pNetChannelInfo != nullptr)
+					{
+						// 延迟预测，解决因为延迟问题打不准
+						myOrigin = VelocityExtrapolate(client, myOrigin, FORWARD_TRACK);
+						position = VelocityExtrapolate(g_pCurrentAimbot, position, FORWARD_TRACK);
+					}
+					else
+					{
+						myOrigin = VelocityExtrapolate(client, myOrigin);
+						position = VelocityExtrapolate(g_pCurrentAimbot, position);
+					}
 				}
 
 				// 将准星转到敌人头部
@@ -3728,8 +3740,9 @@ end_trigger_bot:
 		}
 	}
 
-	// 延迟预测，获得最精准的射击效果
-	if (g_iBacktrackTarget != -1 && (pCmd->buttons & IN_ATTACK) && nextAttack <= serverTime && clip > 0)
+	// 后预测，获得最精准的射击效果
+	if (Config::bBackTrack && g_iBacktrackTarget != -1 &&
+		(pCmd->buttons & IN_ATTACK) && nextAttack <= serverTime && clip > 0)
 	{
 		float bestFov = FLT_MAX;
 		for (const BacktrackingRecord& tick : g_aaBacktrack[g_iBacktrackTarget])
@@ -4619,7 +4632,7 @@ void __fastcall Hooked_EnginePaint(CEngineVGui *_ecx, void *_edx, PaintMode_t mo
 			ss.setf(std::ios::fixed);
 			ss.precision(0);
 
-			// 延迟预测用，选择最接近准星的敌人
+			// 后预测用，选择最接近准星的敌人
 			float bestFov = FLT_MAX;
 			g_iBacktrackTarget = -1;
 
@@ -4766,7 +4779,7 @@ void __fastcall Hooked_EnginePaint(CEngineVGui *_ecx, void *_edx, PaintMode_t mo
 				headbox = (IsSurvivor(classId) || IsSpecialInfected(classId) || IsCommonInfected(classId) ?
 					GetHeadHitboxPosition(entity) : origin);
 
-				// 延迟预测
+				// 后预测
 				if (i < 64 && g_pUserCommands != nullptr)
 				{
 					if (g_aaBacktrack[i].size() > 20)
