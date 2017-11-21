@@ -4576,6 +4576,23 @@ void __fastcall Hooked_EnginePaint(CEngineVGui *_ecx, void *_edx, PaintMode_t mo
 			if (local == nullptr || !g_interface.Engine->IsInGame())
 				goto finish_draw;
 
+			// 正在观察的目标
+			CBaseEntity* myObsTarget = local;
+			if (!local->IsAlive())
+			{
+				int myObsMode = local->GetNetProp<int>("m_iObserverMode", "DT_BasePlayer");
+				if (myObsMode == OBS_MODE_IN_EYE || myObsMode == OBS_MODE_CHASE)
+				{
+					myObsTarget = (CBaseEntity*)local->GetNetProp<CBaseHandle*>("m_hObserverTarget", "DT_BasePlayer");
+					if (myObsTarget != nullptr)
+						myObsTarget = g_interface.ClientEntList->GetClientEntityFromHandle((CBaseHandle*)myObsTarget);
+					else
+						myObsTarget = nullptr;
+				}
+				else
+					myObsTarget = nullptr;
+			}
+
 			// 目前最小距离
 			float distmin = 65535.0f;
 
@@ -4707,15 +4724,21 @@ void __fastcall Hooked_EnginePaint(CEngineVGui *_ecx, void *_edx, PaintMode_t mo
 										CBaseEntity* obsTarget = (CBaseEntity*)entity->GetNetProp<CBaseHandle*>("m_hObserverTarget", "DT_BasePlayer");
 										if (obsTarget != nullptr)
 											obsTarget = g_interface.ClientEntList->GetClientEntityFromHandle((CBaseHandle*)obsTarget);
-										if (obsTarget != nullptr && (DWORD)obsTarget == (DWORD)local)
+										if (obsTarget != nullptr && (DWORD)obsTarget == (DWORD)myObsTarget)
 										{
 											player_info_t info;
 											g_interface.Engine->GetPlayerInfo(i, &info);
 
 											if (obsMode == OBS_MODE_IN_EYE)
+											{
+												// 第一人称
 												ss << info.name << " [1st]" << std::endl;
+											}
 											else if (obsMode == OBS_MODE_CHASE)
+											{
+												// 第三人称
 												ss << info.name << " [3rd]" << std::endl;
+											}
 										}
 									}
 								}
