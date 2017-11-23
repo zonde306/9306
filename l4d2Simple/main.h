@@ -234,6 +234,7 @@ namespace Config
 	bool bTeleport = false;
 	bool bAirStuck = false;
 	bool bPositionAdjustment = true;
+	bool bCrashServer = false;
 };
 
 #include "./definitions.h"

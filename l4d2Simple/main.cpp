@@ -341,6 +341,17 @@ struct BacktrackingRecord
 	}
 };
 
+struct RecoilRecord
+{
+	Vector punch;
+	Vector velocity;
+	RecoilRecord(const Vector& punch = Vector(0.0, 0.0, 0.0),
+		const Vector& velocity = Vector(0.0, 0.0, 0.0)) :
+		punch(punch), velocity(velocity)
+	{
+	}
+};
+
 static int g_iCurrentAiming = 0;										// 当前正在瞄准的玩家的 ID
 static bool g_bNewFrame = false;										// 现在是否运行在新的一帧
 static bool* g_pbSendPacket;											// 数据包是否发送到服务器
@@ -360,6 +371,7 @@ VMatrix* g_pWorldToScreenMatrix;										// 屏幕绘制用的
 INetChannelInfo* g_pNetChannelInfo;										// 获取延迟信息
 std::vector<BacktrackingRecord> g_aaBacktrack[64];						// 后预测
 int g_iBacktrackTarget = -1;											// 当前最接近准星的敌人
+RecoilRecord g_aaCompensation[128];										// 无后坐力用
 
 std::string GetZombieClassName(CBaseEntity* player);
 bool IsValidVictim(CBaseEntity* entity);
@@ -1066,7 +1078,7 @@ DWORD WINAPI StartCheat(LPVOID params)
 					if (Config::bNoRecoil)
 					{
 						local->SetNetProp<int>("m_iShotsFired", 0, "DT_CSPlayer");
-						local->SetLocalNetProp<QAngle>("m_vecPunchAngle", QAngle(0.0f, 0.0f, 0.0f));
+						// local->SetLocalNetProp<QAngle>("m_vecPunchAngle", QAngle(0.0f, 0.0f, 0.0f));
 					}
 				}
 				else if (_strcmpi(eventName, "player_hurt") == 0)
@@ -1762,9 +1774,9 @@ void loadConfig()
 			else if (kv.first == XorStr("rapidfire") || kv.first == XorStr("autopistol"))
 			{
 				if (kv.second.empty())
-					Config::bNoRecoil = true;
+					Config::bRapidFire = true;
 				else
-					Config::bNoRecoil = !!atoi(kv.second.c_str());
+					Config::bRapidFire = !!atoi(kv.second.c_str());
 			}
 
 			else if (kv.first == XorStr("bunnyhop") || kv.first == XorStr("bhop"))
@@ -3578,8 +3590,10 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 		}
 #endif
 
-		QAngle lastPunch(0.0f, 0.0f, 0.0f);
+		static QAngle lastPunch(0.0f, 0.0f, 0.0f);
 		QAngle currentPunch = client->GetLocalNetProp<QAngle>("m_vecPunchAngle");
+		if (!currentPunch.IsValid())
+			currentPunch.x = currentPunch.y = currentPunch.z = 0.0f;
 		
 		/*
 		if (!lastPunch.IsValid())
@@ -3609,14 +3623,20 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 					pCmd->fowardmove = oldForwardmove;
 					pCmd->upmove = oldUpmove;
 
-					if (Config::bAimbotRCS)
+					if (Config::bCrashServer)
+					{
+						pCmd->viewangles.x = pCmd->viewangles.y = -logf(-1.0f);
+					}
+					// 后坐力修正
+					// 注意不要 RCS 和 NoRecoil 同时开启，会导致服务器爆炸的！
+					else if (Config::bAimbotRCS && !Config::bNoRecoil)
 					{
 						QAngle newPunch(currentPunch.x - lastPunch.x, currentPunch.y - lastPunch.y, 0.0f);
 						pCmd->viewangles.x -= newPunch.x * Config::fAimbotRCSX;
 						pCmd->viewangles.y -= newPunch.y * Config::fAimbotRCSY;
 					}
 				}
-
+				
 				oldViewAngles.Invalidate();
 			}
 			else
@@ -3624,8 +3644,13 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 				// 修改角度
 				*bSendPacket = false;
 
-				// 后坐力控制系统
-				if (Config::bAimbotRCS)
+				if (Config::bCrashServer)
+				{
+					pCmd->viewangles.x = pCmd->viewangles.y = -logf(-1.0f);
+				}
+				// 后坐力修正(后坐力控制系统)
+				// 注意不要 RCS 和 NoRecoil 同时开启，会导致服务器爆炸的！
+				else if (Config::bAimbotRCS && !Config::bNoRecoil)
 				{
 					pCmd->viewangles.x -= currentPunch.x * Config::fAimbotRCSX;
 					pCmd->viewangles.y -= currentPunch.y * Config::fAimbotRCSY;
@@ -3637,7 +3662,6 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 	}
 
 end_aimbot:
-
 	// 自动开枪
 	if (Config::bTriggerBot && !(pCmd->buttons & IN_USE) && IsGunWeapon(weaponId) && clip > 0)
 	{
@@ -3710,10 +3734,10 @@ end_trigger_bot:
 		*/
 
 		client->SetNetProp<int>("m_iShotsFired", 0, "DT_CSPlayer");
-		client->SetLocalNetProp<QAngle>("m_vecPunchAngle", QAngle(0.0f, 0.0f, 0.0f));
+		// client->SetLocalNetProp<QAngle>("m_vecPunchAngle", QAngle(0.0f, 0.0f, 0.0f));
 	}
 
-	// 无扩散 (扩散就是子弹射击时不在同一个点上)
+	// 无扩散 (扩散就是子弹射击时不在同一个点上，即使开启了无后坐力)
 	if (Config::bNoSpread)
 	{
 		if (IsGunWeapon(weaponId) && weapon != nullptr)
@@ -3897,6 +3921,17 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 		Utils::log("Hooked_FrameStageNotify trigged.");
 	}
 
+	if (stage == FRAME_NET_UPDATE_POSTDATAUPDATE_START && Config::bNoRecoil && g_interface.Engine->IsInGame())
+	{
+		CBaseEntity* local = GetLocalClient();
+		if (local != nullptr)
+		{
+			int command = local->GetTickBase() % 128;
+			local->SetLocalNetProp("m_vecPunchAngle", g_aaCompensation[command].punch);
+			local->SetLocalNetProp("m_vecPunchAngleVel", g_aaCompensation[command].velocity);
+		}
+	}
+
 	oFrameStageNotify(stage);
 
 	if (stage == FRAME_RENDER_START && g_interface.Engine->IsInGame())
@@ -3904,6 +3939,8 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 		// 在这里可以使用 DebugOverlay 来进行 3D 绘制
 		sqb::FrameStageNotify(stage, g_interface.DebugOverlay);
 	}
+
+
 
 	static time_t nextUpdate = 0;
 	time_t currentTime = time(NULL);
@@ -3950,6 +3987,7 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 				g_pCurrentAimbot = nullptr;
 				g_pCurrentAiming = nullptr;
 				g_iCurrentAiming = 0;
+				Config::bCrashServer = false;
 				loadConfig();
 
 				Utils::log("*** connected ***");
@@ -3965,6 +4003,7 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 			g_pCurrentAimbot = nullptr;
 			g_pCurrentAiming = nullptr;
 			g_iCurrentAiming = 0;
+			Config::bCrashServer = false;
 			g_serverConVar.clear();
 
 			Utils::log("*** disconnected ***");
@@ -3996,6 +4035,14 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 
 void __fastcall Hooked_RunCommand(CPrediction* _ecx, void* _edx, CBaseEntity* pEntity, CUserCmd* pCmd, CMoveHelper* moveHelper)
 {
+	CBaseEntity* local = GetLocalClient();
+	if (local != nullptr && (DWORD)local == (DWORD)pEntity)
+	{
+		int command = local->GetTickBase() % 128;
+		g_aaCompensation[command].punch = local->GetLocalNetProp<Vector>("m_vecPunchAngle");
+		g_aaCompensation[command].velocity = local->GetLocalNetProp<Vector>("m_vecPunchAngleVel");
+	}
+	
 	oRunCommand(_ecx, pEntity, pCmd, moveHelper);
 
 	static bool showHint = true;
@@ -4378,6 +4425,20 @@ int __fastcall Hooked_KeyInput(ClientModeShared* _ecx, void* _edx, int down, But
 			{
 				g_pDrawRender->PushRenderText(DrawManager::WHITE, "speed hack %s",
 					(Config::bSpeedHack ? "enable" : "disable"));
+			}
+		}
+
+		// 打开/关闭 自动瞄准炸服
+		if (keynum == KEY_F4)
+		{
+			Config::bCrashServer = !Config::bCrashServer;
+			g_interface.Engine->ClientCmd("echo \"[segt] aimbot server crasher %s\"",
+				(Config::bCrashServer ? "enable" : "disabled"));
+
+			if (g_pDrawRender != nullptr)
+			{
+				g_pDrawRender->PushRenderText(DrawManager::WHITE, "aimbot server crasher %s",
+					(Config::bCrashServer ? "enable" : "disable"));
 			}
 		}
 	}
@@ -5292,7 +5353,8 @@ bool __fastcall Hooked_ProcessSetConVar(CBaseClientState *_ecx, void *_edx, NET_
 
 		// 对于需要同步的 ConVar 可以进行更改
 		if (!_stricmp(cvar.name, "mp_gamemode") || !_stricmp(cvar.name, "z_difficulty") ||
-			!_stricmp(cvar.name, "sv_maxupdaterate") || !_stricmp(cvar.name, "sv_minupdaterate")
+			!_stricmp(cvar.name, "sv_maxupdaterate") || !_stricmp(cvar.name, "sv_minupdaterate") ||
+			!_stricmp(cvar.name, "sv_skyname")
 			/*!_stricmp(cvar.name, "sv_disable_glow_survivors") ||*/
 			/*!_stricmp(cvar.name, "sv_disable_glow_faritems")*/)
 		{
