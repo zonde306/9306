@@ -157,7 +157,7 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved)
 			if (g_pSpliceQueryPerformanceCounter)
 			{
 				SpliceUnHookFunction(g_pSpliceQueryPerformanceCounter.get());
-				g_pSpliceQueryPerformanceCounter.release();
+				g_pSpliceQueryPerformanceCounter.reset();
 			}
 			
 			DETOURXS_DESTORY(g_pDetourReset);
@@ -178,6 +178,9 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved)
 			VMTHOOK_DESTORY(g_interface.PredictionHook);
 			VMTHOOK_DESTORY(g_interface.ModelRenderHook);
 			VMTHOOK_DESTORY(g_interface.GameEventHook);
+			VMTHOOK_DESTORY(g_interface.ViewRenderHook);
+			VMTHOOK_DESTORY(g_interface.EngineVGuiHook);
+			VMTHOOK_DESTORY(g_interface.ClientStateHook);
 			VMTHOOK_DESTORY(g_pVMTDevice);
 		}
 		catch (std::exception& e)
@@ -4066,7 +4069,7 @@ bool __fastcall Hooked_CreateMoveShared(ClientModeShared* _ecx, void* _edx, floa
 		if (g_interface.ClientModeHook)
 		{
 			g_interface.ClientModeHook->HookTable(false);
-			g_interface.ClientModeHook.release();
+			g_interface.ClientModeHook.reset();
 		}
 
 		g_interface.ClientModeHook = std::make_unique<CVMTHookManager>(g_interface.ClientMode);
@@ -5227,7 +5230,7 @@ bool __fastcall Hooked_ProcessGetCvarValue(CBaseClientState *_ecx, void *_edx, S
 		if (g_interface.ClientStateHook)
 		{
 			g_interface.ClientStateHook->HookTable(false);
-			g_interface.ClientStateHook.release();
+			g_interface.ClientStateHook.reset();
 		}
 
 		g_interface.ClientStateHook = std::make_unique<CVMTHookManager>(g_interface.ClientState);
@@ -5313,7 +5316,7 @@ bool __fastcall Hooked_ProcessSetConVar(CBaseClientState *_ecx, void *_edx, NET_
 		if (g_interface.ClientStateHook)
 		{
 			g_interface.ClientStateHook->HookTable(false);
-			g_interface.ClientStateHook.release();
+			g_interface.ClientStateHook.reset();
 		}
 
 		g_interface.ClientStateHook = std::make_unique<CVMTHookManager>(g_interface.ClientState);

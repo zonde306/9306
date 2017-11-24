@@ -993,8 +993,8 @@ enum entityGender_t
 	g_interface.Engine->ClientCmd("echo \"[ConVar] %s set %d\"", _s, g_conVar[_s]->GetInt());\
 }
 
-#define VMTHOOK_DESTORY(_v)		if(_v)_v->HookTable(false)
-#define DETOURXS_DESTORY(_v)	if(_v && _v->Created())_v->Destroy()
+#define VMTHOOK_DESTORY(_v)		if(_v){_v->HookTable(false);}
+#define DETOURXS_DESTORY(_v)	if(_v && _v->Created()){_v->Destroy();_v.reset();}
 
 #define NETPROP_GET_MAKE(_f,_t,_p,_r)	_r& _f()\
 {\
