@@ -475,6 +475,69 @@ float GetAnglesFieldOfView(const Vector& myAngles, const Vector& aimAngles)
 	return getDistance(toHim.x, toHim.y);
 }
 
+bool ScreenTransform(const Vector &point, Vector &screen)
+{
+	float w;
+
+	if (g_pWorldToScreenMatrix == nullptr)
+		g_pWorldToScreenMatrix = &g_interface.Engine->WorldToScreenMatrix();
+
+	screen.x = (*g_pWorldToScreenMatrix)[0][0] * point[0] + (*g_pWorldToScreenMatrix)[0][1] *
+		point[1] + (*g_pWorldToScreenMatrix)[0][2] * point[2] + (*g_pWorldToScreenMatrix)[0][3];
+	screen.y = (*g_pWorldToScreenMatrix)[1][0] * point[0] + (*g_pWorldToScreenMatrix)[1][1] *
+		point[1] + (*g_pWorldToScreenMatrix)[1][2] * point[2] + (*g_pWorldToScreenMatrix)[1][3];
+	w = (*g_pWorldToScreenMatrix)[3][0] * point[0] + (*g_pWorldToScreenMatrix)[3][1] *
+		point[1] + (*g_pWorldToScreenMatrix)[3][2] * point[2] + (*g_pWorldToScreenMatrix)[3][3];
+	screen.z = 0.0f;
+	bool behind = false;
+	if (w < 0.001f)
+	{
+		behind = true;
+		float invw = -1.0f / w;
+		screen.x *= invw;
+		screen.y *= invw;
+	}
+	else
+	{
+		behind = false;
+		float invw = 1.0f / w;
+		screen.x *= invw;
+		screen.y *= invw;
+	}
+	return behind;
+}
+
+void FindScreenPoint(Vector &point, int screenwidth, int screenheight, int degrees)
+{
+	float x2 = screenwidth / 2;
+	float y2 = screenheight / 2;
+
+	float d = sqrt(pow((point.x - x2), 2) + (pow((point.y - y2), 2))); //Distance
+	float r = degrees / d; //Segment ratio
+
+	point.x = r * point.x + (1 - r) * x2; //find point that divides the segment
+	point.y = r * point.y + (1 - r) * y2; //into the ratio (1-r):r
+}
+
+bool WorldToScreen2(const Vector &vOrigin, Vector &vScreen)
+{
+	bool st = ScreenTransform(vOrigin, vScreen);
+	int iScreenWidth, iScreenHeight;
+	g_interface.Engine->GetScreenSize(iScreenWidth, iScreenHeight);
+	float x = iScreenWidth / 2;
+	float y = iScreenHeight / 2;
+	x += 0.5 * vScreen.x * iScreenWidth + 0.5;
+	y -= 0.5 * vScreen.y * iScreenHeight + 0.5;
+	vScreen.x = x;
+	vScreen.y = y;
+	if (vScreen.x > iScreenHeight || vScreen.x < 0 || vScreen.y > iScreenWidth || vScreen.y < 0 || st)
+	{
+		FindScreenPoint(vScreen, iScreenWidth, iScreenHeight, iScreenHeight / 2);
+		return false;
+	}
+	return true;
+}
+
 bool WorldToScreen(const Vector &point, Vector &out)
 {
 	if (!point.IsValid())
@@ -492,15 +555,15 @@ bool WorldToScreen(const Vector &point, Vector &out)
 		(*g_pWorldToScreenMatrix)[3][3];
 	
 	out.z = 0;
-	if (w > 0.01)
+	if (w > 0.01f)
 	{
 		float w1 = 1 / w;
-		out.x = m_iWidth / 2 + (0.5 * (((*g_pWorldToScreenMatrix)[0][0] * point[0] +
+		out.x = m_iWidth / 2 + (0.5f * (((*g_pWorldToScreenMatrix)[0][0] * point[0] +
 			(*g_pWorldToScreenMatrix)[0][1] * point[1] +
 			(*g_pWorldToScreenMatrix)[0][2] * point[2] +
 			(*g_pWorldToScreenMatrix)[0][3]) * w1) * m_iWidth + 0.5);
 
-		out.y = m_iHeight / 2 - (0.5 * (((*g_pWorldToScreenMatrix)[1][0] * point[0] +
+		out.y = m_iHeight / 2 - (0.5f * (((*g_pWorldToScreenMatrix)[1][0] * point[0] +
 			(*g_pWorldToScreenMatrix)[1][1] * point[1] +
 			(*g_pWorldToScreenMatrix)[1][2] * point[2] +
 			(*g_pWorldToScreenMatrix)[1][3]) * w1) * m_iHeight + 0.5);

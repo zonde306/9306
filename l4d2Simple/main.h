@@ -174,6 +174,7 @@ namespace Config
 	bool bDrawAmmo = true;
 	bool bDrawCrosshairs = true;
 	bool bDrawSpectator = true;
+	bool bDrawOffScreen = false;
 
 	// 屏幕绘制：实体
 	bool bDrawT1Weapon = true;

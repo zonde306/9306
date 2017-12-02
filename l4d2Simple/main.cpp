@@ -2002,6 +2002,14 @@ void loadConfig()
 				else
 					Config::bDrawAmmoStack = !!atoi(kv.second.c_str());
 			}
+
+			else if (kv.first == XorStr("offscreen"))
+			{
+				if (kv.second.empty())
+					Config::bDrawOffScreen = true;
+				else
+					Config::bDrawOffScreen = !!atoi(kv.second.c_str());
+			}
 		}
 
 		file.close();
@@ -3706,11 +3714,20 @@ end_aimbot:
 			(g_iCurrentHitbox < HITBOX_COMMON_1 || g_iCurrentHitbox > HITBOX_COMMON_4))
 			goto end_trigger_bot;
 
-		if (g_pCurrentAiming->GetTeam() != myTeam && classId != ET_WITCH &&					// 不攻击队友和 Witch
-			g_pCurrentAiming->GetTeam() != 4 && (!IsSpecialInfected(classId) ||				// 不攻击 L4D1 生还者(因为他们是无敌的)
-				!IsPlayerGhost(g_iCurrentAiming) || !IsGhostInfected(g_pCurrentAiming)) &&	// 不攻击幽灵状态的特感
-				(myTeam == 2 || classId != ET_INFECTED))									// 特感队伍不攻击普感
-			pCmd->buttons |= IN_ATTACK;
+		try
+		{
+			if (g_pCurrentAiming->GetTeam() != myTeam && classId != ET_WITCH &&					// 不攻击队友和 Witch
+				g_pCurrentAiming->GetTeam() != 4 && (!IsSpecialInfected(classId) ||				// 不攻击 L4D1 生还者(因为他们是无敌的)
+					!IsPlayerGhost(g_iCurrentAiming) || !IsGhostInfected(g_pCurrentAiming)) &&	// 不攻击幽灵状态的特感
+					(myTeam == 2 || classId != ET_INFECTED))									// 特感队伍不攻击普感
+				pCmd->buttons |= IN_ATTACK;
+		}
+		catch (...)
+		{
+			g_pCurrentAiming = nullptr;
+			g_iCurrentAiming = -1;
+			g_pPlayerResource = nullptr;
+		}
 	}
 
 end_trigger_bot:
@@ -4892,16 +4909,53 @@ void __fastcall Hooked_EnginePaint(CEngineVGui *_ecx, void *_edx, PaintMode_t mo
 					}
 				}
 
-				// 检查目标是否在屏幕内
-				if (!headbox.IsValid() || !WorldToScreen(headbox, head) ||
-					!WorldToScreen(origin, foot))
-					continue;
+				// 目标与自己的距离
+				float dist = myOrigin.DistTo(origin);
 
 				// 目标是否可见
 				bool visible = IsTargetVisible(entity, headbox, myEyeOrigin);
 
-				// 目标与自己的距离
-				float dist = myOrigin.DistTo(origin);
+				// 检查目标是否在屏幕内
+				if (!headbox.IsValid() || !WorldToScreen(headbox, head) ||
+					!WorldToScreen(origin, foot))
+				{
+					if(!headbox.IsValid())
+						continue;
+
+					if (Config::bDrawOffScreen && visible && dist < 1000.0f)
+					{
+						/*
+						float length = fabs((headbox.z - origin.z) / 5);
+						if (length < 3.0f)
+							length = 3.0f;
+						*/
+
+						WorldToScreen2(origin + Vector(0, 0, 25), head);
+						WorldToScreen2(origin, foot);
+						if (i <= 64)
+						{
+							if (IsSpecialInfected(classId))
+								color = DrawManager::RED;
+							else if (IsSurvivor(classId))
+								color = DrawManager::SKYBLUE;
+							else
+								continue;
+						}
+						else if (team == 2 && IsCommonInfected(classId))
+						{
+							if (classId == ET_INFECTED && dist < 500.0f)
+								color = DrawManager::ORANGE;
+							else if (classId == ET_WITCH)
+								color = DrawManager::PURPLE;
+							else
+								continue;
+						}
+
+						g_pDrawRender->AddLine(color, head.x, foot.x, head.y, foot.y);
+					}
+
+					continue;
+				}
 
 				// 获取方框的大小
 				float height = fabs(head.y - foot.y);
