@@ -3560,8 +3560,72 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 	}
 #endif
 
+	bool fireByTrigger = false;
+
+	// 自动开枪
+	if (Config::bTriggerBot && !(pCmd->buttons & IN_USE) && IsGunWeapon(weaponId) && clip > 0)
+	{
+#ifdef _DEBUG_OUTPUT
+		if (g_pCurrentAiming != nullptr)
+		{
+			if (!IsValidVictim(g_pCurrentAiming))
+				g_interface.Engine->ClientCmd("echo \"aiming dead 0x%X\"", (DWORD)g_pCurrentAiming);
+			if (g_pCurrentAiming->GetTeam() == client->GetTeam())
+				g_interface.Engine->ClientCmd("echo \"aiming team 0x%X\"", (DWORD)g_pCurrentAiming);
+			if (g_pCurrentAiming->GetClientClass()->m_ClassID == ET_INFECTED)
+				g_interface.Engine->ClientCmd("echo \"aiming infected 0x%X\"", (DWORD)g_pCurrentAiming);
+		}
+#endif
+
+#ifdef _DEBUG
+		try
+		{
+#endif
+			if (!IsValidVictim(g_pCurrentAiming) || g_iCurrentHitbox <= 0)
+				goto end_trigger_bot;
+#ifdef _DEBUG
+		}
+		catch (std::exception e)
+		{
+			Utils::log("%s (%d): %s | 0x%X", __FILE__, __LINE__, e.what(), (DWORD)g_pCurrentAiming);
+			g_pCurrentAiming = nullptr;
+			goto end_trigger_bot;
+		}
+		catch (...)
+		{
+			Utils::log("%s (%d): 未知异常 | 0x%X", __FILE__, __LINE__, (DWORD)g_pCurrentAiming);
+			g_pCurrentAiming = nullptr;
+			goto end_trigger_bot;
+		}
+#endif
+		int classId = g_pCurrentAiming->GetClientClass()->m_ClassID;
+		if (Config::bTriggerBotHead && IsCommonInfected(classId) &&
+			(g_iCurrentHitbox < HITBOX_COMMON_1 || g_iCurrentHitbox > HITBOX_COMMON_4))
+			goto end_trigger_bot;
+
+		try
+		{
+			if (g_pCurrentAiming->GetTeam() != myTeam && classId != ET_WITCH &&					// 不攻击队友和 Witch
+				g_pCurrentAiming->GetTeam() != 4 && (!IsSpecialInfected(classId) ||				// 不攻击 L4D1 生还者(因为他们是无敌的)
+					!IsPlayerGhost(g_iCurrentAiming) || !IsGhostInfected(g_pCurrentAiming)) &&	// 不攻击幽灵状态的特感
+					(myTeam == 2 || classId != ET_INFECTED))									// 特感队伍不攻击普感
+			{
+				pCmd->buttons |= IN_ATTACK;
+				fireByTrigger = true;
+			}
+		}
+		catch (...)
+		{
+			g_pCurrentAiming = nullptr;
+			g_iCurrentAiming = -1;
+			g_pPlayerResource = nullptr;
+		}
+	}
+
+end_trigger_bot:
+
 	// 自动瞄准
-	if (Config::bAimbot && weapon != nullptr && (GetAsyncKeyState(VK_LBUTTON) & 0x8000))
+	if (Config::bAimbot && weapon != nullptr && (pCmd->buttons & IN_ATTACK))
 	{
 		Vector myOrigin = client->GetEyePosition(), myAngles = pCmd->viewangles;
 
@@ -3572,6 +3636,22 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 		static float oldUpmove;
 
 		bool runAimbot = false;
+
+		// 优先使用自动开枪选中的敌人，使自动开枪有自动瞄准的效果
+		if (fireByTrigger && g_pCurrentAiming != nullptr)
+		{
+			int classId = ET_INVALID;
+			try
+			{
+				classId = g_pCurrentAiming->GetClientClass()->m_ClassID;
+				if (IsSurvivor(classId) || IsSpecialInfected(classId))
+					g_pCurrentAimbot = g_pCurrentAiming;
+			}
+			catch (...)
+			{
+				Utils::log("[segt] Aimbot + TriggerBot Failed.");
+			}
+		}
 
 		// 目标在另一个地方选择
 		if (g_pCurrentAimbot != nullptr && IsGunWeapon(weaponId) && nextAttack <= serverTime && clip > 0)
@@ -3716,65 +3796,7 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 	}
 
 end_aimbot:
-	// 自动开枪
-	if (Config::bTriggerBot && !(pCmd->buttons & IN_USE) && IsGunWeapon(weaponId) && clip > 0)
-	{
-#ifdef _DEBUG_OUTPUT
-		if (g_pCurrentAiming != nullptr)
-		{
-			if (!IsValidVictim(g_pCurrentAiming))
-				g_interface.Engine->ClientCmd("echo \"aiming dead 0x%X\"", (DWORD)g_pCurrentAiming);
-			if (g_pCurrentAiming->GetTeam() == client->GetTeam())
-				g_interface.Engine->ClientCmd("echo \"aiming team 0x%X\"", (DWORD)g_pCurrentAiming);
-			if (g_pCurrentAiming->GetClientClass()->m_ClassID == ET_INFECTED)
-				g_interface.Engine->ClientCmd("echo \"aiming infected 0x%X\"", (DWORD)g_pCurrentAiming);
-		}
-#endif
-
-#ifdef _DEBUG
-		try
-		{
-#endif
-			if (!IsValidVictim(g_pCurrentAiming) || g_iCurrentHitbox <= 0)
-				goto end_trigger_bot;
-#ifdef _DEBUG
-		}
-		catch (std::exception e)
-		{
-			Utils::log("%s (%d): %s | 0x%X", __FILE__, __LINE__, e.what(), (DWORD)g_pCurrentAiming);
-			g_pCurrentAiming = nullptr;
-			goto end_trigger_bot;
-		}
-		catch (...)
-		{
-			Utils::log("%s (%d): 未知异常 | 0x%X", __FILE__, __LINE__, (DWORD)g_pCurrentAiming);
-			g_pCurrentAiming = nullptr;
-			goto end_trigger_bot;
-		}
-#endif
-		int classId = g_pCurrentAiming->GetClientClass()->m_ClassID;
-		if (Config::bTriggerBotHead && IsCommonInfected(classId) &&
-			(g_iCurrentHitbox < HITBOX_COMMON_1 || g_iCurrentHitbox > HITBOX_COMMON_4))
-			goto end_trigger_bot;
-
-		try
-		{
-			if (g_pCurrentAiming->GetTeam() != myTeam && classId != ET_WITCH &&					// 不攻击队友和 Witch
-				g_pCurrentAiming->GetTeam() != 4 && (!IsSpecialInfected(classId) ||				// 不攻击 L4D1 生还者(因为他们是无敌的)
-					!IsPlayerGhost(g_iCurrentAiming) || !IsGhostInfected(g_pCurrentAiming)) &&	// 不攻击幽灵状态的特感
-					(myTeam == 2 || classId != ET_INFECTED))									// 特感队伍不攻击普感
-				pCmd->buttons |= IN_ATTACK;
-		}
-		catch (...)
-		{
-			g_pCurrentAiming = nullptr;
-			g_iCurrentAiming = -1;
-			g_pPlayerResource = nullptr;
-		}
-	}
-
-end_trigger_bot:
-
+	
 	// 在开枪前检查，防止攻击队友
 	if (Config::bAnitFirendlyFire && (pCmd->buttons & IN_ATTACK) && IsGunWeapon(weaponId) && myTeam == 2)
 	{
