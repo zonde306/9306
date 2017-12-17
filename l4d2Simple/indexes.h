@@ -143,6 +143,9 @@ namespace indexes
 	const int ProcessStringCmd = 2;
 	const int ProcessSetConVar = 3;
 	const int ProcessSendTable = 8;
+	const int ProcessClassInfo = 9;
+	const int ProcessCreateString = 11;
 	const int ProcessCreateStringTable = 11;
+	const int ProcessUpdate = 12;
 	const int ProcessGetCvarValue = 28;
 }

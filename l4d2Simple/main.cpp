@@ -3312,7 +3312,7 @@ void __fastcall Hooked_PaintTraverse(CPanel* _ecx, void* _edx, unsigned int pane
 	if (FocusOverlayPanel > 0 && panel == FocusOverlayPanel)
 	{
 		// 不建议在这里绘制，因为这个并不是全屏幕的
-		
+
 		// 在这里获取不会出错
 		g_pWorldToScreenMatrix = &g_interface.Engine->WorldToScreenMatrix();
 
@@ -3535,7 +3535,10 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 
 	// 当前正在瞄准的目标
 	int aiming = *(int*)(client + m_iCrosshairsId);
-	g_pCurrentAiming = (aiming > 0 ? g_interface.ClientEntList->GetClientEntity(aiming) : GetAimingTarget(&g_iCurrentHitbox));
+	if (aiming > 0)
+		g_pCurrentAiming = g_interface.ClientEntList->GetClientEntity(aiming);
+	else
+		g_pCurrentAiming = GetAimingTarget(&g_iCurrentHitbox);
 
 #ifdef _DEBUG
 	try
@@ -3999,8 +4002,6 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 		// 在这里可以使用 DebugOverlay 来进行 3D 绘制
 		sqb::FrameStageNotify(stage, g_interface.DebugOverlay);
 	}
-
-
 
 	static time_t nextUpdate = 0;
 	time_t currentTime = time(NULL);
@@ -4691,7 +4692,8 @@ void __fastcall Hooked_EnginePaint(CEngineVGui *_ecx, void *_edx, PaintMode_t mo
 
 		// 在这里绘制东西比 PaintTraverse 更快
 
-#ifndef USE_D3D_DRAW
+#ifndef __EXECUTE_DRAW_FUNCTION__
+#define __EXECUTE_DRAW_FUNCTION__
 		{
 			CBaseEntity* local = GetLocalClient();
 			if (local == nullptr || !g_interface.Engine->IsInGame())
