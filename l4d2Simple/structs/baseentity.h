@@ -256,7 +256,10 @@ public:
 			if (this->IsDormant() || !(cc = this->GetClientClass()) || (id = cc->m_ClassID) == ET_WORLD)
 				return false;
 
-			solid = this->GetNetProp<int>("m_usSolidFlags", "DT_BaseCombatCharacter");
+			// 这个可能是假的吧
+			// solid = this->GetNetProp<int>("m_usSolidFlags", "DT_BaseCombatCharacter");
+			solid = this->GetNetProp2<int>("m_Collision", "m_usSolidFlags", "DT_BaseCombatCharacter");
+
 			sequence = this->GetNetProp<int>("m_nSequence", "DT_BaseAnimating");
 		}
 		catch (std::exception& e)

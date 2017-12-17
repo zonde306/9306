@@ -15,9 +15,9 @@ public:
 		return ((Fn)VMT.GetFunction(this, indexes::GetHighestEntityIndex))(this);
 	}
 
-	CBaseEntity* GetClientEntityFromHandle(CBaseHandle* Handle)
+	CBaseEntity* GetClientEntityFromHandle(const CBaseHandle* Handle)
 	{
-		typedef CBaseEntity*(__thiscall* Fn)(void*, void*);
+		typedef CBaseEntity*(__thiscall* Fn)(void*, const void*);
 		return ((Fn)VMT.GetFunction(this, indexes::GetClientEntityFromHandle))(this, Handle);
 	}
 };

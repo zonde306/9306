@@ -2340,7 +2340,7 @@ CBaseEntity* GetAimingTarget(int* hitbox = nullptr)
 
 	Ray_t ray;
 	trace_t trace;
-	CTraceFilter filter;
+	CTraceFilterFunction filter;
 
 	Vector src = client->GetEyePosition(), dst;
 
@@ -2369,13 +2369,13 @@ CBaseEntity* GetAimingTarget(int* hitbox = nullptr)
 		(DWORD)client, src.x, src.y, src.z, dst.x, dst.y, dst.z);
 #endif
 
-	__try
+	try
 	{
 		g_interface.Trace->TraceRay(ray, MASK_SHOT, &filter, &trace);
 	}
-	__except (EXCEPTION_EXECUTE_HANDLER)
+	catch(...)
 	{
-		Utils::log("%s (%d): TraceRayError: 0x%X", __FILE__, __LINE__, GetExceptionCode());
+		Utils::log("%s (%d): TraceRayError", __FILE__, __LINE__);
 		return nullptr;
 	}
 
@@ -2460,6 +2460,7 @@ bool IsTargetVisible(CBaseEntity* entity, Vector end, Vector start)
 
 	try
 	{
+		// 这个问题真多
 		g_interface.Trace->TraceRay(ray, MASK_SHOT, &filter, &trace);
 	}
 	catch(std::exception& e)
@@ -2478,8 +2479,47 @@ bool IsTargetVisible(CBaseEntity* entity, Vector end, Vector start)
 		return false;
 	*/
 
-	// return (trace.m_pEnt == entity || trace.fraction == 0.97f);
-	return (trace.m_pEnt == entity || trace.fraction == 1.0f);
+	return (trace.m_pEnt == entity || trace.fraction > 0.97f);
+	// return (trace.m_pEnt == entity || trace.fraction == 1.0f);
+	// return (trace.m_pEnt == entity && trace.hitbox > 0);
+	// return (trace.m_pEnt == entity && trace.fraction > 0.97f);
+}
+
+// 检查是否会被看见
+bool IsLocalVisible(CBaseEntity* entity, Vector end, Vector start)
+{
+	CBaseEntity* client = GetLocalClient();
+	if (entity == nullptr || client == nullptr || !g_interface.Engine->IsInGame())
+		return false;
+
+	trace_t trace;
+	Ray_t ray;
+
+	CTraceFilter filter;
+	filter.pSkip1 = entity;
+
+	if (!start.IsValid())
+		start = entity->GetEyePosition();
+	if (!end.IsValid())
+		end = GetHeadHitboxPosition(client);
+
+	ray.Init(start, end);
+
+	try
+	{
+		g_interface.Trace->TraceRay(ray, MASK_SHOT, &filter, &trace);
+	}
+	catch (std::exception& e)
+	{
+		Utils::log("%s (%d): %s", __FILE__, __LINE__, e.what());
+		return false;
+	}
+	catch (...)
+	{
+		return false;
+	}
+
+	return (trace.m_pEnt == client || trace.fraction > 0.97f);
 }
 
 // -------------------------------- D3D9 Device Hooked Function --------------------------------
@@ -4502,8 +4542,8 @@ bool __stdcall Hooked_DispatchUserMessage(int msg_id, bf_read* msg_data)
 		Utils::log("Hooked_DispatchUserMessage trigged.");
 	}
 
-	// 去除屏幕摇晃和黑屏效果
-	if (msg_id == 11 || msg_id == 12)
+	// 去除 屏幕摇晃/黑屏/屏幕模糊 效果
+	if (msg_id == 11 || msg_id == 12 || msg_id == 46)
 		return true;
 
 	return oDispatchUserMessage(msg_id, msg_data);
@@ -4913,7 +4953,8 @@ void __fastcall Hooked_EnginePaint(CEngineVGui *_ecx, void *_edx, PaintMode_t mo
 				float dist = myOrigin.DistTo(origin);
 
 				// 目标是否可见
-				bool visible = IsTargetVisible(entity, headbox, myEyeOrigin);
+				// bool visible = IsTargetVisible(entity, headbox, myEyeOrigin);
+				bool visible = IsLocalVisible(entity, myEyeOrigin, headbox);
 
 				// 检查目标是否在屏幕内
 				if (!headbox.IsValid() || !WorldToScreen(headbox, head) ||

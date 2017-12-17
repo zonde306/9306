@@ -146,6 +146,76 @@ public:
 	void* pSkip1;
 };
 
+class CTraceFilterFunction : public CTraceFilter
+{
+public:
+	CTraceFilterFunction()
+	{
+		pSkip1 = nullptr;
+		filter = [this](CBaseEntity* entity, int contentsMask) -> bool
+		{
+			if (!entity->IsAlive())
+			{
+				ClientClass* cc = entity->GetClientClass();
+				// Utils::log("filter: Not Alive: %s (%d)", cc->m_pNetworkName, cc->m_ClassID);
+				return false;
+			}
+
+			int classId = entity->GetClientClass()->m_ClassID;
+			if (!IsSurvivor(classId) && !IsSpecialInfected(classId) && !IsCommonInfected(classId))
+			{
+				// 这玩意看不见，子弹可以穿过，但是却可以被 TraceRay 命中
+				if (classId == ET_SurvivorRescue)
+				{
+					// Utils::log("filter: ClassID is ET_SurvivorRescue");
+					return false;
+				}
+
+				// Infected 自带 SF_NOT_SOLID
+				if (// (entity->GetNetProp2<int>("m_Collision", "m_nSolidType", "DT_BasePlayer") == SOLID_NONE) ||
+					(entity->GetNetProp2<int>("m_Collision", "m_usSolidFlags", "DT_BasePlayer") & SF_NOT_SOLID))
+				{
+					// Utils::log("filter: SF_NOT_SOLID: %d", classId);
+					return false;
+				}
+			}
+
+			return true;
+		};
+	}
+	
+	virtual bool ShouldHitEntity(IHandleEntity* pEntityHandle, int contentsMask) override
+	{
+		CBaseEntity* entity = (CBaseEntity*)pEntityHandle;
+		
+		try
+		{
+			if (entity->GetClientClass() == nullptr || entity->IsDormant())
+			{
+				// Utils::log("TraceFilterError: InvalidEntity");
+				return false;
+			}
+
+			if (filter && !filter(entity, contentsMask))
+			{
+				// Utils::log("TraceFilterError: m_usSolidFlags");
+				// Utils::log("TraceFilterError: m_usSolidFlags: %s", entity->GetClientClass()->m_pNetworkName);
+				return false;
+			}
+
+			return (pEntityHandle != pSkip1);
+		}
+		catch(...)
+		{
+			// Utils::log("TraceFilterError: GetClientClass");
+		}
+
+		return (pEntityHandle != pSkip1);
+	}
+
+	std::function<bool(CBaseEntity*, int)> filter;
+};
+
 class CTraceFilterSimple : public CTraceFilter
 {
 public:
