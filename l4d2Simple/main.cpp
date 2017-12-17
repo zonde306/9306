@@ -3316,6 +3316,28 @@ void __fastcall Hooked_PaintTraverse(CPanel* _ecx, void* _edx, unsigned int pane
 		// 在这里获取不会出错
 		g_pWorldToScreenMatrix = &g_interface.Engine->WorldToScreenMatrix();
 
+		// 当前正在瞄准的目标
+		// 由于 TraceRay 存在 bug 所以这里再次进行更新
+		try
+		{
+			if (g_pCurrentAiming == nullptr || !IsValidVictim(g_pCurrentAiming))
+			{
+				CBaseEntity* client = GetLocalClient();
+				if (client != nullptr && client->IsAlive())
+				{
+					int aiming = *(int*)(client + m_iCrosshairsId);
+					if (aiming > 0)
+						g_pCurrentAiming = g_interface.ClientEntList->GetClientEntity(aiming);
+					else
+						g_pCurrentAiming = GetAimingTarget(&g_iCurrentHitbox);
+				}
+			}
+		}
+		catch (...)
+		{
+			Utils::log("[segt] Unknown IsValidVictim Error");
+		}
+
 		sqb::PaintTraverse(_SC("FocusOverlayPanel"), g_interface.Surface);
 	}
 
@@ -3636,6 +3658,7 @@ end_trigger_bot:
 		static float oldUpmove;
 
 		bool runAimbot = false;
+		bool runByUser = !!(GetAsyncKeyState(VK_LBUTTON) & 0x8000);
 
 		// 优先使用自动开枪选中的敌人，使自动开枪有自动瞄准的效果
 		if (fireByTrigger && g_pCurrentAiming != nullptr)
@@ -3644,12 +3667,23 @@ end_trigger_bot:
 			try
 			{
 				classId = g_pCurrentAiming->GetClientClass()->m_ClassID;
-				if (IsSurvivor(classId) || IsSpecialInfected(classId))
+				if ((IsSurvivor(classId) && myTeam == 3) ||
+					(IsSpecialInfected(classId) && myTeam == 2) ||
+					(IsCommonInfected(classId) && myTeam == 2 && (g_pCurrentAimbot == nullptr ||
+						g_pCurrentAimbot->GetClientClass()->m_ClassID == ET_INFECTED)))
+				{
+					// 将自动瞄准切换的当前瞄准的目标
 					g_pCurrentAimbot = g_pCurrentAiming;
+				}
+				else if(!runByUser)
+					goto end_aimbot;
 			}
 			catch (...)
 			{
 				Utils::log("[segt] Aimbot + TriggerBot Failed.");
+
+				if(!runByUser)
+					goto end_aimbot;
 			}
 		}
 
