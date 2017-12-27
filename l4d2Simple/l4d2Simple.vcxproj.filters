@@ -216,9 +216,6 @@
     <ClInclude Include="peb.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="binding.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
     <ClInclude Include="drawmanager.h">
       <Filter>头文件</Filter>
     </ClInclude>

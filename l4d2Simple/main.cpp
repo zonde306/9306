@@ -2380,7 +2380,7 @@ CBaseEntity* GetAimingTarget(int* hitbox = nullptr)
 	catch(...)
 	{
 		Utils::log("%s (%d): TraceRayError", __FILE__, __LINE__);
-		return nullptr;
+		throw std::runtime_error("Access Violation");
 	}
 
 #ifdef _DEBUG_OUTPUT
@@ -3321,24 +3321,28 @@ void __fastcall Hooked_PaintTraverse(CPanel* _ecx, void* _edx, unsigned int pane
 
 		// 当前正在瞄准的目标
 		// 由于 TraceRay 存在 bug 所以这里再次进行更新
-		try
+		if (g_pCurrentAiming == nullptr || !IsValidVictim(g_pCurrentAiming))
 		{
-			if (g_pCurrentAiming == nullptr || !IsValidVictim(g_pCurrentAiming))
+			CBaseEntity* client = GetLocalClient();
+			if (client != nullptr && client->IsAlive())
 			{
-				CBaseEntity* client = GetLocalClient();
-				if (client != nullptr && client->IsAlive())
+				int aiming = *(int*)(client + m_iCrosshairsId);
+				if (aiming > 0)
 				{
-					int aiming = *(int*)(client + m_iCrosshairsId);
-					if (aiming > 0)
-						g_pCurrentAiming = g_interface.ClientEntList->GetClientEntity(aiming);
-					else
+					g_pCurrentAiming = g_interface.ClientEntList->GetClientEntity(aiming);
+				}
+				else
+				{
+					try
+					{
 						g_pCurrentAiming = GetAimingTarget(&g_iCurrentHitbox);
+					}
+					catch (std::runtime_error& exception)
+					{
+						Utils::log("with Hooked_PaintTraverse %s", exception.what());
+					}
 				}
 			}
-		}
-		catch (...)
-		{
-			Utils::log("[segt] Unknown IsValidVictim Error");
 		}
 	}
 
@@ -4077,10 +4081,10 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 
 						float wishMoveDegLocal = fmod(o1.x, 360);
 						float wishMoveDeg = fmod(lookYawDeg + wishMoveDegLocal, 360);
-						
+
 						VectorNormalize(velocity);
 						VectorAngles(velocity, o2);
-						
+
 						float veloYawDeg = fmod(o2.x, 360);
 
 						float factor;
@@ -4113,7 +4117,7 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 		// 设置随机数种子
 		// SetPredictionRandomSeed(MD5_PseudoRandom(pCmd->command_number) & 0x7FFFFFFF);
 		*g_pPredictionRandomSeed = MD5_PseudoRandom(pCmd->command_number) & 0x7FFFFFFF;
-		
+
 		// 设置需要预测的时间（帧）
 		g_interface.Globals->curtime = serverTime;
 		g_interface.Globals->frametime = g_interface.Globals->interval_per_tick;
@@ -4165,10 +4169,22 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 	// 当前正在瞄准的目标
 	int aiming = *(int*)(client + m_iCrosshairsId);
 	if (aiming > 0)
+	{
+		// 游戏自带的 准星ID 只能检查队友，对敌人无效
 		g_pCurrentAiming = g_interface.ClientEntList->GetClientEntity(aiming);
+	}
 	else
-		g_pCurrentAiming = GetAimingTarget(&g_iCurrentHitbox);
-	
+	{
+		try
+		{
+			g_pCurrentAiming = GetAimingTarget(&g_iCurrentHitbox);
+		}
+		catch (std::runtime_error& exception)
+		{
+			Utils::log("with Hooked_CreateMove %s", exception.what());
+		}
+	}
+
 #ifdef _DEBUG
 	try
 	{

@@ -155,7 +155,6 @@
     <ClInclude Include="..\imgui\stb_rect_pack.h" />
     <ClInclude Include="..\imgui\stb_textedit.h" />
     <ClInclude Include="..\imgui\stb_truetype.h" />
-    <ClInclude Include="binding.h" />
     <ClInclude Include="d3dfont\D3DFont.h" />
     <ClInclude Include="d3dukmdt.h" />
     <ClInclude Include="d3dumddi.h" />
