@@ -156,7 +156,7 @@ public:
 		{
 			if (!entity->IsAlive())
 			{
-				ClientClass* cc = entity->GetClientClass();
+				// ClientClass* cc = entity->GetClientClass();
 				// Utils::log("filter: Not Alive: %s (%d)", cc->m_pNetworkName, cc->m_ClassID);
 				return false;
 			}
@@ -169,6 +169,11 @@ public:
 				{
 					// Utils::log("filter: ClassID is ET_SurvivorRescue");
 					return false;
+				}
+				else if (classId == ET_TankRock)
+				{
+					// Utils::log("filter: ClassID is ET_TankRock");
+					return true;
 				}
 
 				// Infected 自带 SF_NOT_SOLID

@@ -524,13 +524,13 @@ bool WorldToScreen2(const Vector &vOrigin, Vector &vScreen)
 	bool st = ScreenTransform(vOrigin, vScreen);
 	int iScreenWidth, iScreenHeight;
 	g_interface.Engine->GetScreenSize(iScreenWidth, iScreenHeight);
-	float x = iScreenWidth / 2;
-	float y = iScreenHeight / 2;
-	x += 0.5 * vScreen.x * iScreenWidth + 0.5;
-	y -= 0.5 * vScreen.y * iScreenHeight + 0.5;
+	float x = iScreenWidth / 2.0f;
+	float y = iScreenHeight / 2.0f;
+	x += 0.5f * vScreen.x * iScreenWidth + 0.5f;
+	y -= 0.5f * vScreen.y * iScreenHeight + 0.5f;
 	vScreen.x = x;
 	vScreen.y = y;
-	if (vScreen.x > iScreenHeight || vScreen.x < 0 || vScreen.y > iScreenWidth || vScreen.y < 0 || st)
+	if (vScreen.x > iScreenWidth || vScreen.x < 0.0f || vScreen.y > iScreenHeight || vScreen.y < 0.0f || st)
 	{
 		FindScreenPoint(vScreen, iScreenWidth, iScreenHeight, iScreenHeight / 2);
 		return false;
@@ -573,6 +573,34 @@ bool WorldToScreen(const Vector &point, Vector &out)
 	return false;
 }
 
+bool WorldToScreen(IDirect3DDevice9* pDevice, const D3DXVECTOR3& vWorldLocation, D3DXVECTOR3& vScreenCoord)
+{
+	if (pDevice == nullptr)
+		return false;
+
+	D3DVIEWPORT9 viewPort;
+	D3DXVECTOR3 vOrthoLocation;
+	D3DXMATRIX projection, view, world, identity;
+
+	pDevice->GetTransform(D3DTS_VIEW, &view);
+	pDevice->GetTransform(D3DTS_PROJECTION, &projection);
+	pDevice->GetTransform(D3DTS_WORLD, &world);
+
+	pDevice->GetViewport(&viewPort);
+	D3DXMatrixIdentity(&identity);
+
+	D3DXVec3Project(&vScreenCoord, &vWorldLocation, &viewPort, &projection, &view, &identity);
+	D3DXVec3Unproject(&vScreenCoord, &vWorldLocation, &viewPort, &projection, &view, &identity);
+
+	if (vScreenCoord.x < 0.0f || vScreenCoord.x > viewPort.Width ||
+		vScreenCoord.y < 0.0f || vScreenCoord.y > viewPort.Height)
+	{
+		return false;
+	}
+
+	return true;
+}
+
 Vector CrossProduct(const Vector& a, const Vector& b)
 {
 	if (!a.IsValid() || !b.IsValid())
@@ -581,7 +609,7 @@ Vector CrossProduct(const Vector& a, const Vector& b)
 	return Vector(a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x);
 }
 
-Vector2D DoEnemyCircle(CBaseEntity* pLocalPlayer, const Vector &vecDelta, float *flRotation)
+Vector DoEnemyCircle(const Vector &vecDelta, float *flRotation = nullptr)
 {
 	float flRadius = 360.0f;
 	int iScreenWidth, iScreenHeight;
@@ -603,15 +631,18 @@ Vector2D DoEnemyCircle(CBaseEntity* pLocalPlayer, const Vector &vecDelta, float 
 	float flXPosition = flRadius * -flSide;
 	float flYPosition = flRadius * -flFront;
 
-	*flRotation = atan2(flXPosition, flYPosition) + M_PI_F;
-	*flRotation *= 180.0f / M_PI_F;
+	float rotation = atan2(flXPosition, flYPosition) + M_PI_F;
+	rotation *= 180.0f / M_PI_F;
 
-	float flYawRadians = -(*flRotation) * M_PI_F / 180.0f;
+	float flYawRadians = -(rotation) * M_PI_F / 180.0f;
 	float flCosYaw = cos(flYawRadians);
 	float flSinYaw = sin(flYawRadians);
 
-	return Vector2D((iScreenWidth / 2.0f) + (flRadius * flSinYaw),
-		(iScreenHeight / 2.0f) - (flRadius * flCosYaw));
+	if (flRotation != nullptr)
+		*flRotation = rotation;
+
+	return Vector((iScreenWidth / 2.0f) + (flRadius * flSinYaw),
+		(iScreenHeight / 2.0f) - (flRadius * flCosYaw), 0.0f);
 }
 
 float GetDelta(float hiSpeed, float maxSpeed, float airAcceleRate)

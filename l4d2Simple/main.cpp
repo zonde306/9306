@@ -421,7 +421,6 @@ DWORD WINAPI StartCheat(LPVOID params)
 	g_interface.MoveHelper = nullptr;
 	g_interface.ClientMode = nullptr;
 	g_interface.ClientState = nullptr;
-	// sqb::Initialization();
 
 	if ((oCL_Move = (FnCL_Move)Utils::FindPattern("engine.dll",
 		XorStr("55 8B EC B8 ? ? ? ? E8 ? ? ? ? A1 ? ? ? ? 33 C5 89 45 FC 53 56 57 E8"))) != nullptr)
@@ -1154,7 +1153,6 @@ DWORD WINAPI StartCheat(LPVOID params)
 	}
 
 	// 加载配置文件
-	sqb::CheatStart();
 	loadConfig();
 
 	/*
@@ -2087,6 +2085,10 @@ bool IsValidVictim(CBaseEntity* entity)
 			return false;
 		}
 	}
+	else if (id == ET_TankRock)
+	{
+		return true;
+	}
 	else
 	{
 #ifdef _DEBUG_OUTPUT
@@ -2345,10 +2347,12 @@ CBaseEntity* GetAimingTarget(int* hitbox = nullptr)
 	Vector src = client->GetEyePosition(), dst;
 
 	// 速度预测和延迟预测，提升精准度
+	/*
 	if(g_pNetChannelInfo != nullptr)
 		src = VelocityExtrapolate(client, src, FORWARD_TRACK);
 	else
-		src = VelocityExtrapolate(client, src);
+	*/
+	src = VelocityExtrapolate(client, src);
 
 	filter.pSkip1 = client;
 	g_interface.Engine->GetViewAngles(dst);
@@ -2385,9 +2389,11 @@ CBaseEntity* GetAimingTarget(int* hitbox = nullptr)
 		(trace.m_pEnt != nullptr ? trace.m_pEnt->GetClientClass()->m_ClassID : -1));
 #endif
 
+	ClientClass* cc = nullptr;
+
 	// 检查是否命中了游戏世界
 	if (trace.m_pEnt == nullptr || trace.m_pEnt->IsDormant() ||
-		trace.m_pEnt->GetClientClass()->m_ClassID == ET_WORLD)
+		(cc = trace.m_pEnt->GetClientClass()) == nullptr || cc->m_ClassID == ET_WORLD)
 	{
 #ifdef _DEBUG_OUTPUT
 		g_interface.Engine->ClientCmd("echo \"invalid entity 0x%X | start (%.2f %.2f %.2f) end (%.2f %.2f %.2f)\"",
@@ -2398,6 +2404,9 @@ CBaseEntity* GetAimingTarget(int* hitbox = nullptr)
 
 		return nullptr;
 	}
+
+	if (cc->m_ClassID == ET_TankRock)
+		return trace.m_pEnt;
 
 	// 检查是否命中了一个可以攻击的物体
 	if (trace.hitbox == 0)
@@ -2486,7 +2495,7 @@ bool IsTargetVisible(CBaseEntity* entity, Vector end, Vector start)
 }
 
 // 检查是否会被看见
-bool IsLocalVisible(CBaseEntity* entity, Vector end, Vector start)
+bool IsLocalVisible(CBaseEntity* entity, Vector end, Vector start, int* hitgroup = nullptr)
 {
 	CBaseEntity* client = GetLocalClient();
 	if (entity == nullptr || client == nullptr || !g_interface.Engine->IsInGame())
@@ -2518,6 +2527,9 @@ bool IsLocalVisible(CBaseEntity* entity, Vector end, Vector start)
 	{
 		return false;
 	}
+
+	if (hitgroup != nullptr)
+		*hitgroup = trace.hitGroup;
 
 	return (trace.m_pEnt == client || trace.fraction > 0.97f);
 }
@@ -3157,7 +3169,6 @@ HRESULT WINAPI Hooked_Present(IDirect3DDevice9* device, const RECT* source, cons
 finish_draw:
 #endif
 
-	sqb::Present(g_pDrawRender.get());
 	g_pDrawRender->FinishImGuiRender();
 
 	return oPresent(device, source, dest, window, region);
@@ -3186,7 +3197,6 @@ HRESULT WINAPI Hooked_EndScene(IDirect3DDevice9* device)
 	g_pDrawRender->BeginRendering();
 
 	g_bNewFrame = true;
-	sqb::EndScene(g_pDrawRender.get());
 
 	// 还原备份的设置
 	g_pDrawRender->EndRendering();
@@ -3223,8 +3233,7 @@ HRESULT WINAPI Hooked_DrawIndexedPrimitive(IDirect3DDevice9* device, D3DPRIMITIV
 			Config::bBufferMedical && l4d2_healthitem(stride, numVertices, primitiveCount) ||
 			Config::bBufferSpecial && l4d2_special(stride, numVertices, primitiveCount) ||
 			Config::bBufferSurvivor && l4d2_survivor(stride, numVertices, primitiveCount) ||
-			Config::bBufferWeapon && l4d2_weapons(stride, numVertices, primitiveCount) ||
-			sqb::DrawIndexedPrimitive(stride, numVertices, primitiveCount))
+			Config::bBufferWeapon && l4d2_weapons(stride, numVertices, primitiveCount))
 		{
 			static DWORD oldZEnable;
 			device->GetRenderState(D3DRS_ZENABLE, &oldZEnable);
@@ -3260,12 +3269,6 @@ HRESULT WINAPI Hooked_CreateQuery(IDirect3DDevice9* device, D3DQUERYTYPE type, I
 	if (type == D3DQUERYTYPE_OCCLUSION)
 	type = D3DQUERYTYPE_TIMESTAMP;
 	*/
-
-	if (type == D3DQUERYTYPE_OCCLUSION)
-	{
-		if(sqb::CreateQuery((SQInteger)type) == D3DQUERYTYPE_TIMESTAMP)
-			type = D3DQUERYTYPE_TIMESTAMP;
-	}
 
 	return oCreateQuery(device, type, query);
 }
@@ -3337,8 +3340,6 @@ void __fastcall Hooked_PaintTraverse(CPanel* _ecx, void* _edx, unsigned int pane
 		{
 			Utils::log("[segt] Unknown IsValidVictim Error");
 		}
-
-		sqb::PaintTraverse(_SC("FocusOverlayPanel"), g_interface.Surface);
 	}
 
 	// 每一帧调 很多次 在这里不能做消耗较大的事情
@@ -3374,7 +3375,7 @@ void __fastcall Hooked_PaintTraverse(CPanel* _ecx, void* _edx, unsigned int pane
 			}
 
 			// 目前最小距离
-			float distmin = 65535.0f;
+			float fovmin = 65535.0f;
 
 			// 当前队伍
 			int team = local->GetTeam();
@@ -3622,7 +3623,7 @@ void __fastcall Hooked_PaintTraverse(CPanel* _ecx, void* _edx, unsigned int pane
 					if (!headbox.IsValid())
 						continue;
 
-					if (Config::bDrawOffScreen && visible && dist < 1000.0f)
+					if (Config::bDrawOffScreen && visible && dist < 1000.0f && g_pUserCommands != nullptr)
 					{
 						/*
 						float length = fabs((headbox.z - origin.z) / 5);
@@ -3630,8 +3631,11 @@ void __fastcall Hooked_PaintTraverse(CPanel* _ecx, void* _edx, unsigned int pane
 						length = 3.0f;
 						*/
 
-						WorldToScreen2(origin + Vector(0, 0, 25), head);
+						WorldToScreen2(headbox, head);
 						WorldToScreen2(origin, foot);
+						// foot = DoEnemyCircle(origin);
+						// head = DoEnemyCircle(headbox);
+
 						if (i <= 64)
 						{
 							if (IsSpecialInfected(classId))
@@ -3932,13 +3936,14 @@ void __fastcall Hooked_PaintTraverse(CPanel* _ecx, void* _edx, unsigned int pane
 					if (classId == ET_INFECTED && specialSelected)
 						continue;
 
+					float fov = GetAnglesFieldOfView(myViewAngles, CalculateAim(myEyeOrigin, headbox));
+
 					// 选择一个最接近的特感，因为特感越近对玩家来说越危险
-					if (entity->GetTeam() != team && dist < distmin && visible &&
-						GetAnglesFieldOfView(myViewAngles, CalculateAim(myEyeOrigin, headbox)) <=
-						Config::fAimbotFov)
+					if (entity->GetTeam() != team && fov < fovmin && visible &&
+						fov <= Config::fAimbotFov && dist <= 3000.0f)
 					{
 						g_pCurrentAimbot = entity;
-						distmin = dist;
+						fovmin = fov;
 
 						if (IsSpecialInfected(classId))
 							specialSelected = true;
@@ -3948,8 +3953,7 @@ void __fastcall Hooked_PaintTraverse(CPanel* _ecx, void* _edx, unsigned int pane
 		}
 	finish_draw:
 #endif
-
-		sqb::PaintTraverse(_SC("MatSystemTopPanel"), g_interface.Surface);
+		__asm nop;
 	}
 }
 
@@ -4164,7 +4168,7 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 		g_pCurrentAiming = g_interface.ClientEntList->GetClientEntity(aiming);
 	else
 		g_pCurrentAiming = GetAimingTarget(&g_iCurrentHitbox);
-
+	
 #ifdef _DEBUG
 	try
 	{
@@ -4230,7 +4234,12 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 
 		try
 		{
-			if (g_pCurrentAiming->GetTeam() != myTeam && classId != ET_WITCH &&					// 不攻击队友和 Witch
+			if (classId == ET_TankRock && myTeam == 2)
+			{
+				pCmd->buttons |= IN_ATTACK;
+				fireByTrigger = false;
+			}
+			else if (g_pCurrentAiming->GetTeam() != myTeam && classId != ET_WITCH &&			// 不攻击队友和 Witch
 				g_pCurrentAiming->GetTeam() != 4 && (!IsSpecialInfected(classId) ||				// 不攻击 L4D1 生还者(因为他们是无敌的)
 					!IsPlayerGhost(g_iCurrentAiming) || !IsGhostInfected(g_pCurrentAiming)) &&	// 不攻击幽灵状态的特感
 					(myTeam == 2 || classId != ET_INFECTED))									// 特感队伍不攻击普感
@@ -4333,6 +4342,7 @@ end_trigger_bot:
 				// 速度预测
 				if (Config::bAimbotPred)
 				{
+					/*
 					if (Config::bForwardTrack && g_pNetChannelInfo != nullptr)
 					{
 						// 延迟预测，解决因为延迟问题打不准
@@ -4341,9 +4351,12 @@ end_trigger_bot:
 					}
 					else
 					{
-						myOrigin = VelocityExtrapolate(client, myOrigin);
-						position = VelocityExtrapolate(g_pCurrentAimbot, position);
+					*/
+					myOrigin = VelocityExtrapolate(client, myOrigin);
+					position = VelocityExtrapolate(g_pCurrentAimbot, position);
+					/*
 					}
+					*/
 				}
 
 				// 将准星转到敌人头部
@@ -4659,7 +4672,6 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 	if (stage == FRAME_RENDER_START && g_interface.Engine->IsInGame())
 	{
 		// 在这里可以使用 DebugOverlay 来进行 3D 绘制
-		sqb::FrameStageNotify(stage, g_interface.DebugOverlay);
 	}
 
 	static time_t nextUpdate = 0;
@@ -4710,6 +4722,7 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 				Config::bCrashServer = false;
 				loadConfig();
 
+				g_interface.Trace = (IEngineTrace*)g_interface.GetPointer("engine.dll", "EngineTraceClient");
 				Utils::log("*** connected ***");
 			}
 
@@ -4812,9 +4825,6 @@ bool __fastcall Hooked_CreateMoveShared(ClientModeShared* _ecx, void* _edx, floa
 		Utils::log("Input->pCmd = 0x%X", (DWORD)pCmd);
 		Utils::log("CL_Move->bSendPacket = 0x%X | %d", (DWORD)bSendPacket, *bSendPacket);
 	}
-
-	if (!sqb::CreateMove(pCmd, (*bSendPacket ? SQTrue : SQFalse)))
-		*bSendPacket = false;
 
 	return false;
 }
@@ -5182,8 +5192,6 @@ int __fastcall Hooked_KeyInput(ClientModeShared* _ecx, void* _edx, int down, But
 				g_pDrawRender->PushRenderText(DrawManager::WHITE, "aimbot angles set %.0f", Config::fAimbotFov);
 		}
 	}
-
-	sqb::KeyInput(keynum, down > 0, pszCurrentBinding);
 
 	return result;
 }
@@ -5951,8 +5959,6 @@ void __fastcall Hooked_EnginePaint(CEngineVGui *_ecx, void *_edx, PaintMode_t mo
 	finish_draw:
 #endif
 
-		sqb::Paint(mode);
-
 		PaintFinishDrawing(g_interface.Surface);
 	}
 }
@@ -6035,13 +6041,6 @@ bool __fastcall Hooked_ProcessGetCvarValue(CBaseClientState *_ecx, void *_edx, S
 				returnMsg.m_szCvarValue = tempValue;
 			}
 		}
-
-		const SQChar* s = sqb::ProcessGetCvarValue(returnMsg.m_szCvarName, cvar->GetString());
-		if (s != nullptr)
-		{
-			strcpy_s(tempValue, s);
-			returnMsg.m_szCvarValue = tempValue;
-		}
 	}
 	else
 	{
@@ -6099,12 +6098,6 @@ bool __fastcall Hooked_ProcessSetConVar(CBaseClientState *_ecx, void *_edx, NET_
 		{
 			// 第一次设置
 			Utils::log("[SCV] %s setting to %s", cvar.name, cvar.value);
-		}
-
-		const SQChar* s = sqb::ProcessSetConVar(cvar.name, cvar.value);
-		if (s != nullptr)
-		{
-			strcpy_s(cvar.value, s);
 		}
 
 		// 将服务器的更改进行记录，等服务器查询的时候把记录还回去

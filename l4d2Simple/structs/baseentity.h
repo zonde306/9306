@@ -296,6 +296,13 @@ public:
 			if (id == ET_INFECTED && this->GetNetProp<byte>("m_bIsBurning", "DT_Infected") != 0)
 				return false;
 		}
+		/*
+		else if (id == ET_TankRock)
+		{
+			if (this->GetHealth() <= 0)
+				return false;
+		}
+		*/
 		
 		// 如果不是生还者也不是感染者的话不需要检查是否活着，只要存在就是活着
 		return true;

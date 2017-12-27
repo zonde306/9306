@@ -10,7 +10,6 @@
 #include "d3dumddi.h"
 #include <dwmapi.h>
 
-#include <squirrel.h>
 #include <cstdio>
 #include <cstdlib>
 #include <ctime>
@@ -28,14 +27,11 @@
 #include <memory>
 #include <map>
 
-#include "../stackwalker/StackWalker.h"
 #include "../imgui/dx9/imgui_impl_dx9.h"
 
 #pragma comment(lib, "d3d9")
 #pragma comment(lib, "d3dx9")
 #pragma comment(lib, "dwmapi")
-#pragma comment(lib, "sqstdlib_static")
-#pragma comment(lib, "squirrel_static")
 
 #ifdef _DEBUG
 #include <DbgHelp.h>
@@ -278,4 +274,3 @@ namespace Config
 #include "./structs/event.h"
 #include "./structs/render.h"
 #include "./libraries/math.h"
-#include "./binding.h"

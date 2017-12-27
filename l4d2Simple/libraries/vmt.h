@@ -3,21 +3,6 @@
 #include <vector>
 #include <cassert>
 #include <exception>
-#include <StackWalker.h>
-
-class MyStackWalker : public StackWalker
-{
-public:
-	MyStackWalker() : StackWalker() {};
-
-protected:
-	virtual void OnOutput(LPCSTR szText) override
-	{
-		// Utils::log(szText);
-		OutputDebugStringA(szText);
-		StackWalker::OnOutput(szText);
-	}
-};
 
 class CVMT
 {
@@ -58,11 +43,6 @@ public:
 			Utils::log("dwAddress = 0x%X", dwAddress);
 			
 #ifdef _DEBUG
-			MyStackWalker sw;
-			sw.ShowCallstack();
-#endif
-
-#ifdef _DEBUG
 			throw std::exception("getvfunc 出现了一些问题");
 #endif
 
@@ -87,11 +67,6 @@ public:
 			// Utils::log("%s (%d) 错误：获取 0x%X 的虚函数表失败 %d", __FILE__, __LINE__, Instance, Index);
 			// Utils::log("VirtualPointer = 0x%X", VirtualPointer);
 			// Utils::log("VirtualFunction = 0x%X", VirtualFunction);
-
-#ifdef _DEBUG
-			MyStackWalker sw;
-			sw.ShowCallstack();
-#endif
 
 #ifdef _DEBUG
 			throw std::exception("getvfunc 出现了一些问题");
@@ -223,11 +198,6 @@ private:
 		}
 		catch(...)
 		{
-#ifdef _DEBUG
-			MyStackWalker sw;
-			sw.ShowCallstack();
-#endif
-
 			// Utils::log("%s (%d) 错误：遍历虚函数表失败 0x%X 索引为 %d", __FILE__, __LINE__, (DWORD)table, index--);
 		}
 		
