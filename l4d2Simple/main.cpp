@@ -324,6 +324,10 @@ typedef bool(__thiscall* FnProcessSetConVar)(CBaseClientState*, NET_SetConVar*);
 bool __fastcall Hooked_ProcessSetConVar(CBaseClientState*, void*, NET_SetConVar*);
 FnProcessSetConVar oProcessSetConVar;
 
+typedef bool(__thiscall* FnProccessStringCmd)(CBaseClientState*, NET_StringCmd*);
+bool __fastcall Hooked_ProcessStringCmd(CBaseClientState*, void*, NET_StringCmd*);
+FnProccessStringCmd oProcessStringCmd;
+
 typedef int(__thiscall* FnKeyInput)(ClientModeShared*, int, ButtonCode_t, const char*);
 int __fastcall Hooked_KeyInput(ClientModeShared*, void*, int, ButtonCode_t, const char*);
 FnKeyInput oKeyInput;
@@ -672,6 +676,9 @@ DWORD WINAPI StartCheat(LPVOID params)
 		g_conVar["r_dynamiclighting"] = g_interface.Cvar->FindVar("r_dynamiclighting");
 		g_conVar["mat_picmip"] = g_interface.Cvar->FindVar("mat_picmip");
 		g_conVar["mat_showlowresimage"] = g_interface.Cvar->FindVar("mat_showlowresimage");
+		g_conVar["fog_override"] = g_interface.Cvar->FindVar("fog_override");
+		g_conVar["fog_end"] = g_interface.Cvar->FindVar("fog_end");
+		g_conVar["fog_endskybox"] = g_interface.Cvar->FindVar("fog_endskybox");
 
 		Utils::log("sv_cheats = 0x%X", (DWORD)g_conVar["sv_cheats"]);
 		Utils::log("r_drawothermodels = 0x%X", (DWORD)g_conVar["r_drawothermodels"]);
@@ -696,6 +703,9 @@ DWORD WINAPI StartCheat(LPVOID params)
 		Utils::log("r_dynamiclighting = 0x%X", (DWORD)g_conVar["r_dynamiclighting"]);
 		Utils::log("mat_picmip = 0x%X", (DWORD)g_conVar["mat_picmip"]);
 		Utils::log("mat_showlowresimage = 0x%X", (DWORD)g_conVar["mat_showlowresimage"]);
+		Utils::log("fog_override = 0x%X", (DWORD)g_conVar["fog_override"]);
+		Utils::log("fog_end = 0x%X", (DWORD)g_conVar["fog_end"]);
+		Utils::log("fog_endskybox = 0x%X", (DWORD)g_conVar["fog_endskybox"]);
 	}
 
 	// 初始化 ImGui
@@ -4549,6 +4559,7 @@ end_aimbot:
 
 		// 修复一些错误
 		client->SetNetProp("m_fFlags", flags, "DT_BasePlayer");
+		client->SetLocalNetProp("m_iHideHUD", 0);
 
 		static bool showPred = true;
 		if (showPred)
@@ -4726,6 +4737,23 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 					g_interface.Engine->ClientCmd("echo \"sv_pure and sv_consistency set %d\"",
 						Utils::readMemory<int>(g_iEngineBase + sv_pure));
 				}
+			}
+
+			if (Config::bRemoveFog)
+			{
+#ifdef USE_CVAR_CHANGE
+				CVAR_MAKE_FLAGS("fog_override");
+				CVAR_MAKE_FLAGS("fog_end");
+				CVAR_MAKE_FLAGS("fog_endskybox");
+
+				if (g_conVar["fog_override"] != nullptr && g_conVar["fog_end"] != nullptr &&
+					g_conVar["fog_endskybox"] != nullptr && g_conVar["fog_override"]->GetInt() < 1)
+				{
+					g_conVar["fog_override"]->SetValue(1);
+					g_conVar["fog_end"]->SetValue(INT_MAX);
+					g_conVar["fog_endskybox"]->SetValue(INT_MAX);
+				}
+#endif
 			}
 
 			if (!connected)
@@ -6093,6 +6121,7 @@ bool __fastcall Hooked_ProcessSetConVar(CBaseClientState *_ecx, void *_edx, NET_
 		g_interface.ClientStateHook = std::make_unique<CVMTHookManager>(g_interface.ClientState);
 		oProcessGetCvarValue = (FnProcessGetCvarValue)g_interface.ClientStateHook->HookFunction(indexes::ProcessGetCvarValue, Hooked_ProcessGetCvarValue);
 		oProcessSetConVar = (FnProcessSetConVar)g_interface.ClientStateHook->HookFunction(indexes::ProcessSetConVar, Hooked_ProcessSetConVar);
+		oProcessStringCmd = (FnProccessStringCmd)g_interface.ClientStateHook->HookFunction(indexes::ProcessStringCmd, Hooked_ProcessStringCmd);
 		g_interface.ClientStateHook->HookTable(true);
 
 		Utils::log("oProcessGetCvarValue = 0x%X", (DWORD)oProcessGetCvarValue);
@@ -6132,4 +6161,13 @@ bool __fastcall Hooked_ProcessSetConVar(CBaseClientState *_ecx, void *_edx, NET_
 	}
 
 	return true;
+}
+
+bool __fastcall Hooked_ProcessStringCmd(CBaseClientState *_ecx, void *_edx, NET_StringCmd *msg)
+{
+	Utils::log("[SC] Execute Commands: %s", msg->m_szCommand);
+	if (!_stricmp(msg->m_szCommand, "hidehud"))
+		return true;
+
+	return oProcessStringCmd(_ecx, msg);
 }
