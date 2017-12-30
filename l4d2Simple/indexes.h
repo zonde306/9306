@@ -148,4 +148,7 @@ namespace indexes
 	const int ProcessCreateStringTable = 11;
 	const int ProcessUpdate = 12;
 	const int ProcessGetCvarValue = 28;
+	
+	// INetChannelInfo/CNetChan
+	const int SendDatagram = 188;
 }

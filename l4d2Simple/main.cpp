@@ -2018,6 +2018,15 @@ void loadConfig()
 				else
 					Config::bDrawOffScreen = !!atoi(kv.second.c_str());
 			}
+
+			else if (kv.first == XorStr("fog") || kv.first == XorStr("nofog") ||
+				kv.first == XorStr("removefog"))
+			{
+				if (kv.second.empty())
+					Config::bDrawOffScreen = true;
+				else
+					Config::bDrawOffScreen = !!atoi(kv.second.c_str());
+			}
 		}
 
 		file.close();
