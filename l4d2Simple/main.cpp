@@ -4838,6 +4838,32 @@ void __fastcall Hooked_RunCommand(CPrediction* _ecx, void* _edx, CBaseEntity* pE
 		Utils::log("MoveHelperPointer = 0x%X", (DWORD)moveHelper);
 	}
 
+	// 当前正在瞄准的目标
+	// 由于 TraceRay 存在 bug 所以这里再次进行更新
+	if (g_pCurrentAiming == nullptr || !IsValidVictim(g_pCurrentAiming))
+	{
+		CBaseEntity* client = GetLocalClient();
+		if (client != nullptr && client->IsAlive())
+		{
+			int aiming = *(int*)(client + m_iCrosshairsId);
+			if (aiming > 0)
+			{
+				g_pCurrentAiming = g_interface.ClientEntList->GetClientEntity(aiming);
+			}
+			else
+			{
+				try
+				{
+					g_pCurrentAiming = GetAimingTarget(&g_iCurrentHitbox);
+				}
+				catch (std::runtime_error& exception)
+				{
+					Utils::log("with Hooked_RunCommand %s", exception.what());
+				}
+			}
+		}
+	}
+
 	g_interface.MoveHelper = moveHelper;
 }
 
