@@ -4306,7 +4306,7 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 
 end_trigger_bot:
 	static int duckTick = 0;
-	if ((flags & FL_DUCKING) && (flags & FL_ONGROUND))
+	if ((pCmd->buttons & IN_DUCK) && (flags & FL_DUCKING) && (flags & FL_ONGROUND))
 	{
 		++duckTick;
 
