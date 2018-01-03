@@ -219,6 +219,7 @@ namespace Config
 	bool bSpeedHackActive = false;
 	bool bSpeedHack = false;
 	bool bRemoveFog = false;
+	bool bTriggerExtra = false;
 
 	float fAimbotFov = 30.0f;
 	float fAimbotRCSX = 2.0f;

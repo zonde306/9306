@@ -2029,6 +2029,23 @@ void loadConfig()
 				else
 					Config::bDrawOffScreen = !!atoi(kv.second.c_str());
 			}
+
+			else if (kv.first == XorStr("triggerex") || kv.first == XorStr("triggerbotex"))
+			{
+				if (kv.second.empty())
+					Config::bTriggerExtra = true;
+				else
+					Config::bTriggerExtra = !!atoi(kv.second.c_str());
+			}
+
+			else if (kv.first == XorStr("aimtick") || kv.first == XorStr("autoaimtick") ||
+				kv.first == XorStr("aimbottick"))
+			{
+				if (kv.second.empty())
+					Config::iDuckAimbotTick = true;
+				else
+					Config::iDuckAimbotTick = atoi(kv.second.c_str());
+			}
 		}
 
 		file.close();
@@ -2363,7 +2380,7 @@ CBaseEntity* GetAimingTarget(int* hitbox = nullptr)
 
 	Ray_t ray;
 	trace_t trace;
-	CTraceFilterFunction filter;
+	CTraceFilter filter;
 
 	Vector src = client->GetEyePosition(), dst;
 
@@ -4308,7 +4325,8 @@ end_trigger_bot:
 	static int duckTick = 0;
 	if ((pCmd->buttons & IN_DUCK) && (flags & FL_DUCKING) && (flags & FL_ONGROUND))
 	{
-		++duckTick;
+		if(Config::iDuckAimbotTick > 0)
+			++duckTick;
 
 		if(duckTick == Config::iDuckAimbotTick)
 			g_pDrawRender->PushRenderText(DrawManager::RED, "Ducking Aimbot Activing");
@@ -4321,16 +4339,17 @@ end_trigger_bot:
 		duckTick = 0;
 	}
 
+	// 自动瞄准数据备份
+	static QAngle oldViewAngles;
+	static float oldSidemove;
+	static float oldForwardmove;
+	static float oldUpmove;
+	static QAngle lastPunch(0.0f, 0.0f, 0.0f);
+
 	// 自动瞄准
 	if ((Config::bAimbot || duckTick > Config::iDuckAimbotTick) && weapon != nullptr && (pCmd->buttons & IN_ATTACK))
 	{
-		Vector myOrigin = client->GetEyePosition(), myAngles = pCmd->viewangles;
-
-		// 自动瞄准数据备份
-		static QAngle oldViewAngles;
-		static float oldSidemove;
-		static float oldForwardmove;
-		static float oldUpmove;
+		Vector myOrigin = client->GetEyePosition();
 
 		bool runAimbot = false;
 		bool runByUser = !!(GetAsyncKeyState(VK_LBUTTON) & 0x8000);
@@ -4437,7 +4456,6 @@ end_trigger_bot:
 		}
 #endif
 
-		static QAngle lastPunch(0.0f, 0.0f, 0.0f);
 		QAngle currentPunch = client->GetLocalNetProp<QAngle>("m_vecPunchAngle");
 		if (!currentPunch.IsValid())
 			currentPunch.x = currentPunch.y = currentPunch.z = 0.0f;
@@ -4484,6 +4502,98 @@ end_trigger_bot:
 					}
 				}
 				
+				oldViewAngles.Invalidate();
+			}
+			else
+			{
+				// 修改角度
+				*bSendPacket = false;
+
+				if (Config::bCrashServer)
+				{
+					pCmd->viewangles.x = pCmd->viewangles.y = -logf(-1.0f);
+				}
+				// 后坐力修正(后坐力控制系统)
+				// 注意不要 RCS 和 NoRecoil 同时开启，会导致服务器爆炸的！
+				else if (Config::bAimbotRCS && !Config::bNoRecoil)
+				{
+					pCmd->viewangles.x -= currentPunch.x * Config::fAimbotRCSX;
+					pCmd->viewangles.y -= currentPunch.y * Config::fAimbotRCSY;
+				}
+			}
+		}
+
+		lastPunch = currentPunch;
+	}
+	else if (Config::bTriggerExtra && fireByTrigger && g_pCurrentAiming != nullptr && g_iCurrentHitbox > 0)
+	{
+		Vector position;
+		bool runAimbot = false;
+		Vector myOrigin = client->GetEyePosition();
+
+		try
+		{
+			position = g_pCurrentAiming->GetHitboxPosition(g_iCurrentHitbox);
+		}
+		catch (...)
+		{
+			goto end_aimbot;
+		}
+
+		if (position.IsValid())
+		{
+			// 备份原数据
+			if (!oldViewAngles.IsValid())
+			{
+				oldViewAngles = pCmd->viewangles;
+				oldSidemove = pCmd->sidemove;
+				oldForwardmove = pCmd->fowardmove;
+				oldUpmove = pCmd->upmove;
+			}
+
+			// 隐藏自动瞄准
+			runAimbot = true;
+
+			// 速度预测
+			if (Config::bAimbotPred)
+			{
+				myOrigin = VelocityExtrapolate(client, myOrigin);
+				position = VelocityExtrapolate(g_pCurrentAiming, position);
+			}
+
+			// 将准星转到敌人头部
+			pCmd->viewangles = CalculateAim(myOrigin, position);
+			CorrectMovement(viewAngles, pCmd, pCmd->fowardmove, pCmd->sidemove);
+		}
+
+		QAngle currentPunch = client->GetLocalNetProp<QAngle>("m_vecPunchAngle");
+		if (!currentPunch.IsValid())
+			currentPunch.x = currentPunch.y = currentPunch.z = 0.0f;
+
+		if (Config::bSilentAimbot)
+		{
+			if (!runAimbot)
+			{
+				// 还原角度
+				*bSendPacket = true;
+
+				if (oldViewAngles.IsValid())
+				{
+					pCmd->viewangles = oldViewAngles;
+					pCmd->sidemove = oldSidemove;
+					pCmd->fowardmove = oldForwardmove;
+					pCmd->upmove = oldUpmove;
+
+					// 后坐力修正
+					// 注意不要 RCS 和 NoRecoil 同时开启，会导致服务器爆炸的！
+					if (Config::bAimbotRCS && !Config::bNoRecoil)
+					{
+						QAngle newPunch(currentPunch.x - lastPunch.x, currentPunch.y - lastPunch.y, 0.0f);
+						pCmd->viewangles.x -= newPunch.x * Config::fAimbotRCSX;
+						pCmd->viewangles.y -= newPunch.y * Config::fAimbotRCSY;
+					}
+				}
+
 				oldViewAngles.Invalidate();
 			}
 			else
@@ -4803,6 +4913,7 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 				g_pCurrentAimbot = nullptr;
 				g_pCurrentAiming = nullptr;
 				g_iCurrentAiming = 0;
+				g_iCurrentHitbox = 0;
 				Config::bCrashServer = false;
 				loadConfig();
 
@@ -4820,6 +4931,7 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 			g_pCurrentAimbot = nullptr;
 			g_pCurrentAiming = nullptr;
 			g_iCurrentAiming = 0;
+			g_iCurrentHitbox = 0;
 			Config::bCrashServer = false;
 			g_serverConVar.clear();
 

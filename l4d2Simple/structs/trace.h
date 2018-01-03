@@ -126,24 +126,24 @@ enum TraceType_t
 class ITraceFilter
 {
 public:
-	virtual bool			ShouldHitEntity(IHandleEntity* pEntity, int mask) = 0;
+	virtual bool			ShouldHitEntity(CBaseEntity* pEntity, int mask) = 0;
 	virtual TraceType_t		GetTraceType() const = 0;
 };
 
 class CTraceFilter : public ITraceFilter
 {
 public:
-	virtual bool ShouldHitEntity(IHandleEntity* pEntityHandle, int contentsMask)
+	virtual bool ShouldHitEntity(CBaseEntity* pEntityHandle, int contentsMask) override
 	{
 		return !(pEntityHandle == pSkip1);
 	}
 
-	virtual TraceType_t GetTraceType() const
+	virtual TraceType_t GetTraceType() const override
 	{
 		return TRACE_EVERYTHING;
 	}
 
-	void* pSkip1;
+	CBaseEntity* pSkip1;
 };
 
 class CTraceFilterFunction : public CTraceFilter
@@ -189,9 +189,9 @@ public:
 		};
 	}
 	
-	virtual bool ShouldHitEntity(IHandleEntity* pEntityHandle, int contentsMask) override
+	virtual bool ShouldHitEntity(CBaseEntity* pEntityHandle, int contentsMask) override
 	{
-		CBaseEntity* entity = (CBaseEntity*)pEntityHandle;
+		CBaseEntity* entity = pEntityHandle;
 		
 		try
 		{
@@ -224,23 +224,23 @@ public:
 class CTraceFilterSimple : public CTraceFilter
 {
 public:
-	CTraceFilterSimple(const IClientEntity *passentity, int collisionGroup)
+	CTraceFilterSimple(const CBaseEntity* passentity, int collisionGroup)
 	{
 		m_pPassEnt = passentity;
 		m_collisionGroup = collisionGroup;
 	}
 
-	virtual bool ShouldHitEntity(IClientEntity *pHandleEntity, int contentsMask)
+	virtual bool ShouldHitEntity(CBaseEntity* pHandleEntity, int contentsMask) override
 	{
 		return !(pHandleEntity == m_pPassEnt);
 	}
-	virtual void SetPassEntity(const IClientEntity *pPassEntity) { m_pPassEnt = pPassEntity; }
+	virtual void SetPassEntity(const CBaseEntity* pPassEntity) { m_pPassEnt = pPassEntity; }
 	virtual void SetCollisionGroup(int iCollisionGroup) { m_collisionGroup = iCollisionGroup; }
 
-	const IClientEntity *GetPassEntity(void) { return m_pPassEnt; }
+	const CBaseEntity *GetPassEntity(void) { return m_pPassEnt; }
 
 private:
-	const IClientEntity *m_pPassEnt;
+	const CBaseEntity *m_pPassEnt;
 	int m_collisionGroup;
 };
 
