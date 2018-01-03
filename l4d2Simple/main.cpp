@@ -679,6 +679,7 @@ DWORD WINAPI StartCheat(LPVOID params)
 		g_conVar["fog_override"] = g_interface.Cvar->FindVar("fog_override");
 		g_conVar["fog_end"] = g_interface.Cvar->FindVar("fog_end");
 		g_conVar["fog_endskybox"] = g_interface.Cvar->FindVar("fog_endskybox");
+		g_conVar["addons_eclipse_content"] = g_interface.Cvar->FindVar("addons_eclipse_content");
 
 		Utils::log("sv_cheats = 0x%X", (DWORD)g_conVar["sv_cheats"]);
 		Utils::log("r_drawothermodels = 0x%X", (DWORD)g_conVar["r_drawothermodels"]);
@@ -706,6 +707,7 @@ DWORD WINAPI StartCheat(LPVOID params)
 		Utils::log("fog_override = 0x%X", (DWORD)g_conVar["fog_override"]);
 		Utils::log("fog_end = 0x%X", (DWORD)g_conVar["fog_end"]);
 		Utils::log("fog_endskybox = 0x%X", (DWORD)g_conVar["fog_endskybox"]);
+		Utils::log("addons_eclipse_content = 0x%X", (DWORD)g_conVar["addons_eclipse_content"]);
 	}
 
 	// 初始化 ImGui
@@ -2428,7 +2430,7 @@ CBaseEntity* GetAimingTarget(int* hitbox = nullptr)
 		return trace.m_pEnt;
 
 	// 检查是否命中了一个可以攻击的物体
-	if (trace.hitbox == 0)
+	if (trace.hitbox <= 0)
 	{
 #ifdef _DEBUG_OUTPUT
 		g_interface.Engine->ClientCmd("echo \"invalid hitbox 0x%X | hitbox = %d | bone = %d | group = %d\"",
@@ -3637,7 +3639,8 @@ void __fastcall Hooked_PaintTraverse(CPanel* _ecx, void* _edx, unsigned int pane
 
 				// 目标是否可见
 				// bool visible = IsTargetVisible(entity, headbox, myEyeOrigin);
-				bool visible = IsLocalVisible(entity, myEyeOrigin, headbox);
+				bool visible = (IsSurvivor(classId) || IsCommonInfected(classId) || IsSpecialInfected(classId) ?
+					IsLocalVisible(entity, myEyeOrigin, headbox) : false);
 
 				// 检查目标是否在屏幕内
 				if (!headbox.IsValid() || !WorldToScreen(headbox, head) ||
@@ -3921,25 +3924,35 @@ void __fastcall Hooked_PaintTraverse(CPanel* _ecx, void* _edx, unsigned int pane
 							continue;
 
 						if (classId == ET_WeaponAmmoPack || classId == ET_WeaponAmmoSpawn)
-							ss << "ammo_stack";
+							ss << "ammo_stack";				// 子弹堆
 						else if (classId == ET_WeaponPipeBomb)
-							ss << "pipe_bomb";
+							ss << "pipe_bomb";				// 土雷
 						else if (classId == ET_WeaponMolotov)
-							ss << "molotov";
+							ss << "molotov";				// 火瓶
 						else if (classId == ET_WeaponVomitjar)
-							ss << "vomitjar";
+							ss << "vomitjar";				// 胆汁
 						else if (classId == ET_WeaponFirstAidKit)
-							ss << "first_aid_kit";
+							ss << "first_aid_kit";			// 医疗包
 						else if (classId == ET_WeaponDefibrillator)
-							ss << "defibrillator";
+							ss << "defibrillator";			// 电击器
 						else if (classId == ET_WeaponPainPills)
-							ss << "pain_pills";
+							ss << "pain_pills";				// 止痛药
 						else if (classId == ET_WeaponAdrenaline)
-							ss << "adrenaline";
+							ss << "adrenaline";				// 肾上腺素
 						else if (classId == ET_WeaponMelee)
-							ss << "melee";
+							ss << "melee";					// 近战武器
 						else if (classId == ET_WeaponMagnum)
-							ss << "pistol_magnum";
+							ss << "pistol_magnum";			// 马格南
+						else if (classId == ET_WeaponIncendiary)
+							ss << "upgradepack_incendiary";	// 燃烧子弹包
+						else if (classId == ET_WeaponExplosive)
+							ss << "upgradepack_explosive";	// 高爆子弹包
+						else if (classId == ET_WeaponGnome)
+							ss << "gnome";					// c2m2 道具
+						else if (classId == ET_WeaponCola)
+							ss << "cola";					// c1m2 道具
+						else if (classId == ET_BaseUpgradeItem)
+							ss << "upgrade_unknown";		// 武器升级
 					}
 
 					if (!ss.str().empty())
@@ -4292,9 +4305,24 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 	}
 
 end_trigger_bot:
+	static int duckTick = 0;
+	if ((flags & FL_DUCKING) && (flags & FL_ONGROUND))
+	{
+		++duckTick;
+
+		if(duckTick == Config::iDuckAimbotTick)
+			g_pDrawRender->PushRenderText(DrawManager::RED, "Ducking Aimbot Activing");
+	}
+	else if(duckTick > 0)
+	{
+		if (duckTick >= Config::iDuckAimbotTick)
+			g_pDrawRender->PushRenderText(DrawManager::RED, "Ducking Aimbot Stopped");
+		
+		duckTick = 0;
+	}
 
 	// 自动瞄准
-	if (Config::bAimbot && weapon != nullptr && (pCmd->buttons & IN_ATTACK))
+	if ((Config::bAimbot || duckTick > Config::iDuckAimbotTick) && weapon != nullptr && (pCmd->buttons & IN_ATTACK))
 	{
 		Vector myOrigin = client->GetEyePosition(), myAngles = pCmd->viewangles;
 
@@ -4728,6 +4756,7 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 				CVAR_MAKE_FLAGS("sv_pure");
 				CVAR_MAKE_FLAGS("sv_consistency");
 				CVAR_MAKE_FLAGS("c_thirdpersonshoulder");
+				CVAR_MAKE_FLAGS("addons_eclipse_content");
 #endif
 
 #ifdef USE_CVAR_CHANGE
@@ -4735,6 +4764,8 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 					g_conVar["sv_pure"]->SetValue(0);
 				if (g_conVar["sv_consistency"] != nullptr && g_conVar["sv_consistency"]->GetInt() != 0)
 					g_conVar["sv_consistency"]->SetValue(0);
+				if (g_conVar["addons_eclipse_content"] != nullptr && g_conVar["addons_eclipse_content"]->GetInt() != 0)
+					g_conVar["addons_eclipse_content"]->SetValue(0);
 #endif
 
 				if (Utils::readMemory<int>(g_iEngineBase + sv_pure) != 0 ||
@@ -6059,6 +6090,33 @@ bool __fastcall Hooked_EngineKeyEvent(CEngineVGui *_ecx, void *_edx, const Input
 	return result;
 }
 
+// 禁止被服务器查询的 ConVar
+std::vector<std::string> g_vsBannedQueryConVar
+{
+	"cl_", "sv_", "mat_", "c_", "cam_", "net_", "sm_", "mm_", "rcon_password", "r_", "cam_",
+	"z_", "mp_", "survivor_", "con_", "fps_max", "fog_", "crosshair", "hud_", "ui_", "gameui_",
+	"rate", "c_thirdpersonshoulder", "sv_cheats"
+};
+
+// 禁止被服务器设置的 ConVar
+std::vector<std::string> g_vsBannedSettingConVar
+{
+	"cl_", "rate", "fog_", "net_", "ui_", "vgui_", "mat_", "r_", "hud_", "joy_", "snd_", "c_", "cam_",
+	"sm_", "mm_", "con_", "fps_max", "crosshair", "r_screenoverlay", "sv_allow_wait_command",
+	"addons_eclipse_content", "sv_pure", "sv_consistency", "c_thirdpersonshoulder"
+};
+
+// 禁止被服务器执行的 Commands
+std::vector<std::string> g_vsBannedExecuteCommand
+{
+	"hidehud", "crosshair", "r_screenoverlay", "jpeg", "screenshot", "bind", "kill",
+	"explode", "connect", "retry", "disconnect", "exit", "quit", "record", "say", "say_team",
+	"shake", "fadein", "fadeout", "forcebind", "fps_max", "cl_", "rate", "mat_", "r_", "hud_",
+	"gameui_", "cam_", "ammo_", "c_", "con_", "debug_", "test_", "demo_", "dsp_", "fog_",
+	"joy_", "+", "-", "mem_", "mm_", "sm_", "mod_", "music_", "net_", "overview_", "particle_",
+	"snd_", "Test_", "ui_", "vgui_", "voice_", "vprof_", "alias", "unbind", "unbindall"
+};
+
 bool __fastcall Hooked_ProcessGetCvarValue(CBaseClientState *_ecx, void *_edx, SVC_GetCvarValue *msg)
 {
 	/*
@@ -6100,7 +6158,7 @@ bool __fastcall Hooked_ProcessGetCvarValue(CBaseClientState *_ecx, void *_edx, S
 		if (cvar->IsFlagSet(FCVAR_SERVER_CANNOT_QUERY))
 		{
 			// 这玩意不可以查询
-			returnMsg.m_eStatusCode = eQueryCvarValueStatus_ValueIntact;
+			returnMsg.m_eStatusCode = eQueryCvarValueStatus_CvarProtected;
 		}
 		else
 		{
@@ -6118,6 +6176,16 @@ bool __fastcall Hooked_ProcessGetCvarValue(CBaseClientState *_ecx, void *_edx, S
 				// 服务器一般情况下不会发现问题的...
 				strcpy_s(tempValue, cvar->GetDefault());
 				returnMsg.m_szCvarValue = tempValue;
+
+				for (const std::string& cvars : g_vsBannedQueryConVar)
+				{
+					if (strstr(msg->m_szCvarName, cvars.c_str()) == msg->m_szCvarName)
+					{
+						tempValue[0] = '\0';
+						returnMsg.m_szCvarValue = tempValue;
+						break;
+					}
+				}
 			}
 		}
 	}
@@ -6164,6 +6232,7 @@ bool __fastcall Hooked_ProcessSetConVar(CBaseClientState *_ecx, void *_edx, NET_
 		Utils::log("ClientState = 0x%X", (DWORD)_ecx);
 	}
 	
+	bool ignoreSetting = false;
 	for (auto& cvar : msg->m_ConVars)
 	{
 		if (cvar.name[0] == '\0')
@@ -6183,6 +6252,22 @@ bool __fastcall Hooked_ProcessSetConVar(CBaseClientState *_ecx, void *_edx, NET_
 		// 将服务器的更改进行记录，等服务器查询的时候把记录还回去
 		g_serverConVar[cvar.name] = cvar.value;
 
+
+		for (const std::string& cvars : g_vsBannedSettingConVar)
+		{
+			if (strstr(cvar.name, cvars.c_str()) == cvar.name)
+			{
+				ignoreSetting = true;
+				break;
+			}
+		}
+
+		if (ignoreSetting)
+		{
+			ignoreSetting = false;
+			continue;
+		}
+
 		// 对于需要同步的 ConVar 可以进行更改
 		if (!_stricmp(cvar.name, "mp_gamemode") || !_stricmp(cvar.name, "z_difficulty") ||
 			!_stricmp(cvar.name, "sv_maxupdaterate") || !_stricmp(cvar.name, "sv_minupdaterate") ||
@@ -6201,8 +6286,12 @@ bool __fastcall Hooked_ProcessSetConVar(CBaseClientState *_ecx, void *_edx, NET_
 bool __fastcall Hooked_ProcessStringCmd(CBaseClientState *_ecx, void *_edx, NET_StringCmd *msg)
 {
 	Utils::log("[SC] Execute Commands: %s", msg->m_szCommand);
-	if (!_stricmp(msg->m_szCommand, "hidehud"))
-		return true;
+
+	for (const std::string& cmds : g_vsBannedExecuteCommand)
+	{
+		if (strstr(msg->m_szCommand, cmds.c_str()) == msg->m_szCommand)
+			return true;
+	}
 
 	return oProcessStringCmd(_ecx, msg);
 }
