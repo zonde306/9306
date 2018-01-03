@@ -224,7 +224,7 @@ namespace Config
 	float fAimbotRCSX = 2.0f;
 	float fAimbotRCSY = 2.0f;
 	float fSpeedHackSpeed = 8.0f;
-	int iDuckAimbotTick = 180;
+	int iDuckAimbotTick = 90;
 
 	int iFastMeleeTick = 10;
 	bool bMustFastMelee = false;
