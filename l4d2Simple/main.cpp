@@ -5048,6 +5048,30 @@ bool __fastcall Hooked_CreateMoveShared(ClientModeShared* _ecx, void* _edx, floa
 		Utils::log("CL_Move->bSendPacket = 0x%X | %d", (DWORD)bSendPacket, *bSendPacket);
 	}
 
+	// 当前正在瞄准的目标
+	// 由于 TraceRay 存在 bug 所以这里再次进行更新
+	{
+		if (client != nullptr && client->IsAlive())
+		{
+			int aiming = *(int*)(client + m_iCrosshairsId);
+			if (aiming > 0)
+			{
+				g_pCurrentAiming = g_interface.ClientEntList->GetClientEntity(aiming);
+			}
+			else
+			{
+				try
+				{
+					g_pCurrentAiming = GetAimingTarget(&g_iCurrentHitbox);
+				}
+				catch (std::runtime_error& exception)
+				{
+					Utils::log("with Hooked_CreateMoveShared %s", exception.what());
+				}
+			}
+		}
+	}
+
 	return false;
 }
 
