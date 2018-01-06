@@ -146,6 +146,52 @@ public:
 	CBaseEntity* pSkip1;
 };
 
+class CTraceFilterShots : public ITraceFilter
+{
+public:
+	virtual bool ShouldHitEntity(CBaseEntity* pEntityHandle, int contentsMask) override
+	{
+		// 检查是否活着
+		if (pEntityHandle == nullptr || !pEntityHandle->IsAlive())
+			return false;
+
+		int classId = pEntityHandle->GetClientClass()->m_ClassID;
+		if (!IsSurvivor(classId) && !IsSpecialInfected(classId) && !IsCommonInfected(classId))
+		{
+			// 开门复活点
+			if (classId == ET_SurvivorRescue)
+				return false;
+
+			// Tank 的石头
+			if (classId == ET_TankRock)
+				return true;
+
+			// 检查可见
+			if (pEntityHandle->GetNetProp<int>("m_fEffects", "DT_BaseAnimating") & EF_NODRAW)
+				return false;
+
+			// 检查碰撞
+			if (pEntityHandle->GetNetProp2<int>("m_Collision", "m_usSolidFlags", "DT_BasePlayer") & SF_NOT_SOLID)
+				return false;
+		}
+		else if (IsSpecialInfected(classId))
+		{
+			// 灵魂状态的特感
+			if (pEntityHandle->GetNetProp<byte>("m_isGhost", "DT_TerrorPlayer") != 0)
+				return false;
+		}
+		
+		return !(pEntityHandle == pSkip1);
+	}
+
+	virtual TraceType_t GetTraceType() const override
+	{
+		return TRACE_EVERYTHING;
+	}
+
+	CBaseEntity* pSkip1;
+};
+
 class CTraceFilterFunction : public CTraceFilter
 {
 public:

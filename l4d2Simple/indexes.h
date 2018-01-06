@@ -92,6 +92,7 @@ namespace indexes
 	const int CAM_IsThirdPerson = 29;
 	const int CAM_ToThirdPerson = 31;
 	const int CAM_ToFirstPerson = 32;
+	const int WriteUsercmdDeltaToBuffer = 5;
 
 	// Prediction
 	const int RunCommand = 18;

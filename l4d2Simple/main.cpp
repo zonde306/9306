@@ -2390,7 +2390,9 @@ CBaseEntity* GetAimingTarget(int* hitbox = nullptr)
 		src = VelocityExtrapolate(client, src, FORWARD_TRACK);
 	else
 	*/
-	src = VelocityExtrapolate(client, src);
+
+	if(Config::bAimbotPred)
+		src = VelocityExtrapolate(client, src);
 
 	filter.pSkip1 = client;
 	g_interface.Engine->GetViewAngles(dst);
@@ -3359,6 +3361,7 @@ void __fastcall Hooked_PaintTraverse(CPanel* _ecx, void* _edx, unsigned int pane
 
 		// 当前正在瞄准的目标
 		// 由于 TraceRay 存在 bug 所以这里再次进行更新
+		/*
 		if (g_pCurrentAiming == nullptr || !IsValidVictim(g_pCurrentAiming))
 		{
 			CBaseEntity* client = GetLocalClient();
@@ -3382,6 +3385,7 @@ void __fastcall Hooked_PaintTraverse(CPanel* _ecx, void* _edx, unsigned int pane
 				}
 			}
 		}
+		*/
 	}
 
 	// 每一帧调 很多次 在这里不能做消耗较大的事情
@@ -4983,6 +4987,7 @@ void __fastcall Hooked_RunCommand(CPrediction* _ecx, void* _edx, CBaseEntity* pE
 
 	// 当前正在瞄准的目标
 	// 由于 TraceRay 存在 bug 所以这里再次进行更新
+	/*
 	if (g_pCurrentAiming == nullptr || !IsValidVictim(g_pCurrentAiming))
 	{
 		CBaseEntity* client = GetLocalClient();
@@ -5006,6 +5011,7 @@ void __fastcall Hooked_RunCommand(CPrediction* _ecx, void* _edx, CBaseEntity* pE
 			}
 		}
 	}
+	*/
 
 	g_interface.MoveHelper = moveHelper;
 }
@@ -5050,6 +5056,7 @@ bool __fastcall Hooked_CreateMoveShared(ClientModeShared* _ecx, void* _edx, floa
 
 	// 当前正在瞄准的目标
 	// 由于 TraceRay 存在 bug 所以这里再次进行更新
+	/*
 	{
 		if (client != nullptr && client->IsAlive())
 		{
@@ -5071,6 +5078,7 @@ bool __fastcall Hooked_CreateMoveShared(ClientModeShared* _ecx, void* _edx, floa
 			}
 		}
 	}
+	*/
 
 	return false;
 }
