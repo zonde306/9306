@@ -225,6 +225,9 @@
     <ClInclude Include="detours\opcodes.h">
       <Filter>头文件\detours</Filter>
     </ClInclude>
+    <ClInclude Include="menu.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="structs\checksum_md5.cpp">
@@ -259,6 +262,9 @@
     </ClCompile>
     <ClCompile Include="detours\splice.cpp">
       <Filter>头文件\detours</Filter>
+    </ClCompile>
+    <ClCompile Include="menu.cpp">
+      <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

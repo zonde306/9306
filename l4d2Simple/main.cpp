@@ -3,6 +3,7 @@
 #include "./sqbinding/vector.h"
 #include "./sqbinding/qangle.h"
 #include "./detours/splice.h"
+#include "menu.h"
 
 #define USE_PLAYER_INFO
 #define USE_CVAR_CHANGE
@@ -743,6 +744,10 @@ DWORD WINAPI StartCheat(LPVOID params)
 	// 只是为了保险起见而已
 	g_pDeviceHooker->GetDevice() = nullptr;
 
+	// 初始化菜单
+	g_pBaseMenu = std::make_unique<CBaseMenu>();
+	g_pBaseMenu->Init();
+
 	// 按键绑定
 	bindAlias(45);
 
@@ -1263,7 +1268,7 @@ void thirdPerson(bool active)
 		}
 	}
 
-	std::this_thread::sleep_for(std::chrono::seconds(1));
+	// std::this_thread::sleep_for(std::chrono::seconds(1));
 }
 
 void showSpectator()
@@ -2634,8 +2639,8 @@ HRESULT WINAPI Hooked_Present(IDirect3DDevice9* device, const RECT* source, cons
 			if (g_conVar["cl_mouseenable"] != nullptr)
 				g_conVar["cl_mouseenable"]->SetValue(showMenu);
 
-			ImGui::GetIO().MouseDrawCursor = false;
-			g_bIsShowMenu = false;
+			// ImGui::GetIO().MouseDrawCursor = false;
+			// g_bIsShowMenu = false;
 		};
 
 		ImGui_ImplDX9_Init(g_hwGameWindow, device);
@@ -2643,63 +2648,6 @@ HRESULT WINAPI Hooked_Present(IDirect3DDevice9* device, const RECT* source, cons
 
 	g_pDrawRender->BeginImGuiRender();
 	ImGui::GetIO().MouseDrawCursor = g_bIsShowMenu;
-
-	// 绘制菜单
-	if (g_bIsShowMenu)
-	{
-		// 绘制一个窗口
-		ImGui::Begin(u8"L4D2Simple", &g_bIsShowMenu, ImVec2(300, 250), 0.75f);
-		{
-			// 绘制
-			if (ImGui::CollapsingHeader(u8"Draw"))
-			{
-				ImGui::Checkbox(u8"2D Box", &Config::bDrawBox);
-				ImGui::Checkbox(u8"Bone Box", &Config::bDrawBone);
-				ImGui::Checkbox(u8"Name", &Config::bDrawName);
-				ImGui::Checkbox(u8"Distance", &Config::bDrawDist);
-				ImGui::Checkbox(u8"Ammo", &Config::bDrawAmmo);
-				ImGui::Checkbox(u8"Crosshairs", &Config::bDrawAmmo);
-			}
-
-			// Z 轴
-			if (ImGui::CollapsingHeader(u8"DirextX ZBuffer"))
-			{
-				ImGui::Checkbox(u8"Survivor", &Config::bBufferSurvivor);
-				ImGui::Checkbox(u8"Special Infected", &Config::bBufferSpecial);
-				ImGui::Checkbox(u8"Common Infected", &Config::bBufferCommon);
-				ImGui::Checkbox(u8"Grenade", &Config::bBufferGrenade);
-				ImGui::Checkbox(u8"Medical", &Config::bBufferMedical);
-				ImGui::Checkbox(u8"Guns", &Config::bBufferWeapon);
-				ImGui::Checkbox(u8"Carry", &Config::bBufferCarry);
-			}
-
-			// 瞄准
-			if (ImGui::CollapsingHeader("Aiming"))
-			{
-				ImGui::Checkbox(u8"Aimbot", &Config::bAimbot);
-				ImGui::SliderFloat(u8"Aimbot FOV", &Config::fAimbotFov, 1.0f, 360.0f);
-				ImGui::Checkbox(u8"Silent Aimbot", &Config::bSilentAimbot);
-				ImGui::Checkbox(u8"Trigger Bot", &Config::bTriggerBot);
-				ImGui::Checkbox(u8"Trigger Bot Only Head", &Config::bTriggerBotHead);
-				ImGui::Checkbox(u8"Do not Fire Firendly", &Config::bAnitFirendlyFire);
-			}
-
-			// 其他
-			if (ImGui::CollapsingHeader(u8"Misc"))
-			{
-				ImGui::Checkbox(u8"Bunny Hop", &Config::bBunnyHop);
-				ImGui::Checkbox(u8"Auto Strafe", &Config::bAutoStrafe);
-				ImGui::Checkbox(u8"No Recoil", &Config::bNoRecoil);
-				ImGui::Checkbox(u8"Rapid Fire", &Config::bRapidFire);
-				ImGui::Checkbox(u8"CRC Check Bypass", &Config::bCrcCheckBypass);
-				ImGui::Checkbox(u8"Full Bright", &Config::bCvarFullBright);
-				ImGui::Checkbox(u8"Wireframe", &Config::bCvarWireframe);
-				ImGui::Checkbox(u8"Game Mode Change", &Config::bCvarGameMode);
-				ImGui::Checkbox(u8"Third Person", &Config::bThirdPersons);
-			}
-		}
-		ImGui::End();	// 完成一个窗口的绘制
-	}
 
 #ifdef USE_D3D_DRAW
 	{
@@ -3361,8 +3309,7 @@ void __fastcall Hooked_PaintTraverse(CPanel* _ecx, void* _edx, unsigned int pane
 
 		// 当前正在瞄准的目标
 		// 由于 TraceRay 存在 bug 所以这里再次进行更新
-		/*
-		if (g_pCurrentAiming == nullptr || !IsValidVictim(g_pCurrentAiming))
+		// if (g_pCurrentAiming == nullptr || !IsValidVictim(g_pCurrentAiming))
 		{
 			CBaseEntity* client = GetLocalClient();
 			if (client != nullptr && client->IsAlive())
@@ -3385,7 +3332,6 @@ void __fastcall Hooked_PaintTraverse(CPanel* _ecx, void* _edx, unsigned int pane
 				}
 			}
 		}
-		*/
 	}
 
 	// 每一帧调 很多次 在这里不能做消耗较大的事情
@@ -4220,6 +4166,7 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 	}
 
 	// 当前正在瞄准的目标
+	/*
 	int aiming = *(int*)(client + m_iCrosshairsId);
 	if (aiming > 0)
 	{
@@ -4237,6 +4184,7 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 			Utils::log("with Hooked_CreateMove %s", exception.what());
 		}
 	}
+	*/
 
 #ifdef _DEBUG
 	try
@@ -5099,171 +5047,76 @@ int __fastcall Hooked_KeyInput(ClientModeShared* _ecx, void* _edx, int down, But
 		Utils::log("Hooked_KeyInput trigged.");
 	}
 
-	if (!down)
+	if (g_pBaseMenu && g_pBaseMenu->m_bStateUpdated)
 	{
-		static bool oldWireframe = false;
-		if (keynum == KEY_INSERT)
-			Config::bCvarWireframe = !Config::bCvarWireframe;
+		g_pBaseMenu->m_bStateUpdated = false;
 
-		if (oldWireframe != Config::bCvarWireframe)
+		if (g_conVar["r_drawothermodels"] != nullptr && g_conVar["cl_drawshadowtexture"] != nullptr)
 		{
-#ifdef USE_CVAR_CHANGE
 			CVAR_MAKE_FLAGS("r_drawothermodels");
 			CVAR_MAKE_FLAGS("cl_drawshadowtexture");
-#endif
 
-#ifdef USE_CVAR_CHANGE
-			if (g_conVar["r_drawothermodels"] != nullptr && g_conVar["cl_drawshadowtexture"] != nullptr)
+			if (Config::bCvarWireframe)
 			{
-				if (Config::bCvarWireframe)
-				{
-					g_conVar["r_drawothermodels"]->SetValue(2);
-					g_conVar["cl_drawshadowtexture"]->SetValue(1);
-				}
-				else
-				{
-					g_conVar["r_drawothermodels"]->SetValue(1);
-					g_conVar["cl_drawshadowtexture"]->SetValue(0);
-				}
+				g_conVar["r_drawothermodels"]->SetValue(2);
+				g_conVar["cl_drawshadowtexture"]->SetValue(1);
 			}
 			else
 			{
-#endif
-				if (Config::bCvarWireframe)
-				{
-					Utils::writeMemory(2, g_iClientBase + r_drawothermodels);
-					Utils::writeMemory(1, g_iClientBase + cl_drawshadowtexture);
-				}
-				else
-				{
-					Utils::writeMemory(1, g_iClientBase + r_drawothermodels);
-					Utils::writeMemory(0, g_iClientBase + cl_drawshadowtexture);
-				}
-
-				g_interface.Engine->ClientCmd("echo \"r_drawothermodels set %d\"",
-					Utils::readMemory<int>(g_iClientBase + r_drawothermodels));
-				g_interface.Engine->ClientCmd("echo \"cl_drawshadowtexture set %d\"",
-					Utils::readMemory<int>(g_iClientBase + cl_drawshadowtexture));
-#ifdef USE_CVAR_CHANGE
+				g_conVar["r_drawothermodels"]->SetValue(1);
+				g_conVar["cl_drawshadowtexture"]->SetValue(0);
 			}
-#endif
-			oldWireframe = Config::bCvarWireframe;
 		}
 
-		static bool oldFullBright = false;
-		if (keynum == KEY_HOME)
-			Config::bCvarFullBright = !Config::bCvarFullBright;
-
-		if (oldFullBright != Config::bCvarFullBright)
+		if (g_conVar["mat_hdr_enabled"] != nullptr && g_conVar["mat_hdr_level"] != nullptr)
 		{
-#ifdef USE_CVAR_CHANGE
+			CVAR_MAKE_FLAGS("mat_hdr_enabled");
+			CVAR_MAKE_FLAGS("mat_hdr_level");
+			
+			if (Config::bCvarFullBright)
+			{
+				g_conVar["mat_hdr_enabled"]->SetValue(0);
+				g_conVar["mat_hdr_level"]->SetValue(0);
+			}
+			else
+			{
+				g_conVar["mat_hdr_enabled"]->SetValue(1);
+				g_conVar["mat_hdr_level"]->SetValue(2);
+			}
+		}
+		else if (g_conVar["mat_fullbright"] != nullptr)
+		{
 			CVAR_MAKE_FLAGS("mat_fullbright");
-#endif
 
-#ifdef USE_CVAR_CHANGE
-			if (g_conVar["mat_hdr_enabled"] != nullptr && g_conVar["mat_hdr_level"] != nullptr)
-			{
-				if (Config::bCvarFullBright)
-				{
-					g_conVar["mat_hdr_enabled"]->SetValue(0);
-					g_conVar["mat_hdr_level"]->SetValue(0);
-				}
-				else
-				{
-					g_conVar["mat_hdr_enabled"]->SetValue(1);
-					g_conVar["mat_hdr_level"]->SetValue(2);
-				}
-			}
-			else if (g_conVar["mat_fullbright"] != nullptr)
-			{
-				if (Config::bCvarFullBright)
-					g_conVar["mat_fullbright"]->SetValue(1);
-				else
-					g_conVar["mat_fullbright"]->SetValue(0);
-			}
+			if (Config::bCvarFullBright)
+				g_conVar["mat_fullbright"]->SetValue(1);
 			else
-			{
-#endif
-				if (Config::bCvarFullBright)
-					Utils::writeMemory(1, g_iMaterialModules + mat_fullbright);
-				else
-					Utils::writeMemory(0, g_iMaterialModules + mat_fullbright);
-
-				g_interface.Engine->ClientCmd("echo \"mat_fullbright set %d\"",
-					Utils::readMemory<int>(g_iMaterialModules + mat_fullbright));
-#ifdef USE_CVAR_CHANGE
-			}
-#endif
-			oldFullBright = Config::bCvarFullBright;
+				g_conVar["mat_fullbright"]->SetValue(0);
 		}
 
-		static bool oldGameMode = false;
-
-		if (keynum == KEY_PAGEUP)
-			Config::bCvarGameMode = !Config::bCvarGameMode;
-
-		if (oldGameMode != Config::bCvarGameMode)
+		/*
+		if (g_conVar["mp_gamemode"] != nullptr)
 		{
-#ifdef USE_CVAR_CHANGE
 			CVAR_MAKE_FLAGS("mp_gamemode");
-#endif
 
-#ifdef USE_CVAR_CHANGE
-			if (g_conVar["mp_gamemode"] != nullptr)
+			const char* mode = g_conVar["mp_gamemode"]->GetString();
+			if (_strcmpi(mode, "versus") == 0 || _strcmpi(mode, "realismversus") == 0)
 			{
-				const char* mode = g_conVar["mp_gamemode"]->GetString();
-				if (_strcmpi(mode, "versus") == 0 || _strcmpi(mode, "realismversus") == 0)
-				{
-					g_conVar["mp_gamemode"]->SetValue("coop");
-					strcpy_s(g_conVar["mp_gamemode"]->m_pszString, g_conVar["mp_gamemode"]->m_StringLength, "coop");
-				}
-				else
-				{
-					g_conVar["mp_gamemode"]->SetValue("versus");
-					strcpy_s(g_conVar["mp_gamemode"]->m_pszString, g_conVar["mp_gamemode"]->m_StringLength, "versus");
-				}
-
-				g_interface.Engine->ClientCmd("echo \"[ConVar] mp_gamemode set %s\"",
-					g_conVar["mp_gamemode"]->GetString());
+				g_conVar["mp_gamemode"]->SetValue("coop");
+				strcpy_s(g_conVar["mp_gamemode"]->m_pszString, g_conVar["mp_gamemode"]->m_StringLength, "coop");
 			}
 			else
 			{
-#endif
-				char* mode = Utils::readMemory<char*>(g_iClientBase + mp_gamemode);
-				if (mode != nullptr)
-				{
-					DWORD oldProtect = NULL;
-
-					if (VirtualProtect(mode, sizeof(char) * 16, PAGE_EXECUTE_READWRITE, &oldProtect) == TRUE)
-					{
-						if (_strcmpi(mode, "versus") == 0 || _strcmpi(mode, "realismversus") == 0)
-							strcpy_s(mode, 16, "coop");
-						else
-							strcpy_s(mode, 16, "versus");
-						VirtualProtect(mode, sizeof(char) * 16, oldProtect, &oldProtect);
-					}
-					else
-						printf("VirtualProtect 0x%X Fail!\n", (DWORD)mode);
-
-					g_interface.Engine->ClientCmd("echo \"mp_gamemode set %s\"", mode);
-				}
-#ifdef USE_CVAR_CHANGE
+				g_conVar["mp_gamemode"]->SetValue("versus");
+				strcpy_s(g_conVar["mp_gamemode"]->m_pszString, g_conVar["mp_gamemode"]->m_StringLength, "versus");
 			}
-#endif
-			oldGameMode = Config::bCvarGameMode;
 		}
+		*/
 
-		static bool oldCheats = false;
-		if (keynum == KEY_PAGEDOWN)
-			Config::bCvarCheats = !Config::bCvarCheats;
-
-		if (oldCheats != Config::bCvarCheats)
+		if (g_conVar["sv_cheats"] != nullptr)
 		{
-#ifdef USE_CVAR_CHANGE
 			CVAR_MAKE_FLAGS("sv_cheats");
-#endif
 
-#ifdef USE_CVAR_CHANGE
 			if (g_conVar["sv_cheats"] != nullptr)
 			{
 				if (Config::bCvarCheats)
@@ -5274,177 +5127,10 @@ int __fastcall Hooked_KeyInput(ClientModeShared* _ecx, void* _edx, int down, But
 				}
 				else
 					g_conVar["sv_cheats"]->SetValue(0);
-
-				g_interface.Engine->ClientCmd("echo \"[ConVar] sv_cheats set %d\"",
-					g_conVar["sv_cheats"]->GetInt());
-			}
-#endif
-
-			if (Config::bCvarCheats)
-				Utils::writeMemory(1, g_iEngineBase + sv_cheats);
-			else
-				Utils::writeMemory(0, g_iEngineBase + sv_cheats);
-
-			g_interface.Engine->ClientCmd("echo \"sv_cheats set %d\"",
-				Utils::readMemory<int>(g_iEngineBase + sv_cheats));
-
-			oldCheats = Config::bCvarCheats;
-		}
-
-		static bool oldThrid = false;
-		if (oldThrid != Config::bThirdPersons)
-		{
-			thirdPerson(Config::bThirdPersons);
-			oldThrid = Config::bThirdPersons;
-		}
-
-		/*
-		if (keynum == KEY_PAGEUP)
-		{
-			if (g_interface.Input->CAM_IsThirdPerson())
-				g_interface.Input->CAM_ToFirstPerson();
-			else
-				g_interface.Input->CAM_ToThirdPerson();
-		}
-		*/
-		
-		// 显示全部玩家
-		/*
-		if (keynum == KEY_CAPSLOCK)
-			showSpectator();
-		*/
-
-		// 打开/关闭 自动连跳的自动保持速度
-		if (keynum == KEY_F8)
-		{
-			Config::bAutoStrafe = !Config::bAutoStrafe;
-			g_interface.Engine->ClientCmd("echo \"[segt] auto strafe set %s\"",
-				(Config::bAutoStrafe ? "enable" : "disabled"));
-
-			if (g_pDrawRender != nullptr)
-			{
-				g_pDrawRender->PushRenderText(DrawManager::WHITE, "auto strafe %s",
-					(Config::bAutoStrafe ? "enable" : "disable"));
 			}
 		}
 
-		// 打开/关闭 自动开枪
-		if (keynum == KEY_F9)
-		{
-			Config::bTriggerBot = !Config::bTriggerBot;
-			g_interface.Engine->ClientCmd("echo \"[segt] trigger bot set %s\"",
-				(Config::bTriggerBot ? "enable" : "disabled"));
-
-			if (g_pDrawRender != nullptr)
-			{
-				g_pDrawRender->PushRenderText(DrawManager::WHITE, "trigger bot %s",
-					(Config::bTriggerBot ? "enable" : "disable"));
-			}
-		}
-
-		// 打开/关闭 自动瞄准
-		if (keynum == KEY_F10)
-		{
-			Config::bAimbot = !Config::bAimbot;
-			g_interface.Engine->ClientCmd("echo \"[segt] aim bot set %s\"",
-				(Config::bAimbot ? "enable" : "disabled"));
-
-			if (g_pDrawRender != nullptr)
-			{
-				g_pDrawRender->PushRenderText(DrawManager::WHITE, "auto aim %s",
-					(Config::bAimbot ? "enable" : "disable"));
-			}
-		}
-
-		// 打开/关闭 空格自动连跳
-		if (keynum == KEY_F11)
-		{
-			Config::bBunnyHop = !Config::bBunnyHop;
-			g_interface.Engine->ClientCmd("echo \"[segt] auto bunnyHop set %s\"",
-				(Config::bBunnyHop ? "enable" : "disabled"));
-
-			if (g_pDrawRender != nullptr)
-			{
-				g_pDrawRender->PushRenderText(DrawManager::WHITE, "auto bhop %s",
-					(Config::bBunnyHop ? "enable" : "disable"));
-			}
-		}
-
-		// 打开/关闭 静音瞄准
-		if (keynum == KEY_F12)
-		{
-			Config::bSilentAimbot = !Config::bSilentAimbot;
-			g_interface.Engine->ClientCmd("echo \"[segt] silent aim %s\"",
-				(Config::bSilentAimbot ? "enable" : "disabled"));
-
-			if (g_pDrawRender != nullptr)
-			{
-				g_pDrawRender->PushRenderText(DrawManager::WHITE, "silent aimbot %s",
-					(Config::bSilentAimbot ? "enable" : "disable"));
-			}
-		}
-
-		// 打开/关闭 速砍
-		if (keynum == KEY_F7)
-		{
-			Config::bMustFastMelee = !Config::bMustFastMelee;
-			g_interface.Engine->ClientCmd("echo \"[segt] fast melee %s\"",
-				(Config::bMustFastMelee ? "enable" : "disabled"));
-
-			if (g_pDrawRender != nullptr)
-			{
-				g_pDrawRender->PushRenderText(DrawManager::WHITE, "fast melee %s",
-					(Config::bMustFastMelee ? "enable" : "disable"));
-			}
-		}
-
-		// 打开/关闭 加速
-		if (keynum == KEY_F6)
-		{
-			Config::bSpeedHack = !Config::bSpeedHack;
-			g_interface.Engine->ClientCmd("echo \"[segt] speed hack %s\"",
-				(Config::bSpeedHack ? "enable" : "disabled"));
-
-			if (g_pDrawRender != nullptr)
-			{
-				g_pDrawRender->PushRenderText(DrawManager::WHITE, "speed hack %s",
-					(Config::bSpeedHack ? "enable" : "disable"));
-			}
-		}
-
-		// 打开/关闭 自动瞄准炸服
-		if (keynum == KEY_F4)
-		{
-			Config::bCrashServer = !Config::bCrashServer;
-			g_interface.Engine->ClientCmd("echo \"[segt] aimbot server crasher %s\"",
-				(Config::bCrashServer ? "enable" : "disabled"));
-
-			if (g_pDrawRender != nullptr)
-			{
-				g_pDrawRender->PushRenderText(DrawManager::WHITE, "aimbot server crasher %s",
-					(Config::bCrashServer ? "enable" : "disable"));
-			}
-		}
-	}
-	else
-	{
-		if (keynum == KEY_PAD_PLUS)
-		{
-			Config::fAimbotFov += 1.0f;
-			g_interface.Engine->ClientCmd("echo \"aimbot fov set %.2f\"", Config::fAimbotFov);
-
-			if (g_pDrawRender != nullptr)
-				g_pDrawRender->PushRenderText(DrawManager::WHITE, "aimbot angles set %.0f", Config::fAimbotFov);
-		}
-
-		if (keynum == KEY_PAD_MINUS)
-		{
-			Config::fAimbotFov -= 1.0f;
-			g_interface.Engine->ClientCmd("echo \"aimbot fov set %.2f\"", Config::fAimbotFov);
-
-			if (g_pDrawRender != nullptr)
-				g_pDrawRender->PushRenderText(DrawManager::WHITE, "aimbot angles set %.0f", Config::fAimbotFov);
-		}
+		thirdPerson(Config::bThirdPersons);
 	}
 
 	return result;
@@ -6321,13 +6007,28 @@ bool __fastcall Hooked_ProcessGetCvarValue(CBaseClientState *_ecx, void *_edx, S
 				strcpy_s(tempValue, cvar->GetDefault());
 				returnMsg.m_szCvarValue = tempValue;
 
-				for (const std::string& cvars : g_vsBannedQueryConVar)
+				if (g_pBaseMenu)
 				{
-					if (strstr(msg->m_szCvarName, cvars.c_str()) == msg->m_szCvarName)
+					for (const auto& cvars : g_pBaseMenu->m_vConVarQuery)
 					{
-						tempValue[0] = '\0';
-						returnMsg.m_szCvarValue = tempValue;
-						break;
+						if(strstr(msg->m_szCvarName, cvars.text.c_str()) == msg->m_szCvarName)
+						{
+							tempValue[0] = '\0';
+							returnMsg.m_szCvarValue = tempValue;
+							break;
+						}
+					}
+				}
+				else
+				{
+					for (const std::string& cvars : g_vsBannedQueryConVar)
+					{
+						if (strstr(msg->m_szCvarName, cvars.c_str()) == msg->m_szCvarName)
+						{
+							tempValue[0] = '\0';
+							returnMsg.m_szCvarValue = tempValue;
+							break;
+						}
 					}
 				}
 			}
@@ -6396,13 +6097,26 @@ bool __fastcall Hooked_ProcessSetConVar(CBaseClientState *_ecx, void *_edx, NET_
 		// 将服务器的更改进行记录，等服务器查询的时候把记录还回去
 		g_serverConVar[cvar.name] = cvar.value;
 
-
-		for (const std::string& cvars : g_vsBannedSettingConVar)
+		if (g_pBaseMenu)
 		{
-			if (strstr(cvar.name, cvars.c_str()) == cvar.name)
+			for (const auto& cvars : g_pBaseMenu->m_vConVarSetting)
 			{
-				ignoreSetting = true;
-				break;
+				if (strstr(cvar.name, cvars.text.c_str()) == cvar.name)
+				{
+					ignoreSetting = true;
+					break;
+				}
+			}
+		}
+		else
+		{
+			for (const std::string& cvars : g_vsBannedSettingConVar)
+			{
+				if (strstr(cvar.name, cvars.c_str()) == cvar.name)
+				{
+					ignoreSetting = true;
+					break;
+				}
 			}
 		}
 
@@ -6431,10 +6145,21 @@ bool __fastcall Hooked_ProcessStringCmd(CBaseClientState *_ecx, void *_edx, NET_
 {
 	Utils::log("[SC] Execute Commands: %s", msg->m_szCommand);
 
-	for (const std::string& cmds : g_vsBannedExecuteCommand)
+	if (g_pBaseMenu)
 	{
-		if (strstr(msg->m_szCommand, cmds.c_str()) == msg->m_szCommand)
-			return true;
+		for (const auto& cmds : g_pBaseMenu->m_vCommandExecute)
+		{
+			if (strstr(msg->m_szCommand, cmds.text.c_str()) == msg->m_szCommand)
+				return true;
+		}
+	}
+	else
+	{
+		for (const std::string& cmds : g_vsBannedExecuteCommand)
+		{
+			if (strstr(msg->m_szCommand, cmds.c_str()) == msg->m_szCommand)
+				return true;
+		}
 	}
 
 	return oProcessStringCmd(_ecx, msg);

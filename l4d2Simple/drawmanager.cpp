@@ -1,5 +1,5 @@
 ﻿#include "drawmanager.h"
-
+#include "menu.h"
 
 // 将 D3DCOLOR 转换为 ImGui 的颜色
 // DirectX 的颜色为 ARGB。ImGui 的颜色为 ABGR
@@ -136,6 +136,7 @@ void DrawManager::ReleaseObjects()
 	}
 
 	m_imFonts.Clear();
+	ImGui::GetIO().Fonts->Clear();
 	m_hasDelayDrawing.unlock();
 }
 
@@ -175,7 +176,7 @@ void DrawManager::CreateObjects()
 #endif
 
 #ifdef IMGUI_VERSION
-	m_imDrawList = new ImDrawList();
+	m_imDrawList = new ImDrawList(ImGui::GetDrawListSharedData());
 
 	char systemPath[MAX_PATH];
 	GetWindowsDirectoryA(systemPath, MAX_PATH);
@@ -185,7 +186,7 @@ void DrawManager::CreateObjects()
 
 	// Utils::log("font %s loading...", fontPath.c_str());
 	m_imFonts.AddFontFromFileTTF(fontPath.c_str(), (float)m_iFontSize, nullptr, m_imFonts.GetGlyphRangesChinese());
-	// ImGui::GetIO().Fonts->AddFontFromFileTTF(fontPath.data(), m_iFontSize, nullptr, m_imFonts.GetGlyphRangesChinese());
+	ImGui::GetIO().Fonts->AddFontFromFileTTF(fontPath.data(), m_iFontSize, nullptr, m_imFonts.GetGlyphRangesChinese());
 
 	uint8_t* pixel_data;
 	int width, height, bytes_per_pixel;
@@ -300,6 +301,10 @@ void DrawManager::FinishImGuiRender()
 	}
 
 	m_hasDelayDrawing.lock();
+
+	if(g_bIsShowMenu && g_pBaseMenu)
+		g_pBaseMenu->DrawMenu();
+
 	ImGui_ImplDX9_RenderDrawLists(&m_imDrawData);
 	ImGui::Render();
 
@@ -784,6 +789,9 @@ void DrawManager::AddText(D3DCOLOR color, int x, int y, bool centered, const cha
 		x -= textSize.x / 2;
 		y -= textSize.y / 2;
 	}
+
+	if (m_imDrawList->_ClipRectStack.empty())
+		m_imDrawList->PushClipRectFullScreen();
 
 	m_imDrawList->PushTextureID(m_imFontTexture);
 	__try

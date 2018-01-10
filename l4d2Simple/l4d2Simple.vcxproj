@@ -181,6 +181,7 @@
     <ClInclude Include="libraries\vmt.h" />
     <ClInclude Include="libraries\xorstr.h" />
     <ClInclude Include="main.h" />
+    <ClInclude Include="menu.h" />
     <ClInclude Include="ntdll.h" />
     <ClInclude Include="peb.h" />
     <ClInclude Include="structs\angle.h" />
@@ -224,6 +225,7 @@
     <ClCompile Include="detours\splice.cpp" />
     <ClCompile Include="drawmanager.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="menu.cpp" />
     <ClCompile Include="peb.cpp" />
     <ClCompile Include="structs\checksum_md5.cpp" />
   </ItemGroup>
