@@ -62,6 +62,7 @@ void CBaseMenu::DrawMenu()
 		ImGui::Checkbox("Trigger Bot", &Config::bTriggerBot);
 		ImGui::Checkbox("Trigger Only Head", &Config::bTriggerBotHead);
 		ImGui::Checkbox("Trigger Heads", &Config::bTriggerExtra);
+		ImGui::DragInt("Trigger Heads Tick", &Config::iDuckAimbotTick, 10.0f, 0, 250);
 
 		ImGui::Separator();
 		ImGui::Checkbox("No Spread", &Config::bNoSpread);
@@ -126,7 +127,10 @@ void CBaseMenu::DrawMenu()
 		ImGui::Checkbox("Backtrack", &Config::bBackTrack);
 		ImGui::Checkbox("Forwardtrack", &Config::bForwardTrack);
 		ImGui::Checkbox("Thrid Persons", &Config::bThirdPersons);
+
+		ImGui::Separator();
 		ImGui::Checkbox("Fast Melee", &Config::bMustFastMelee);
+		ImGui::DragInt("Fast Melee Tick", &Config::iFastMeleeTick);
 
 		ImGui::Separator();
 		ImGui::Checkbox("Remove Fog", &Config::bRemoveFog);
