@@ -51,18 +51,22 @@ void CBaseMenu::DrawMenu()
 		ImGui::Checkbox("Only Firing", &Config::bAimbotKey);
 		ImGui::Checkbox("Speed Prediction", &Config::bAimbotPred);
 		ImGui::Checkbox("Silent Aim", &Config::bSilentAimbot);
-		ImGui::DragFloat("Aimbot FOV", &Config::fAimbotFov, 1.0f, 1.0f, 360.0f);
+		// ImGui::DragFloat("Aimbot FOV", &Config::fAimbotFov, 1.0f, 1.0f, 360.0f);
+		ImGui::SliderFloat("Aimbot FOV", &Config::fAimbotFov, 1.0f, 360.0f);
 
 		ImGui::Separator();
 		ImGui::Checkbox("Recoil Control System", &Config::bAimbotRCS);
-		ImGui::DragFloat("RCS X", &Config::fAimbotRCSX, 1.0f, 0.0f, 128.0f);
-		ImGui::DragFloat("RCS Y", &Config::fAimbotRCSX, 1.0f, 0.0f, 128.0f);
+		// ImGui::DragFloat("RCS X", &Config::fAimbotRCSX, 1.0f, 0.0f, 128.0f);
+		// ImGui::DragFloat("RCS Y", &Config::fAimbotRCSX, 1.0f, 0.0f, 128.0f);
+		ImGui::SliderFloat("RCS X", &Config::fAimbotRCSX, 0.0f, 128.0f);
+		ImGui::SliderFloat("RCS Y", &Config::fAimbotRCSY, 0.0f, 128.0f);
 
 		ImGui::Separator();
 		ImGui::Checkbox("Trigger Bot", &Config::bTriggerBot);
 		ImGui::Checkbox("Trigger Only Head", &Config::bTriggerBotHead);
 		ImGui::Checkbox("Trigger Heads", &Config::bTriggerExtra);
-		ImGui::DragInt("Trigger Heads Tick", &Config::iDuckAimbotTick, 10.0f, 0, 250);
+		// ImGui::DragInt("Trigger Heads Tick", &Config::iDuckAimbotTick, 1.0f, 0, 250);
+		ImGui::SliderInt("Trigger Heads Tick", &Config::iDuckAimbotTick, 0, 250);
 
 		ImGui::Separator();
 		ImGui::Checkbox("No Spread", &Config::bNoSpread);
@@ -130,7 +134,8 @@ void CBaseMenu::DrawMenu()
 
 		ImGui::Separator();
 		ImGui::Checkbox("Fast Melee", &Config::bMustFastMelee);
-		ImGui::DragInt("Fast Melee Tick", &Config::iFastMeleeTick);
+		// ImGui::DragInt("Fast Melee Tick", &Config::iFastMeleeTick);
+		ImGui::SliderInt("Fast Melee Tick", &Config::iFastMeleeTick, 1, 100);
 
 		ImGui::Separator();
 		ImGui::Checkbox("Remove Fog", &Config::bRemoveFog);

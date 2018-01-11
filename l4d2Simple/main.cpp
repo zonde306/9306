@@ -4308,8 +4308,10 @@ end_trigger_bot:
 	static int duckTick = 0;
 	if ((pCmd->buttons & IN_DUCK) && (flags & FL_DUCKING) && (flags & FL_ONGROUND))
 	{
-		if(Config::iDuckAimbotTick > 0)
+		if (Config::iDuckAimbotTick > 0)
 			++duckTick;
+		else
+			duckTick = -1;
 
 		if(duckTick == Config::iDuckAimbotTick)
 			g_pDrawRender->PushRenderText(DrawManager::RED, "Ducking Aimbot Activing");
