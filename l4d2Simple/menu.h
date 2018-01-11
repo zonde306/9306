@@ -47,6 +47,7 @@ namespace Config
 	extern bool bDrawCrosshairs;
 	extern bool bDrawSpectator;
 	extern bool bDrawOffScreen;
+	extern bool bDrawCarryItem;
 
 	// 屏幕绘制：实体
 	extern bool bDrawT1Weapon;
@@ -96,6 +97,7 @@ namespace Config
 	extern bool bSpeedHack;
 	extern bool bRemoveFog;
 	extern bool bTriggerExtra;
+	extern bool bTeleportExploit;
 
 	extern float fAimbotFov;
 	extern float fAimbotRCSX;

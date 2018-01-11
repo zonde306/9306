@@ -171,6 +171,7 @@ namespace Config
 	bool bDrawCrosshairs = true;
 	bool bDrawSpectator = true;
 	bool bDrawOffScreen = false;
+	bool bDrawCarryItem = true;
 
 	// 屏幕绘制：实体
 	bool bDrawT1Weapon = true;
@@ -220,6 +221,7 @@ namespace Config
 	bool bSpeedHack = false;
 	bool bRemoveFog = false;
 	bool bTriggerExtra = false;
+	bool bTeleportExploit = false;
 
 	float fAimbotFov = 30.0f;
 	float fAimbotRCSX = 2.0f;

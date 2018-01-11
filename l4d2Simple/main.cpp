@@ -380,6 +380,7 @@ INetChannelInfo* g_pNetChannelInfo;										// 获取延迟信息
 std::vector<BacktrackingRecord> g_aaBacktrack[64];						// 后预测
 int g_iBacktrackTarget = -1;											// 当前最接近准星的敌人
 RecoilRecord g_aaCompensation[128];										// 无后坐力用
+bool g_bHasFirstTick = false;											// 是否为加入游戏第发送的 tick
 
 std::string GetZombieClassName(CBaseEntity* player);
 bool IsValidVictim(CBaseEntity* entity);
@@ -3773,16 +3774,16 @@ void __fastcall Hooked_PaintTraverse(CPanel* _ecx, void* _edx, unsigned int pane
 					}
 				}
 
-				if (Config::bDrawName)
+				ss.str("");
+
+				// 根据类型决定绘制的内容
+				if (IsSurvivor(classId) || IsSpecialInfected(classId))
 				{
-					ss.str("");
-
-					// 根据类型决定绘制的内容
-					if (IsSurvivor(classId) || IsSpecialInfected(classId))
+					player_info_t info;
+					g_interface.Engine->GetPlayerInfo(i, &info);
+						
+					if (Config::bDrawName)
 					{
-						player_info_t info;
-						g_interface.Engine->GetPlayerInfo(i, &info);
-
 						// 检查是否为生还者
 						if (IsSurvivor(classId))
 						{
@@ -3821,18 +3822,22 @@ void __fastcall Hooked_PaintTraverse(CPanel* _ecx, void* _edx, unsigned int pane
 
 						// 玩家名字
 						ss << info.name;
+					}
 
-						// 显示距离
+					// 显示距离
+					if(Config::bDrawDist)
 						ss << std::endl << (int)dist;
 
-						CBaseEntity* weapon = (CBaseEntity*)entity->GetActiveWeapon();
-						if (weapon != nullptr)
-							weapon = g_interface.ClientEntList->GetClientEntityFromHandle((CBaseHandle*)weapon);
-
+					if (Config::bDrawAmmo)
+					{
 						// 给生还者显示弹药
 						if (IsSurvivor(classId))
 						{
-							if (Config::bDrawAmmo && weapon != nullptr)
+							CBaseEntity* weapon = (CBaseEntity*)entity->GetActiveWeapon();
+							if (weapon != nullptr)
+								weapon = g_interface.ClientEntList->GetClientEntityFromHandle((CBaseHandle*)weapon);
+								
+							if (weapon != nullptr)
 							{
 								int ammoType = weapon->GetNetProp<int>("m_iPrimaryAmmoType", "DT_BaseCombatWeapon");
 								int clip = weapon->GetNetProp<int>("m_iClip1", "DT_BaseCombatWeapon");
@@ -3856,78 +3861,104 @@ void __fastcall Hooked_PaintTraverse(CPanel* _ecx, void* _edx, unsigned int pane
 								}
 							}
 						}
-						else
+						else if(!info.isBot)
 						{
-							if (!info.isBot)
-							{
-								// 如果特感不是机器人的话就显示特感类型
-								// 机器人特感名字就是类型
-								ss << " (" << GetZombieClassName(entity) << ")";
-							}
+							// 如果特感不是机器人的话就显示特感类型
+							// 机器人特感名字就是类型
+							ss << " (" << GetZombieClassName(entity) << ")";
 						}
 					}
-					else if (classId == ET_WeaponSpawn)
-					{
-						// 其他东西
-						if (dist > 1000.0f)
-							continue;
+				}
+				else if (classId == ET_WeaponSpawn)
+				{
+					// 其他东西
+					if (dist > 1000.0f)
+						continue;
 
-						if (WeaponIdToAlias)
-						{
-							int weaponId = entity->GetNetProp<short>("m_weaponID", "DT_WeaponSpawn");
-							if (IsWeaponT1(weaponId) && Config::bDrawT1Weapon ||
-								IsWeaponT2(weaponId) && Config::bDrawT2Weapon ||
-								IsWeaponT3(weaponId) && Config::bDrawT3Weapon ||
-								IsMelee(weaponId) && Config::bDrawMeleeWeapon ||
-								IsMedical(weaponId) && Config::bDrawMedicalItem ||
-								IsGrenadeWeapon(weaponId) && Config::bDrawGrenadeItem ||
-								IsAmmoStack(weaponId) && Config::bDrawAmmoStack)
-								ss << WeaponIdToAlias(weaponId);
-						}
+					if (WeaponIdToAlias)
+					{
+						int weaponId = entity->GetNetProp<short>("m_weaponID", "DT_WeaponSpawn");
+						if (IsWeaponT1(weaponId) && Config::bDrawT1Weapon ||
+							IsWeaponT2(weaponId) && Config::bDrawT2Weapon ||
+							IsWeaponT3(weaponId) && Config::bDrawT3Weapon ||
+							IsMelee(weaponId) && Config::bDrawMeleeWeapon ||
+							IsMedical(weaponId) && Config::bDrawMedicalItem ||
+							IsGrenadeWeapon(weaponId) && Config::bDrawGrenadeItem ||
+							IsAmmoStack(weaponId) && Config::bDrawAmmoStack)
+							ss << WeaponIdToAlias(weaponId);
 					}
-					else
-					{
-						if (dist > 1000.0f)
-							continue;
+				}
+				else
+				{
+					if (dist > 1000.0f)
+						continue;
 
-						if (classId == ET_WeaponAmmoPack || classId == ET_WeaponAmmoSpawn)
+					if (classId == ET_WeaponAmmoPack || classId == ET_WeaponAmmoSpawn)
+					{
+						if(Config::bDrawAmmoStack)
 							ss << "ammo_stack";				// 子弹堆
-						else if (classId == ET_WeaponPipeBomb)
-							ss << "pipe_bomb";				// 土雷
-						else if (classId == ET_WeaponMolotov)
-							ss << "molotov";				// 火瓶
-						else if (classId == ET_WeaponVomitjar)
-							ss << "vomitjar";				// 胆汁
-						else if (classId == ET_WeaponFirstAidKit)
-							ss << "first_aid_kit";			// 医疗包
-						else if (classId == ET_WeaponDefibrillator)
-							ss << "defibrillator";			// 电击器
-						else if (classId == ET_WeaponPainPills)
-							ss << "pain_pills";				// 止痛药
-						else if (classId == ET_WeaponAdrenaline)
-							ss << "adrenaline";				// 肾上腺素
-						else if (classId == ET_WeaponMelee)
-							ss << "melee";					// 近战武器
-						else if (classId == ET_WeaponMagnum)
-							ss << "pistol_magnum";			// 马格南
-						else if (classId == ET_WeaponIncendiary)
-							ss << "upgradepack_incendiary";	// 燃烧子弹包
-						else if (classId == ET_WeaponExplosive)
-							ss << "upgradepack_explosive";	// 高爆子弹包
-						else if (classId == ET_WeaponGnome)
-							ss << "gnome";					// c2m2 道具
-						else if (classId == ET_WeaponCola)
-							ss << "cola";					// c1m2 道具
-						else if (classId == ET_BaseUpgradeItem)
-							ss << "upgrade_unknown";		// 武器升级
 					}
-
-					if (!ss.str().empty())
+					else if (classId == ET_WeaponPipeBomb || classId == ET_WeaponMolotov ||
+						classId == ET_WeaponVomitjar)
 					{
-						color = (visible ? DrawManager::LAWNGREEN : DrawManager::YELLOW);
-
-						g_pDrawRender->AddText(color, foot.x, head.y, true, ss.str().c_str());
+						if (Config::bDrawGrenadeItem)
+						{
+							if (classId == ET_WeaponMolotov)
+								ss << "molotov";				// 火瓶
+							else if (classId == ET_WeaponVomitjar)
+								ss << "vomitjar";				// 胆汁
+							else
+								ss << "pipe_bomb";				// 土雷
+						}
 					}
+					else if (classId == ET_WeaponFirstAidKit || classId == ET_WeaponDefibrillator ||
+						classId == ET_WeaponPainPills || classId == ET_WeaponAdrenaline)
+					{
+						if (Config::bDrawMedicalItem)
+						{
+							if (classId == ET_WeaponFirstAidKit)
+								ss << "first_aid_kit";			// 医疗包
+							else if (classId == ET_WeaponDefibrillator)
+								ss << "defibrillator";			// 电击器
+							else if (classId == ET_WeaponPainPills)
+								ss << "pain_pills";				// 止痛药
+							else if (classId == ET_WeaponAdrenaline)
+								ss << "adrenaline";				// 肾上腺素
+						}
+					}
+					else if (classId == ET_WeaponMelee && Config::bDrawMeleeWeapon)
+						ss << "melee";					// 近战武器
+					else if (classId == ET_WeaponMagnum && Config::bDrawT2Weapon)
+						ss << "pistol_magnum";			// 马格南
+					else if (classId == ET_WeaponIncendiary || classId == ET_WeaponExplosive)
+					{
+						if (Config::bDrawAmmoStack)
+						{
+							if (classId == ET_WeaponIncendiary)
+								ss << "upgradepack_incendiary";	// 燃烧子弹包
+							else
+								ss << "upgradepack_explosive";	// 高爆子弹包
+						}
+					}
+					else if (classId == ET_WeaponGnome || classId == ET_WeaponCola)
+					{
+						if (Config::bDrawCarryItem)
+						{
+							if (classId == ET_WeaponGnome)
+								ss << "gnome";					// c2m2 道具
+							else
+								ss << "cola";					// c1m2 道具
+						}
+					}
+					else if (classId == ET_BaseUpgradeItem && Config::bDrawAmmoStack)
+						ss << "upgrade_unknown";		// 武器升级
+				}
+
+				if (!ss.str().empty())
+				{
+					color = (visible ? DrawManager::LAWNGREEN : DrawManager::YELLOW);
+
+					g_pDrawRender->AddText(color, foot.x, head.y, true, ss.str().c_str());
 				}
 
 				// 自动瞄准寻找目标
@@ -4757,8 +4788,9 @@ end_aimbot:
 	{
 		// 一旦使用无法恢复
 		pCmd->viewangles.z = 9e+37f;
+		Config::bTeleport = false;
 	}
-
+	
 	// 发送到服务器
 	pVerifiedCmd->m_cmd = *pCmd;
 	pVerifiedCmd->m_crc = pCmd->GetChecksum();
@@ -4867,6 +4899,7 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 				g_iCurrentAiming = 0;
 				g_iCurrentHitbox = 0;
 				Config::bCrashServer = false;
+				g_bHasFirstTick = true;
 				loadConfig();
 
 				g_interface.Trace = (IEngineTrace*)g_interface.GetPointer("engine.dll", "EngineTraceClient");
@@ -4885,6 +4918,7 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 			g_iCurrentAiming = 0;
 			g_iCurrentHitbox = 0;
 			Config::bCrashServer = false;
+			g_bHasFirstTick = false;
 			g_serverConVar.clear();
 
 			Utils::log("*** disconnected ***");
@@ -4989,6 +5023,25 @@ bool __fastcall Hooked_CreateMoveShared(ClientModeShared* _ecx, void* _edx, floa
 	}
 
 	CBaseEntity* client = GetLocalClient();
+
+	// 随机复活 bug
+	if(pCmd != nullptr)
+	{
+		try
+		{
+			if ((client == nullptr || client->GetHealth() < 1) && g_bHasFirstTick)
+			{
+				if (Config::bTeleportExploit)
+					pCmd->tick_count = 1048575;
+
+				g_bHasFirstTick = false;
+			}
+		}
+		catch (...)
+		{
+			Utils::log("Unknown Error with Hooked_CreateMoveShared");
+		}
+	}
 
 	if (!client || !pCmd || pCmd->command_number == 0)
 		return false;

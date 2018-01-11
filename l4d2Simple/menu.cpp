@@ -75,10 +75,12 @@ void CBaseMenu::DrawMenu()
 	if (ImGui::TreeNode("Visual"))
 	{
 		ImGui::Checkbox("Player Box", &Config::bDrawBox);
+		ImGui::Checkbox("Player Name", &Config::bDrawName);
 		ImGui::Checkbox("Player/Infected Bone", &Config::bDrawBone);
 		ImGui::Checkbox("Player Distance", &Config::bDrawDist);
 		ImGui::Checkbox("Survivor Ammo", &Config::bDrawAmmo);
 		ImGui::Checkbox("Off Screen ESP", &Config::bDrawOffScreen);
+		ImGui::Checkbox("Crosshairs", &Config::bDrawCrosshairs);
 		ImGui::TreePop();
 	}
 
@@ -91,6 +93,7 @@ void CBaseMenu::DrawMenu()
 		ImGui::Checkbox("Medical Items", &Config::bDrawMedicalItem);
 		ImGui::Checkbox("Grenade", &Config::bDrawGrenadeItem);
 		ImGui::Checkbox("Ammo Stack", &Config::bDrawAmmoStack);
+		ImGui::Checkbox("Carry Items", &Config::bDrawCarryItem);
 		ImGui::TreePop();
 	}
 
@@ -134,6 +137,7 @@ void CBaseMenu::DrawMenu()
 
 		ImGui::Separator();
 		ImGui::Checkbox("Teleport", &Config::bTeleport);
+		ImGui::Checkbox("Teleport Exploit", &Config::bTeleportExploit);
 		ImGui::Checkbox("Air Stuck", &Config::bAirStuck);
 		ImGui::Checkbox("Position Adjustment", &Config::bPositionAdjustment);
 		ImGui::Checkbox("Aimbot Kill Server", &Config::bCrashServer);
