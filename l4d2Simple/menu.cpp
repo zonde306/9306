@@ -86,6 +86,7 @@ void CBaseMenu::DrawMenu()
 		ImGui::Checkbox("Survivor Ammo", &Config::bDrawAmmo);
 		ImGui::Checkbox("Off Screen ESP", &Config::bDrawOffScreen);
 		ImGui::Checkbox("Crosshairs", &Config::bDrawCrosshairs);
+		ImGui::Checkbox("Spectator List", &Config::bDrawSpectator);
 
 		ImGui::Separator();
 		ImGui::Checkbox("Special Spawnned", &Config::bSpecialSpawnnedHint);
