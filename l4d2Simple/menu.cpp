@@ -45,123 +45,123 @@ void CBaseMenu::DrawMenu()
 		return;
 	}
 
-	ImGui::Text(XorStr("Version: 1.0"));
-	ImGui::Text(XorStr("Created by zonde306"));
+	ImGui::Text(XorStr("Version: 1.0 | Created by zonde306"));
+	ImGui::Text(XorStr(u8"此辅助免费且开源，如果你是通过购买获得，说明你被骗了。"));
 	// ImGui::GetIO().MouseDrawCursor = true;
 
-	if (ImGui::TreeNode("Aimbot"))
+	if (ImGui::TreeNode(XorStr("Aimbot")))
 	{
-		ImGui::Checkbox("Auto Aim", &Config::bAimbot);
-		ImGui::Checkbox("Only Firing", &Config::bAimbotKey);
-		ImGui::Checkbox("Speed Prediction", &Config::bAimbotPred);
-		ImGui::Checkbox("Silent Aim", &Config::bSilentAimbot);
-		// ImGui::DragFloat("Aimbot FOV", &Config::fAimbotFov, 1.0f, 1.0f, 360.0f);
-		ImGui::SliderFloat("Aimbot FOV", &Config::fAimbotFov, 1.0f, 360.0f);
+		ImGui::Checkbox(XorStr("Auto Aim"), &Config::bAimbot);
+		ImGui::Checkbox(XorStr("Only Firing"), &Config::bAimbotKey);
+		ImGui::Checkbox(XorStr("Speed Prediction"), &Config::bAimbotPred);
+		ImGui::Checkbox(XorStr("Silent Aim"), &Config::bSilentAimbot);
+		// ImGui::DragFloat(XorStr("Aimbot FOV"), &Config::fAimbotFov, 1.0f, 1.0f, 360.0f);
+		ImGui::SliderFloat(XorStr("Aimbot FOV"), &Config::fAimbotFov, 1.0f, 360.0f);
 
 		ImGui::Separator();
-		ImGui::Checkbox("Recoil Control System", &Config::bAimbotRCS);
-		// ImGui::DragFloat("RCS X", &Config::fAimbotRCSX, 1.0f, 0.0f, 128.0f);
-		// ImGui::DragFloat("RCS Y", &Config::fAimbotRCSX, 1.0f, 0.0f, 128.0f);
-		ImGui::SliderFloat("RCS X", &Config::fAimbotRCSX, 0.0f, 128.0f);
-		ImGui::SliderFloat("RCS Y", &Config::fAimbotRCSY, 0.0f, 128.0f);
+		ImGui::Checkbox(XorStr("Recoil Control System"), &Config::bAimbotRCS);
+		// ImGui::DragFloat(XorStr("RCS X"), &Config::fAimbotRCSX, 1.0f, 0.0f, 128.0f);
+		// ImGui::DragFloat(XorStr("RCS Y"), &Config::fAimbotRCSX, 1.0f, 0.0f, 128.0f);
+		ImGui::SliderFloat(XorStr("RCS X"), &Config::fAimbotRCSX, 0.0f, 128.0f);
+		ImGui::SliderFloat(XorStr("RCS Y"), &Config::fAimbotRCSY, 0.0f, 128.0f);
 
 		ImGui::Separator();
-		ImGui::Checkbox("Trigger Bot", &Config::bTriggerBot);
-		ImGui::Checkbox("Trigger Only Head", &Config::bTriggerBotHead);
-		ImGui::Checkbox("Trigger Heads", &Config::bTriggerExtra);
-		// ImGui::DragInt("Trigger Heads Tick", &Config::iDuckAimbotTick, 1.0f, 0, 250);
-		ImGui::SliderInt("Trigger Heads Tick", &Config::iDuckAimbotTick, 0, 250);
+		ImGui::Checkbox(XorStr("Trigger Bot"), &Config::bTriggerBot);
+		ImGui::Checkbox(XorStr("Trigger Only Head"), &Config::bTriggerBotHead);
+		ImGui::Checkbox(XorStr("Trigger Heads"), &Config::bTriggerExtra);
+		// ImGui::DragInt(XorStr("Trigger Heads Tick"), &Config::iDuckAimbotTick, 1.0f, 0, 250);
+		ImGui::SliderInt(XorStr("Trigger Heads Tick"), &Config::iDuckAimbotTick, 0, 250);
 
 		ImGui::Separator();
-		ImGui::Checkbox("No Spread", &Config::bNoSpread);
-		ImGui::Checkbox("No Recoil", &Config::bNoRecoil);
-		ImGui::Checkbox("Rapid Fire", &Config::bRapidFire);
-		ImGui::Checkbox("Dont Fire Team", &Config::bAnitFirendlyFire);
+		ImGui::Checkbox(XorStr("No Spread"), &Config::bNoSpread);
+		ImGui::Checkbox(XorStr("No Recoil"), &Config::bNoRecoil);
+		ImGui::Checkbox(XorStr("Rapid Fire"), &Config::bRapidFire);
+		ImGui::Checkbox(XorStr("Dont Fire Team"), &Config::bAnitFirendlyFire);
 
 		ImGui::TreePop();
 	}
 
-	if (ImGui::TreeNode("Visual"))
+	if (ImGui::TreeNode(XorStr("Visual")))
 	{
-		ImGui::Checkbox("Player Box", &Config::bDrawBox);
-		ImGui::Checkbox("Player Name", &Config::bDrawName);
-		ImGui::Checkbox("Player/Infected Bone", &Config::bDrawBone);
-		ImGui::Checkbox("Player Distance", &Config::bDrawDist);
-		ImGui::Checkbox("Survivor Ammo", &Config::bDrawAmmo);
-		ImGui::Checkbox("Off Screen ESP", &Config::bDrawOffScreen);
-		ImGui::Checkbox("Crosshairs", &Config::bDrawCrosshairs);
-		ImGui::Checkbox("Spectator List", &Config::bDrawSpectator);
+		ImGui::Checkbox(XorStr("Player Box"), &Config::bDrawBox);
+		ImGui::Checkbox(XorStr("Player Name"), &Config::bDrawName);
+		ImGui::Checkbox(XorStr("Player/Infected Bone"), &Config::bDrawBone);
+		ImGui::Checkbox(XorStr("Player Distance"), &Config::bDrawDist);
+		ImGui::Checkbox(XorStr("Survivor Ammo"), &Config::bDrawAmmo);
+		ImGui::Checkbox(XorStr("Off Screen ESP"), &Config::bDrawOffScreen);
+		ImGui::Checkbox(XorStr("Crosshairs"), &Config::bDrawCrosshairs);
+		ImGui::Checkbox(XorStr("Spectator List"), &Config::bDrawSpectator);
 
 		ImGui::Separator();
-		ImGui::Checkbox("Special Spawnned", &Config::bSpecialSpawnnedHint);
-		ImGui::Checkbox("Client Connected", &Config::bClientConnectHint);
-		ImGui::Checkbox("Client Disconnected", &Config::bClientDisconnectHint);
+		ImGui::Checkbox(XorStr("Special Spawnned"), &Config::bSpecialSpawnnedHint);
+		ImGui::Checkbox(XorStr("Client Connected"), &Config::bClientConnectHint);
+		ImGui::Checkbox(XorStr("Client Disconnected"), &Config::bClientDisconnectHint);
 
 		ImGui::TreePop();
 	}
 
-	if (ImGui::TreeNode("Weapon/Items"))
+	if (ImGui::TreeNode(XorStr("Weapon/Items")))
 	{
-		ImGui::Checkbox("T1 Weapon", &Config::bDrawT1Weapon);
-		ImGui::Checkbox("T2 Weapon", &Config::bDrawT2Weapon);
-		ImGui::Checkbox("T3 Weapon", &Config::bDrawT3Weapon);
-		ImGui::Checkbox("Melee Weapon", &Config::bDrawMeleeWeapon);
-		ImGui::Checkbox("Medical Items", &Config::bDrawMedicalItem);
-		ImGui::Checkbox("Grenade", &Config::bDrawGrenadeItem);
-		ImGui::Checkbox("Ammo Stack", &Config::bDrawAmmoStack);
-		ImGui::Checkbox("Carry Items", &Config::bDrawCarryItem);
+		ImGui::Checkbox(XorStr("T1 Weapon"), &Config::bDrawT1Weapon);
+		ImGui::Checkbox(XorStr("T2 Weapon"), &Config::bDrawT2Weapon);
+		ImGui::Checkbox(XorStr("T3 Weapon"), &Config::bDrawT3Weapon);
+		ImGui::Checkbox(XorStr("Melee Weapon"), &Config::bDrawMeleeWeapon);
+		ImGui::Checkbox(XorStr("Medical Items"), &Config::bDrawMedicalItem);
+		ImGui::Checkbox(XorStr("Grenade"), &Config::bDrawGrenadeItem);
+		ImGui::Checkbox(XorStr("Ammo Stack"), &Config::bDrawAmmoStack);
+		ImGui::Checkbox(XorStr("Carry Items"), &Config::bDrawCarryItem);
 		ImGui::TreePop();
 	}
 
-	if (ImGui::TreeNode("DirectX ZBuffer"))
+	if (ImGui::TreeNode(XorStr("DirectX ZBuffer")))
 	{
-		ImGui::Checkbox("Survivors", &Config::bBufferSurvivor);
-		ImGui::Checkbox("Special Infected", &Config::bBufferSpecial);
-		ImGui::Checkbox("Common Infected", &Config::bBufferCommon);
-		ImGui::Checkbox("Weapon", &Config::bBufferWeapon);
-		ImGui::Checkbox("Grenade", &Config::bBufferGrenade);
-		ImGui::Checkbox("Medical Items", &Config::bBufferMedical);
-		ImGui::Checkbox("Carry Items", &Config::bBufferCarry);
+		ImGui::Checkbox(XorStr("Survivors"), &Config::bBufferSurvivor);
+		ImGui::Checkbox(XorStr("Special Infected"), &Config::bBufferSpecial);
+		ImGui::Checkbox(XorStr("Common Infected"), &Config::bBufferCommon);
+		ImGui::Checkbox(XorStr("Weapon"), &Config::bBufferWeapon);
+		ImGui::Checkbox(XorStr("Grenade"), &Config::bBufferGrenade);
+		ImGui::Checkbox(XorStr("Medical Items"), &Config::bBufferMedical);
+		ImGui::Checkbox(XorStr("Carry Items"), &Config::bBufferCarry);
 		ImGui::TreePop();
 	}
 
-	if (ImGui::TreeNode("Anti SMAC"))
+	if (ImGui::TreeNode(XorStr("Anti SMAC")))
 	{
-		AddListSelect("Anti ConVar Query", m_vConVarQuery);
-		AddListSelect("Anti ConVar Change", m_vConVarSetting);
-		AddListSelect("Anti Execute Command", m_vCommandExecute);
+		AddListSelect(XorStr("Anti ConVar Query"), m_vConVarQuery);
+		AddListSelect(XorStr("Anti ConVar Change"), m_vConVarSetting);
+		AddListSelect(XorStr("Anti Execute Command"), m_vCommandExecute);
 
 		ImGui::TreePop();
 	}
 
-	if (ImGui::TreeNode("Miscellaneous"))
+	if (ImGui::TreeNode(XorStr("Miscellaneous")))
 	{
-		ImGui::Checkbox("Auto Bunny Hop", &Config::bBunnyHop);
-		ImGui::Checkbox("Auto Strafe", &Config::bAutoStrafe);
-		ImGui::Checkbox("CRC Bypass", &Config::bCrcCheckBypass);
-		ImGui::Checkbox("Backtrack", &Config::bBackTrack);
-		ImGui::Checkbox("Forwardtrack", &Config::bForwardTrack);
-		ImGui::Checkbox("Thrid Persons", &Config::bThirdPersons);
+		ImGui::Checkbox(XorStr("Auto Bunny Hop"), &Config::bBunnyHop);
+		ImGui::Checkbox(XorStr("Auto Strafe"), &Config::bAutoStrafe);
+		ImGui::Checkbox(XorStr("CRC Bypass"), &Config::bCrcCheckBypass);
+		ImGui::Checkbox(XorStr("Backtrack"), &Config::bBackTrack);
+		ImGui::Checkbox(XorStr("Forwardtrack"), &Config::bForwardTrack);
+		ImGui::Checkbox(XorStr("Thrid Persons"), &Config::bThirdPersons);
 
 		ImGui::Separator();
-		ImGui::Checkbox("Fast Melee", &Config::bMustFastMelee);
-		// ImGui::DragInt("Fast Melee Tick", &Config::iFastMeleeTick);
-		ImGui::SliderInt("Fast Melee Tick", &Config::iFastMeleeTick, 1, 100);
+		ImGui::Checkbox(XorStr("Fast Melee"), &Config::bMustFastMelee);
+		// ImGui::DragInt(XorStr("Fast Melee Tick"), &Config::iFastMeleeTick);
+		ImGui::SliderInt(XorStr("Fast Melee Tick"), &Config::iFastMeleeTick, 1, 100);
 
 		ImGui::Separator();
-		ImGui::Checkbox("Remove Fog", &Config::bRemoveFog);
-		ImGui::Checkbox("Full Bright", &Config::bCvarFullBright);
-		ImGui::Checkbox("Wirteframe", &Config::bCvarWireframe);
-		ImGui::Checkbox("sv_cheats 1", &Config::bCvarCheats);
-		// ImGui::Checkbox("mp_gamemode coop", &Config::bCvarGameMode);
-		ImGui::Checkbox("Output Debug Info", &Config::bAllowConsoleMessage);
+		ImGui::Checkbox(XorStr("Remove Fog"), &Config::bRemoveFog);
+		ImGui::Checkbox(XorStr("Full Bright"), &Config::bCvarFullBright);
+		ImGui::Checkbox(XorStr("Wirteframe"), &Config::bCvarWireframe);
+		ImGui::Checkbox(XorStr("sv_cheats 1"), &Config::bCvarCheats);
+		// ImGui::Checkbox(XorStr("mp_gamemode coop"), &Config::bCvarGameMode);
+		ImGui::Checkbox(XorStr("Output Debug Info"), &Config::bAllowConsoleMessage);
 
 		ImGui::Separator();
-		ImGui::Checkbox("Teleport", &Config::bTeleport);
-		ImGui::Checkbox("Teleport Exploit", &Config::bTeleportExploit);
-		ImGui::Checkbox("Air Stuck", &Config::bAirStuck);
-		ImGui::Checkbox("Position Adjustment", &Config::bPositionAdjustment);
-		ImGui::Checkbox("Aimbot Kill Server", &Config::bCrashServer);
+		ImGui::Checkbox(XorStr("Teleport"), &Config::bTeleport);
+		ImGui::Checkbox(XorStr("Teleport Exploit"), &Config::bTeleportExploit);
+		ImGui::Checkbox(XorStr("Air Stuck"), &Config::bAirStuck);
+		ImGui::Checkbox(XorStr("Position Adjustment"), &Config::bPositionAdjustment);
+		ImGui::Checkbox(XorStr("Aimbot Kill Server"), &Config::bCrashServer);
 
 		ImGui::TreePop();
 	}

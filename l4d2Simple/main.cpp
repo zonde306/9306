@@ -393,10 +393,10 @@ DWORD WINAPI StartCheat(LPVOID params)
 	// 初始化 NetProp 表
 	g_pNetVars = std::make_unique<CNetVars>();
 	
-	g_iClientBase = Utils::GetModuleBase("client.dll");
-	g_iEngineBase = Utils::GetModuleBase("engine.dll");
-	g_iMaterialModules = Utils::GetModuleBase("materialsystem.dll");
-	DWORD vgui = Utils::GetModuleBase("vguimatsurface.dll");
+	g_iClientBase = Utils::GetModuleBase(XorStr("client.dll"));
+	g_iEngineBase = Utils::GetModuleBase(XorStr("engine.dll"));
+	g_iMaterialModules = Utils::GetModuleBase(XorStr("materialsystem.dll"));
+	DWORD vgui = Utils::GetModuleBase(XorStr("vguimatsurface.dll"));
 
 	Utils::log("client.dll 0x%X", g_iClientBase);
 	Utils::log("engine.dll 0x%X", g_iEngineBase);
@@ -428,7 +428,7 @@ DWORD WINAPI StartCheat(LPVOID params)
 	g_interface.ClientMode = nullptr;
 	g_interface.ClientState = nullptr;
 
-	if ((oCL_Move = (FnCL_Move)Utils::FindPattern("engine.dll",
+	if ((oCL_Move = (FnCL_Move)Utils::FindPattern(XorStr("engine.dll"),
 		XorStr("55 8B EC B8 ? ? ? ? E8 ? ? ? ? A1 ? ? ? ? 33 C5 89 45 FC 53 56 57 E8"))) != nullptr)
 	{
 		g_pbSendPacket = (bool*)((DWORD)oCL_Move + 0x91);
@@ -437,12 +437,15 @@ DWORD WINAPI StartCheat(LPVOID params)
 
 		g_pDetourCL_Move = std::make_unique<DetourXS>(oCL_Move, Hooked_CL_Move);
 		oCL_Move = (FnCL_Move)g_pDetourCL_Move->GetTrampoline();
+
+#ifdef _DEBUG
 		Utils::log("Trampoline oCL_Move = 0x%X", (DWORD)oCL_Move);
+#endif
 	}
 	else
-		Utils::log("CL_Move not found");
+		Utils::log(XorStr("CL_Move not found"));
 
-	if ((SetPredictionRandomSeed = (FnSetPredictionRandomSeed)Utils::FindPattern("client.dll",
+	if ((SetPredictionRandomSeed = (FnSetPredictionRandomSeed)Utils::FindPattern(XorStr("client.dll"),
 		XorStr("55 8B EC 8B 45 08 85 C0 75 0C"))) != nullptr)
 	{
 		Utils::log("SetPredictionRandomSeed found client.dll + 0x%X", (DWORD)SetPredictionRandomSeed - g_iClientBase);
@@ -462,9 +465,9 @@ DWORD WINAPI StartCheat(LPVOID params)
 		Utils::log("SetPredictionRandomSeed::g_pPredictionRandomSeed = 0x%X", (DWORD)g_pPredictionRandomSeed);
 	}
 	else
-		Utils::log("SetPredictionRandomSeed not found");
+		Utils::log(XorStr("SetPredictionRandomSeed not found"));
 
-	if ((SharedRandomFloat = (FnSharedRandomFloat)Utils::FindPattern("client.dll",
+	if ((SharedRandomFloat = (FnSharedRandomFloat)Utils::FindPattern(XorStr("client.dll"),
 		XorStr("55 8B EC 83 EC 08 A1 ? ? ? ? 53 56 57 8B 7D 14 8D 4D 14 51 89 7D F8 89 45 FC E8 ? ? ? ? 6A 04 8D 55 FC 52 8D 45 14 50 E8 ? ? ? ? 6A 04 8D 4D F8 51 8D 55 14 52 E8 ? ? ? ? 8B 75 08 56 E8 ? ? ? ? 50 8D 45 14 56 50 E8 ? ? ? ? 8D 4D 14 51 E8 ? ? ? ? 8B 15 ? ? ? ? 8B 5D 14 83 C4 30 83 7A 30 00 74 26 57 53 56 68 ? ? ? ? 68 ? ? ? ? 8D 45 14 68 ? ? ? ? 50 C7 45 ? ? ? ? ? FF 15 ? ? ? ? 83 C4 1C 53 B9 ? ? ? ? FF 15 ? ? ? ? D9 45 10"))) != nullptr)
 	{
 		Utils::log("SharedRandomFloat = client.dll + 0x%X", (DWORD)SharedRandomFloat - g_iClientBase);
@@ -472,56 +475,56 @@ DWORD WINAPI StartCheat(LPVOID params)
 		Utils::log("SharedRandomFloat::g_pPredictionRandomSeed = 0x%X", (DWORD)g_pPredictionRandomSeed);
 	}
 	else
-		Utils::log("SharedRandomFloat not found");
+		Utils::log(XorStr("SharedRandomFloat not found"));
 
-	if ((UTIL_TraceRay = (FnTraceLine)Utils::FindPattern("client.dll",
+	if ((UTIL_TraceRay = (FnTraceLine)Utils::FindPattern(XorStr("client.dll"),
 		XorStr("53 8B DC 83 EC 08 83 E4 F0 83 C4 04 55 8B 6B 04 89 6C 24 04 8B EC 83 EC 6C 56 8B 43 08"))) != nullptr)
 		Utils::log("UTIL_TraceRay = client.dll + 0x%X", (DWORD)UTIL_TraceRay - g_iClientBase);
 	else
-		Utils::log("UTIL_TraceRay not found");
+		Utils::log(XorStr("UTIL_TraceRay not found"));
 
-	if ((WeaponIdToAlias = (FnWeaponIdToAlias)Utils::FindPattern("client.dll",
+	if ((WeaponIdToAlias = (FnWeaponIdToAlias)Utils::FindPattern(XorStr("client.dll"),
 		XorStr("55 8B EC 8B 45 08 83 F8 37"))) != nullptr)
 		Utils::log("WeaponIdToAlias = client.dll + 0x%X", (DWORD)WeaponIdToAlias - g_iClientBase);
 	else
-		Utils::log("WeaponIdToAlias not found");
+		Utils::log(XorStr("WeaponIdToAlias not found"));
 
-	if ((DispatchUserMessage = (FnUserMessagesDispatch)Utils::FindPattern("client.dll",
+	if ((DispatchUserMessage = (FnUserMessagesDispatch)Utils::FindPattern(XorStr("client.dll"),
 		XorStr("55 8B EC 8B 45 08 83 EC 28 85 C0"))) != nullptr)
 		Utils::log("DispatchUserMessage = client.dll + 0x%X", (DWORD)DispatchUserMessage - g_iClientBase);
 	else
-		Utils::log("DispatchUserMessage not found");
+		Utils::log(XorStr("DispatchUserMessage not found"));
 
-	if ((GetClientModeNormal = (FnGetClientMode)Utils::FindPattern("client.dll",
+	if ((GetClientModeNormal = (FnGetClientMode)Utils::FindPattern(XorStr("client.dll"),
 		XorStr("8B 0D ? ? ? ? 8B 01 8B 90 ? ? ? ? FF D2 8B 04 85 ? ? ? ? C3"))) != nullptr)
 		Utils::log("GetClientMode = client.dll + 0x%X", (DWORD)GetClientModeNormal - g_iClientBase);
 	else
-		Utils::log("GetClientMode not found");
+		Utils::log(XorStr("GetClientMode not found"));
 
-	if ((g_pCallGetWpnData = (FnGetWpnData)Utils::FindPattern("client.dll",
+	if ((g_pCallGetWpnData = (FnGetWpnData)Utils::FindPattern(XorStr("client.dll"),
 		XorStr("0F B7 81 ? ? ? ? 50 E8 ? ? ? ? 83 C4 04"))) != nullptr)
 		Utils::log("CBaseCombatWeapon::GetWpnData found client.dll + 0x%X", (DWORD)g_pCallGetWpnData - g_iClientBase);
 	else
-		Utils::log("CBaseCombatWeapon::GetWpnData not found");
+		Utils::log(XorStr("CBaseCombatWeapon::GetWpnData not found"));
 
-	if((PaintStartDrawing = (FnStartDrawing)Utils::FindPattern("vguimatsurface.dll", 
+	if((PaintStartDrawing = (FnStartDrawing)Utils::FindPattern(XorStr("vguimatsurface.dll"), 
 		XorStr("55 8B EC 6A FF 68 ? ? ? ? 64 A1 ? ? ? ? 50 83 EC 14 56 57 A1 ? ? ? ? 33 C5 50 8D 45 F4 64 A3 ? ? ? ? 8B F9 80 3D"))) != nullptr)
 		Utils::log("CMatSystemSurface::StartDrawing found client.dll + 0x%X", (DWORD)PaintStartDrawing - vgui);
 	else
-		Utils::log("CMatSystemSurface::StartDrawing not found");
+		Utils::log(XorStr("CMatSystemSurface::StartDrawing not found"));
 
-	if ((PaintFinishDrawing = (FnFinishDrawing)Utils::FindPattern("vguimatsurface.dll",
+	if ((PaintFinishDrawing = (FnFinishDrawing)Utils::FindPattern(XorStr("vguimatsurface.dll"),
 		XorStr("55 8B EC 6A FF 68 ? ? ? ? 64 A1 ? ? ? ? 50 51 56 A1 ? ? ? ? 33 C5 50 8D 45 F4 64 A3 ? ? ? ? 6A 00"))) != nullptr)
 		Utils::log("CMatSystemSurface::FinishDrawing found client.dll + 0x%X", (DWORD)PaintFinishDrawing - vgui);
 	else
-		Utils::log("CMatSystemSurface::FinishDrawing not found");
+		Utils::log(XorStr("CMatSystemSurface::FinishDrawing not found"));
 
-	if((GetCurrentInput = (FnGetCurInput)Utils::FindPattern("client.dll",
+	if((GetCurrentInput = (FnGetCurInput)Utils::FindPattern(XorStr("client.dll"),
 		XorStr("55 8B EC 8B 45 08 56 8B F1 83 F8 FF 75 10 8B 0D ? ? ? ? 8B 01 8B 90 ? ? ? ? FF D2 69 C0 ? ? ? ? 8D 44 30 34 5E 5D C2 04 00"))) != nullptr)
 		Utils::log("CInput::_GetCurInput = client.dll + 0x%X", (DWORD)GetCurrentInput - g_iClientBase);
 
 	/*
-	if ((oProcessGetCvarValue = (FnProcessGetCvarValue)Utils::FindPattern("engine.dll",
+	if ((oProcessGetCvarValue = (FnProcessGetCvarValue)Utils::FindPattern(XorStr("engine.dll"),
 		XorStr("55 8B EC 81 EC ? ? ? ? A1 ? ? ? ? 33 C5 89 45 FC 53 56 57 8B 7D 08 8B 47 10"))) != nullptr)
 	{
 		Utils::log("CBaseClientState::ProcessGetCvarValue = engine.dll + 0x%X", (DWORD)oProcessGetCvarValue - g_iEngineBase);
@@ -530,27 +533,33 @@ DWORD WINAPI StartCheat(LPVOID params)
 		Utils::log("Trampoline oProcessGetCvarValue = 0x%X", (DWORD)oProcessGetCvarValue);
 	}
 	else
-		Utils::log("CBaseClientState::ProcessGetCvarValue not found");
+		Utils::log(XorStr("CBaseClientState::ProcessGetCvarValue not found"));
 	*/
 
-	if ((oProcessSetConVar = (FnProcessSetConVar)Utils::FindPattern("engine.dll",
+	if ((oProcessSetConVar = (FnProcessSetConVar)Utils::FindPattern(XorStr("engine.dll"),
 		XorStr("55 8B EC 8B 49 08 8B 01 8B 50 18"))) != nullptr)
 	{
 		Utils::log("CBaseClientState::ProcessSetConVar = engine.dll + 0x%X", (DWORD)oProcessSetConVar - g_iEngineBase);
 		g_pDetourSetConVar = std::make_unique<DetourXS>(oProcessSetConVar, Hooked_ProcessSetConVar);
 		oProcessSetConVar = (FnProcessSetConVar)g_pDetourSetConVar->GetTrampoline();
+
+#ifdef _DEBUG
 		Utils::log("Trampoline oProcessSetConVar = 0x%X", (DWORD)oProcessSetConVar);
+#endif
 	}
 	else
-		Utils::log("CBaseClientState::ProcessSetConVar not found");
+		Utils::log(XorStr("CBaseClientState::ProcessSetConVar not found"));
 
-	if ((oCreateMoveShared = (FnCreateMoveShared)Utils::FindPattern("client.dll",
+	if ((oCreateMoveShared = (FnCreateMoveShared)Utils::FindPattern(XorStr("client.dll"),
 		XorStr("55 8B EC 6A FF E8 ? ? ? ? 83 C4 04 85 C0 75 06 B0 01"))) != nullptr)
 	{
 		Utils::log("ClientModeShared::CreateMove = client.dll + 0x%X", (DWORD)oCreateMoveShared - g_iClientBase);
 		g_pDetourCreateMove = std::make_unique<DetourXS>(oCreateMoveShared, Hooked_CreateMoveShared);
 		oCreateMoveShared = (FnCreateMoveShared)g_pDetourCreateMove->GetTrampoline();
+
+#ifdef _DEBUG
 		Utils::log("Trampoline oCreateMoveShared = 0x%X", (DWORD)oCreateMoveShared);
+#endif
 	}
 	
 	if (g_interface.PanelHook && indexes::PaintTraverse > -1)
@@ -636,12 +645,12 @@ DWORD WINAPI StartCheat(LPVOID params)
 	}
 	*/
 
-	HMODULE tier0 = Utils::GetModuleHandleSafe("tier0.dll");
+	HMODULE tier0 = Utils::GetModuleHandleSafe(XorStr("tier0.dll"));
 	if (tier0 != NULL)
 	{
-		PrintToConsole = (FnConMsg)GetProcAddress(tier0, "?ConMsg@@YAXPBDZZ");
-		PrintToConsoleColor = (FnConColorMsg)GetProcAddress(tier0, "?ConColorMsg@@YAXABVColor@@PBDZZ");
-		oPlat_IsInDebugSession = (FnIsInDebugSession)GetProcAddress(tier0, "Plat_IsInDebugSession");
+		PrintToConsole = (FnConMsg)GetProcAddress(tier0, XorStr("?ConMsg@@YAXPBDZZ"));
+		PrintToConsoleColor = (FnConColorMsg)GetProcAddress(tier0, XorStr("?ConColorMsg@@YAXABVColor@@PBDZZ"));
+		oPlat_IsInDebugSession = (FnIsInDebugSession)GetProcAddress(tier0, XorStr("Plat_IsInDebugSession"));
 		Utils::log("PrintToConsole = 0x%X", (DWORD)PrintToConsole);
 		Utils::log("PrintToConsoleColor = 0x%X", (DWORD)PrintToConsoleColor);
 		Utils::log("Plat_IsInDebugSession = 0x%X", (DWORD)oPlat_IsInDebugSession);
@@ -655,65 +664,42 @@ DWORD WINAPI StartCheat(LPVOID params)
 
 	if (g_interface.Cvar)
 	{
-		g_conVar["sv_cheats"] = g_interface.Cvar->FindVar("sv_cheats");
-		g_conVar["r_drawothermodels"] = g_interface.Cvar->FindVar("r_drawothermodels");
-		g_conVar["cl_drawshadowtexture"] = g_interface.Cvar->FindVar("cl_drawshadowtexture");
-		g_conVar["mat_fullbright"] = g_interface.Cvar->FindVar("mat_fullbright");
-		g_conVar["sv_pure"] = g_interface.Cvar->FindVar("sv_pure");
-		g_conVar["sv_consistency"] = g_interface.Cvar->FindVar("sv_consistency");
-		g_conVar["mp_gamemode"] = g_interface.Cvar->FindVar("mp_gamemode");
-		g_conVar["c_thirdpersonshoulder"] = g_interface.Cvar->FindVar("c_thirdpersonshoulder");
-		g_conVar["c_thirdpersonshoulderheight"] = g_interface.Cvar->FindVar("c_thirdpersonshoulderheight");
-		g_conVar["c_thirdpersonshoulderoffset"] = g_interface.Cvar->FindVar("c_thirdpersonshoulderoffset");
-		g_conVar["cl_mouseenable"] = g_interface.Cvar->FindVar("cl_mouseenable");
-		g_conVar["cl_interp"] = g_interface.Cvar->FindVar("cl_interp");
-		g_conVar["cl_updaterate"] = g_interface.Cvar->FindVar("cl_updaterate");
-		g_conVar["sv_maxupdaterate"] = g_interface.Cvar->FindVar("sv_maxupdaterate");
-		g_conVar["sv_minupdaterate"] = g_interface.Cvar->FindVar("sv_minupdaterate");
-		g_conVar["cl_interp_ratio"] = g_interface.Cvar->FindVar("cl_interp_ratio");
-		g_conVar["mat_hdr_enabled"] = g_interface.Cvar->FindVar("mat_hdr_enabled");
-		g_conVar["mat_hdr_level"] = g_interface.Cvar->FindVar("mat_hdr_level");
-		g_conVar["mat_texture_list"] = g_interface.Cvar->FindVar("mat_texture_list");
-		g_conVar["r_dynamic"] = g_interface.Cvar->FindVar("r_dynamic");
-		g_conVar["r_dynamiclighting"] = g_interface.Cvar->FindVar("r_dynamiclighting");
-		g_conVar["mat_picmip"] = g_interface.Cvar->FindVar("mat_picmip");
-		g_conVar["mat_showlowresimage"] = g_interface.Cvar->FindVar("mat_showlowresimage");
-		g_conVar["fog_override"] = g_interface.Cvar->FindVar("fog_override");
-		g_conVar["fog_end"] = g_interface.Cvar->FindVar("fog_end");
-		g_conVar["fog_endskybox"] = g_interface.Cvar->FindVar("fog_endskybox");
-		g_conVar["addons_eclipse_content"] = g_interface.Cvar->FindVar("addons_eclipse_content");
+		g_conVar[XorStr("sv_cheats")] = g_interface.Cvar->FindVar(XorStr("sv_cheats"));
+		g_conVar[XorStr("r_drawothermodels")] = g_interface.Cvar->FindVar(XorStr("r_drawothermodels"));
+		g_conVar[XorStr("cl_drawshadowtexture")] = g_interface.Cvar->FindVar(XorStr("cl_drawshadowtexture"));
+		g_conVar[XorStr("mat_fullbright")] = g_interface.Cvar->FindVar(XorStr("mat_fullbright"));
+		g_conVar[XorStr("sv_pure")] = g_interface.Cvar->FindVar(XorStr("sv_pure"));
+		g_conVar[XorStr("sv_consistency")] = g_interface.Cvar->FindVar(XorStr("sv_consistency"));
+		g_conVar[XorStr("mp_gamemode")] = g_interface.Cvar->FindVar(XorStr("mp_gamemode"));
+		g_conVar[XorStr("c_thirdpersonshoulder")] = g_interface.Cvar->FindVar(XorStr("c_thirdpersonshoulder"));
+		g_conVar[XorStr("c_thirdpersonshoulderheight")] = g_interface.Cvar->FindVar(XorStr("c_thirdpersonshoulderheight"));
+		g_conVar[XorStr("c_thirdpersonshoulderoffset")] = g_interface.Cvar->FindVar(XorStr("c_thirdpersonshoulderoffset"));
+		g_conVar[XorStr("cl_mouseenable")] = g_interface.Cvar->FindVar(XorStr("cl_mouseenable"));
+		g_conVar[XorStr("cl_interp")] = g_interface.Cvar->FindVar(XorStr("cl_interp"));
+		g_conVar[XorStr("cl_updaterate")] = g_interface.Cvar->FindVar(XorStr("cl_updaterate"));
+		g_conVar[XorStr("sv_maxupdaterate")] = g_interface.Cvar->FindVar(XorStr("sv_maxupdaterate"));
+		g_conVar[XorStr("sv_minupdaterate")] = g_interface.Cvar->FindVar(XorStr("sv_minupdaterate"));
+		g_conVar[XorStr("cl_interp_ratio")] = g_interface.Cvar->FindVar(XorStr("cl_interp_ratio"));
+		g_conVar[XorStr("mat_hdr_enabled")] = g_interface.Cvar->FindVar(XorStr("mat_hdr_enabled"));
+		g_conVar[XorStr("mat_hdr_level")] = g_interface.Cvar->FindVar(XorStr("mat_hdr_level"));
+		g_conVar[XorStr("mat_texture_list")] = g_interface.Cvar->FindVar(XorStr("mat_texture_list"));
+		g_conVar[XorStr("r_dynamic")] = g_interface.Cvar->FindVar(XorStr("r_dynamic"));
+		g_conVar[XorStr("r_dynamiclighting")] = g_interface.Cvar->FindVar(XorStr("r_dynamiclighting"));
+		g_conVar[XorStr("mat_picmip")] = g_interface.Cvar->FindVar(XorStr("mat_picmip"));
+		g_conVar[XorStr("mat_showlowresimage")] = g_interface.Cvar->FindVar(XorStr("mat_showlowresimage"));
+		g_conVar[XorStr("fog_override")] = g_interface.Cvar->FindVar(XorStr("fog_override"));
+		g_conVar[XorStr("fog_end")] = g_interface.Cvar->FindVar(XorStr("fog_end"));
+		g_conVar[XorStr("fog_endskybox")] = g_interface.Cvar->FindVar(XorStr("fog_endskybox"));
+		g_conVar[XorStr("addons_eclipse_content")] = g_interface.Cvar->FindVar(XorStr("addons_eclipse_content"));
 
-		Utils::log("sv_cheats = 0x%X", (DWORD)g_conVar["sv_cheats"]);
-		Utils::log("r_drawothermodels = 0x%X", (DWORD)g_conVar["r_drawothermodels"]);
-		Utils::log("cl_drawshadowtexture = 0x%X", (DWORD)g_conVar["cl_drawshadowtexture"]);
-		Utils::log("mat_fullbright = 0x%X", (DWORD)g_conVar["mat_fullbright"]);
-		Utils::log("sv_pure = 0x%X", (DWORD)g_conVar["sv_pure"]);
-		Utils::log("sv_consistency = 0x%X", (DWORD)g_conVar["sv_consistency"]);
-		Utils::log("mp_gamemode = 0x%X", (DWORD)g_conVar["mp_gamemode"]);
-		Utils::log("c_thirdpersonshoulder = 0x%X", (DWORD)g_conVar["c_thirdpersonshoulder"]);
-		Utils::log("c_thirdpersonshoulderheight = 0x%X", (DWORD)g_conVar["c_thirdpersonshoulderheight"]);
-		Utils::log("c_thirdpersonshoulderoffset = 0x%X", (DWORD)g_conVar["c_thirdpersonshoulderoffset"]);
-		Utils::log("cl_mouseenable = 0x%X", (DWORD)g_conVar["cl_mouseenable"]);
-		Utils::log("cl_interp = 0x%X", (DWORD)g_conVar["cl_interp"]);
-		Utils::log("cl_updaterate = 0x%X", (DWORD)g_conVar["cl_updaterate"]);
-		Utils::log("sv_maxupdaterate = 0x%X", (DWORD)g_conVar["sv_maxupdaterate"]);
-		Utils::log("sv_minupdaterate = 0x%X", (DWORD)g_conVar["sv_minupdaterate"]);
-		Utils::log("cl_interp_ratio = 0x%X", (DWORD)g_conVar["cl_interp_ratio"]);
-		Utils::log("mat_hdr_enabled = 0x%X", (DWORD)g_conVar["mat_hdr_enabled"]);
-		Utils::log("mat_hdr_level = 0x%X", (DWORD)g_conVar["mat_hdr_level"]);
-		Utils::log("mat_texture_list = 0x%X", (DWORD)g_conVar["mat_texture_list"]);
-		Utils::log("r_dynamic = 0x%X", (DWORD)g_conVar["r_dynamic"]);
-		Utils::log("r_dynamiclighting = 0x%X", (DWORD)g_conVar["r_dynamiclighting"]);
-		Utils::log("mat_picmip = 0x%X", (DWORD)g_conVar["mat_picmip"]);
-		Utils::log("mat_showlowresimage = 0x%X", (DWORD)g_conVar["mat_showlowresimage"]);
-		Utils::log("fog_override = 0x%X", (DWORD)g_conVar["fog_override"]);
-		Utils::log("fog_end = 0x%X", (DWORD)g_conVar["fog_end"]);
-		Utils::log("fog_endskybox = 0x%X", (DWORD)g_conVar["fog_endskybox"]);
-		Utils::log("addons_eclipse_content = 0x%X", (DWORD)g_conVar["addons_eclipse_content"]);
+		for (const auto& cvars : g_conVar)
+		{
+			Utils::log("%s = 0x%X", cvars.first, cvars.second);
+		}
 	}
 
 	// 初始化 ImGui
-	while ((g_hwGameWindow = FindWindowA(nullptr, "Left 4 Dead 2")) == nullptr)
+	while ((g_hwGameWindow = FindWindowA(nullptr, XorStr("Left 4 Dead 2"))) == nullptr)
 		std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
 	g_pOldWindowProccess = (WNDPROC)SetWindowLongPtrA(g_hwGameWindow, GWL_WNDPROC, (LONG_PTR)ImGui_WindowProccess);
@@ -735,11 +721,13 @@ DWORD WINAPI StartCheat(LPVOID params)
 		oDrawIndexedPrimitive = (FnDrawIndexedPrimitive)g_pDetourDrawIndexedPrimitive->GetTrampoline();
 		oCreateQuery = (FnCreateQuery)g_pDetourCreateQuery->GetTrampoline();
 
+#ifdef _DEBUG
 		Utils::log("Trampoline oReset = 0x%X", (DWORD)oReset);
 		Utils::log("Trampoline oPresent = 0x%X", (DWORD)oPresent);
 		Utils::log("Trampoline oEndScene = 0x%X", (DWORD)oEndScene);
 		Utils::log("Trampoline oDrawIndexedPrimitive = 0x%X", (DWORD)oDrawIndexedPrimitive);
 		Utils::log("Trampoline oCreateQuery = 0x%X", (DWORD)oCreateQuery);
+#endif
 	});
 
 	// 只是为了保险起见而已
@@ -807,35 +795,7 @@ DWORD WINAPI StartCheat(LPVOID params)
 					if (!IsValidVictim(entity))
 						return;
 
-					std::string zombieClass;
-					int zombie = entity->GetNetProp<int>("m_zombieClass", "DT_TerrorPlayer");
-					switch (zombie)
-					{
-					case ZC_SMOKER:
-						zombieClass = "Smoker";
-						break;
-					case ZC_BOOMER:
-						zombieClass = "Boomer";
-						break;
-					case ZC_HUNTER:
-						zombieClass = "Hunter";
-						break;
-					case ZC_SPITTER:
-						zombieClass = "Spitter";
-						break;
-					case ZC_JOCKEY:
-						zombieClass = "Jockey";
-						break;
-					case ZC_CHARGER:
-						zombieClass = "Charger";
-						break;
-					case ZC_WITCH:
-						zombieClass = "Witch";
-						break;
-					case ZC_TANK:
-						zombieClass = "Tank";
-						break;
-					}
+					std::string zombieClass = GetZombieClassName(entity);
 
 					if (g_pDrawRender)
 					{
@@ -2251,38 +2211,38 @@ std::string GetZombieClassName(CBaseEntity* player)
 			*/
 		case 11:
 			// 防火 CEDA 人员
-			return "ceda";
+			return XorStr("ceda");
 		case 12:
 			// 泥人
-			return "mud";
+			return XorStr("mud");
 		case 13:
 			// 修路工人
-			return "roadcrew";
+			return XorStr("roadcrew");
 		case 14:
 			// 被感染的幸存者
-			return "fallen";
+			return XorStr("fallen");
 		case 15:
 			// 防暴警察
-			return "riot";
+			return XorStr("riot");
 		case 16:
 			// 小丑
-			return "clown";
+			return XorStr("clown");
 		case 17:
 			// 赛车手吉米
-			return "jimmy";
+			return XorStr("jimmy");
 		}
 
 		// 常见感染者
-		return "infected";
+		return XorStr("Infected");
 	}
 	if (player->GetClientClass()->m_ClassID == ET_WITCH)
 	{
 		// 新娘 Witch
 		if (player->GetNetProp<int>("m_Gender", "DT_Infected") == 19)
-			return "bride";
+			return XorStr("WitchBride");
 
 		// 普通 Witch
-		return "witch";
+		return XorStr("Witch");
 	}
 
 	int zombie = player->GetNetProp<int>("m_zombieClass", "DT_TerrorPlayer");
@@ -2292,57 +2252,57 @@ std::string GetZombieClassName(CBaseEntity* player)
 	{
 	case ZC_SMOKER:
 		// 舌头
-		return "smoker";
+		return XorStr("Smoker");
 	case ZC_BOOMER:
 		// 胖子
-		return "boomer";
+		return XorStr("Boomer");
 	case ZC_HUNTER:
 		// 猎人
-		return "hunter";
+		return XorStr("Hunter");
 	case ZC_SPITTER:
 		// 口水
-		return "spitter";
+		return XorStr("Spitter");
 	case ZC_JOCKEY:
 		// 猴
-		return "jockey";
+		return XorStr("Jockey");
 	case ZC_CHARGER:
 		// 牛
-		return "charger";
+		return XorStr("Charger");
 	case ZC_TANK:
 		// 克
-		return "tank";
+		return XorStr("Tank");
 	case ZC_SURVIVORBOT:
 		switch (character)
 		{
 		case 0:
 			// 西装
-			return "nick";
+			return XorStr("Nick");
 		case 1:
 			// 黑妹
-			return "rochelle";
+			return XorStr("Rochelle");
 		case 2:
 			// 黑胖
-			return "coach";
+			return XorStr("Coach");
 		case 3:
 			// 帽子
-			return "ellis";
+			return XorStr("Ellis");
 		case 4:
 			// 老头
-			return "bill";
+			return XorStr("Bill");
 		case 5:
 			// 女人
-			return "zoey";
+			return XorStr("Zoey");
 		case 6:
 			// 马甲
-			return "francis";
+			return XorStr("Francis");
 		case 7:
 			// 光头
-			return "louis";
+			return XorStr("Louis");
 		}
 	}
 
 	// 不知道
-	return "unknown";
+	return XorStr("Unknown");
 }
 
 // 根据骨头获取头部位置
@@ -2683,7 +2643,7 @@ HRESULT WINAPI Hooked_Reset(IDirect3DDevice9* device, D3DPRESENT_PARAMETERS* pp)
 	{
 		showHint = false;
 		if ((DWORD)g_pDeviceHooker->GetDevice() == (DWORD)device)
-			Utils::log("Hooked_Reset success");
+			Utils::log(XorStr("Hooked_Reset success"));
 	}
 
 	if (g_pDeviceHooker->GetDevice() == nullptr)
@@ -2716,7 +2676,7 @@ HRESULT WINAPI Hooked_Present(IDirect3DDevice9* device, const RECT* source, cons
 	{
 		showHint = false;
 		if ((DWORD)g_pDeviceHooker->GetDevice() == (DWORD)device)
-			Utils::log("Hooked_Present success");
+			Utils::log(XorStr("Hooked_Present success"));
 	}
 
 	if (g_pDeviceHooker->GetDevice() == nullptr)
@@ -3277,7 +3237,7 @@ HRESULT WINAPI Hooked_EndScene(IDirect3DDevice9* device)
 	{
 		showHint = false;
 		if ((DWORD)g_pDeviceHooker->GetDevice() == (DWORD)device)
-			Utils::log("Hooked_EndScene success");
+			Utils::log(XorStr("Hooked_EndScene success"));
 	}
 
 	if (g_pDeviceHooker->GetDevice() == nullptr)
@@ -3308,7 +3268,7 @@ HRESULT WINAPI Hooked_DrawIndexedPrimitive(IDirect3DDevice9* device, D3DPRIMITIV
 	{
 		showHint = false;
 		if ((DWORD)g_pDeviceHooker->GetDevice() == (DWORD)device)
-			Utils::log("Hooked_DrawIndexedPrimitive success");
+			Utils::log(XorStr("Hooked_DrawIndexedPrimitive success"));
 	}
 
 	if (g_pDeviceHooker->GetDevice() == nullptr)
@@ -3352,7 +3312,7 @@ HRESULT WINAPI Hooked_CreateQuery(IDirect3DDevice9* device, D3DQUERYTYPE type, I
 	{
 		showHint = false;
 		if ((DWORD)g_pDeviceHooker->GetDevice() == (DWORD)device)
-			Utils::log("Hooked_CreateQuery success");
+			Utils::log(XorStr("Hooked_CreateQuery success"));
 	}
 
 	if (g_pDeviceHooker->GetDevice() == nullptr)
@@ -3376,7 +3336,7 @@ void __fastcall Hooked_PaintTraverse(CPanel* _ecx, void* _edx, unsigned int pane
 	if (showHint)
 	{
 		showHint = false;
-		Utils::log("Hooked_PaintTraverse trigged.");
+		Utils::log(XorStr("Hooked_PaintTraverse trigged."));
 	}
 
 	oPaintTraverse(_ecx, panel, forcePaint, allowForce);
@@ -4104,7 +4064,7 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 	static bool showHint = true;
 	if (showHint)
 	{
-		Utils::log("Hooked_CreateMove trigged.");
+		Utils::log(XorStr("Hooked_CreateMove trigged."));
 	}
 
 	DWORD dwEBP = NULL;
@@ -4924,7 +4884,7 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 	if (showHint)
 	{
 		showHint = false;
-		Utils::log("Hooked_FrameStageNotify trigged.");
+		Utils::log(XorStr("Hooked_FrameStageNotify trigged."));
 	}
 
 	if (stage == FRAME_NET_UPDATE_POSTDATAUPDATE_START && Config::bNoRecoil && g_interface.Engine->IsInGame())
@@ -5222,7 +5182,7 @@ int __fastcall Hooked_KeyInput(ClientModeShared* _ecx, void* _edx, int down, But
 	if (showHint)
 	{
 		showHint = false;
-		Utils::log("Hooked_KeyInput trigged.");
+		Utils::log(XorStr("Hooked_KeyInput trigged."));
 	}
 
 	if (g_pBaseMenu && g_pBaseMenu->m_bStateUpdated)
@@ -5325,7 +5285,7 @@ bool __stdcall Hooked_DispatchUserMessage(int msg_id, bf_read* msg_data)
 	if (showHint)
 	{
 		showHint = false;
-		Utils::log("Hooked_DispatchUserMessage trigged.");
+		Utils::log(XorStr("Hooked_DispatchUserMessage trigged."));
 	}
 
 	// 去除 屏幕摇晃/黑屏/屏幕模糊 效果
@@ -5350,7 +5310,7 @@ void __stdcall Hooked_CL_Move(float accumulated_extra_samples, bool bFinalTick)
 	if (showHint)
 	{
 		showHint = false;
-		Utils::log("Hooked_CL_Move trigged.");
+		Utils::log(XorStr("Hooked_CL_Move trigged."));
 	}
 
 	auto CL_Move = [&_bl, &_edi](float accumulated_extra_samples, bool bFinalTick) -> void
@@ -5421,7 +5381,7 @@ void __cdecl Hooked_VGUIPaint()
 	if (showHint)
 	{
 		showHint = false;
-		Utils::log("Hooked_VGUIPaint trigged");
+		Utils::log(XorStr("Hooked_VGUIPaint trigged"));
 	}
 
 	oVGUIPaint();
@@ -5466,7 +5426,7 @@ void __fastcall Hooked_EnginePaint(CEngineVGui *_ecx, void *_edx, PaintMode_t mo
 	if (showHint)
 	{
 		showHint = false;
-		Utils::log("Hooked_EnginePaint trigged.");
+		Utils::log(XorStr("Hooked_EnginePaint trigged."));
 	}
 	
 	oEnginePaint(_ecx, mode);
@@ -6087,7 +6047,7 @@ bool __fastcall Hooked_EngineKeyEvent(CEngineVGui *_ecx, void *_edx, const Input
 	if (showHint)
 	{
 		showHint = false;
-		Utils::log("Hooked_EngineKeyEvent trigged.");
+		Utils::log(XorStr("Hooked_EngineKeyEvent trigged."));
 	}
 	
 	bool result = oEngineKeyEvent(_ecx, event);
@@ -6101,28 +6061,28 @@ bool __fastcall Hooked_EngineKeyEvent(CEngineVGui *_ecx, void *_edx, const Input
 // 禁止被服务器查询的 ConVar
 std::vector<std::string> g_vsBannedQueryConVar
 {
-	"cl_", "sv_", "mat_", "c_", "cam_", "net_", "sm_", "mm_", "rcon_password", "r_", "cam_",
-	"z_", "mp_", "survivor_", "con_", "fps_max", "fog_", "crosshair", "hud_", "ui_", "gameui_",
-	"rate", "c_thirdpersonshoulder", "sv_cheats"
+	XorStr("cl_"), XorStr("sv_"), XorStr("mat_"), XorStr("c_"), XorStr("cam_"), XorStr("net_"), XorStr("sm_"), XorStr("mm_"), XorStr("rcon_password"), XorStr("r_"), XorStr("cam_"), 
+	XorStr("z_"), XorStr("mp_"), XorStr("survivor_"), XorStr("con_"), XorStr("fps_max"), XorStr("fog_"), XorStr("crosshair"), XorStr("hud_"), XorStr("ui_"), XorStr("gameui_"), 
+	XorStr("rate"), XorStr("c_thirdpersonshoulder"), XorStr("sv_cheats")
 };
 
 // 禁止被服务器设置的 ConVar
 std::vector<std::string> g_vsBannedSettingConVar
 {
-	"cl_", "rate", "fog_", "net_", "ui_", "vgui_", "mat_", "r_", "hud_", "joy_", "snd_", "c_", "cam_",
-	"sm_", "mm_", "con_", "fps_max", "crosshair", "r_screenoverlay", "sv_allow_wait_command",
-	"addons_eclipse_content", "sv_pure", "sv_consistency", "c_thirdpersonshoulder"
+	XorStr("cl_"), XorStr("rate"), XorStr("fog_"), XorStr("net_"), XorStr("ui_"), XorStr("vgui_"), XorStr("mat_"), XorStr("r_"), XorStr("hud_"), XorStr("joy_"), XorStr("snd_"), XorStr("c_"), XorStr("cam_"), 
+	XorStr("sm_"), XorStr("mm_"), XorStr("con_"), XorStr("fps_max"), XorStr("crosshair"), XorStr("r_screenoverlay"), XorStr("sv_allow_wait_command"), 
+	XorStr("addons_eclipse_content"), XorStr("sv_pure"), XorStr("sv_consistency"), XorStr("c_thirdpersonshoulder")
 };
 
 // 禁止被服务器执行的 Commands
 std::vector<std::string> g_vsBannedExecuteCommand
 {
-	"hidehud", "crosshair", "r_screenoverlay", "jpeg", "screenshot", "bind", "kill",
-	"explode", "connect", "retry", "disconnect", "exit", "quit", "record", "say", "say_team",
-	"shake", "fadein", "fadeout", "forcebind", "fps_max", "cl_", "rate", "mat_", "r_", "hud_",
-	"gameui_", "cam_", "ammo_", "c_", "con_", "debug_", "test_", "demo_", "dsp_", "fog_",
-	"joy_", "+", "-", "mem_", "mm_", "sm_", "mod_", "music_", "net_", "overview_", "particle_",
-	"snd_", "Test_", "ui_", "vgui_", "voice_", "vprof_", "alias", "unbind", "unbindall"
+	XorStr("hidehud"), XorStr("crosshair"), XorStr("r_screenoverlay"), XorStr("jpeg"), XorStr("screenshot"), XorStr("bind"), XorStr("kill"), 
+	XorStr("explode"), XorStr("connect"), XorStr("retry"), XorStr("disconnect"), XorStr("exit"), XorStr("quit"), XorStr("record"), XorStr("say"), XorStr("say_team"), 
+	XorStr("shake"), XorStr("fadein"), XorStr("fadeout"), XorStr("forcebind"), XorStr("fps_max"), XorStr("cl_"), XorStr("rate"), XorStr("mat_"), XorStr("r_"), XorStr("hud_"), 
+	XorStr("gameui_"), XorStr("cam_"), XorStr("ammo_"), XorStr("c_"), XorStr("con_"), XorStr("debug_"), XorStr("test_"), XorStr("demo_"), XorStr("dsp_"), XorStr("fog_"), 
+	XorStr("joy_"), XorStr("+"), XorStr("-"), XorStr("mem_"), XorStr("mm_"), XorStr("sm_"), XorStr("mod_"), XorStr("music_"), XorStr("net_"), XorStr("overview_"), XorStr("particle_"), 
+	XorStr("snd_"), XorStr("Test_"), XorStr("ui_"), XorStr("vgui_"), XorStr("voice_"), XorStr("vprof_"), XorStr("alias"), XorStr("unbind"), XorStr("unbindall")
 };
 
 bool __fastcall Hooked_ProcessGetCvarValue(CBaseClientState *_ecx, void *_edx, SVC_GetCvarValue *msg)
