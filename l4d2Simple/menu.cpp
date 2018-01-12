@@ -10,7 +10,7 @@ extern std::vector<std::string> g_vsBannedQueryConVar;
 extern std::vector<std::string> g_vsBannedSettingConVar;
 extern std::vector<std::string> g_vsBannedExecuteCommand;
 
-CBaseMenu::CBaseMenu() : m_bStateUpdated(false)
+CBaseMenu::CBaseMenu() : m_bStateUpdated(false), m_pfnOnMenuEnd(nullptr)
 {
 	// Init();
 }
@@ -38,6 +38,10 @@ void CBaseMenu::DrawMenu()
 	if (!ImGui::Begin(XorStr("l4d2Simple Main Menu"), &g_bIsShowMenu))
 	{
 		ImGui::End();
+
+		if (m_pfnOnMenuEnd)
+			m_pfnOnMenuEnd(g_bIsShowMenu);
+
 		return;
 	}
 

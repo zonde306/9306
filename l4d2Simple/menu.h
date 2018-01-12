@@ -34,6 +34,9 @@ public:
 	std::vector<SelectItem> m_vConVarSetting;
 	std::vector<SelectItem> m_vCommandExecute;
 	bool m_bStateUpdated;
+
+	using FnOnEndMenu = void(*)(bool);
+	FnOnEndMenu m_pfnOnMenuEnd;
 };
 
 namespace Config

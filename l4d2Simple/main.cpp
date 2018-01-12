@@ -2681,8 +2681,18 @@ HRESULT WINAPI Hooked_Present(IDirect3DDevice9* device, const RECT* source, cons
 		ImGui_ImplDX9_Init(g_hwGameWindow, device);
 	}
 
+	if (g_pBaseMenu && !g_pBaseMenu->m_pfnOnMenuEnd)
+	{
+		g_pBaseMenu->m_pfnOnMenuEnd = [](bool showMenu) -> void
+		{
+			if (g_conVar["cl_mouseenable"] != nullptr)
+				g_conVar["cl_mouseenable"]->SetValue(showMenu);
+			
+			g_interface.Surface->SetCursorAlwaysVisible(showMenu);
+		};
+	}
+
 	g_pDrawRender->BeginImGuiRender();
-	ImGui::GetIO().MouseDrawCursor = g_bIsShowMenu;
 
 #ifdef USE_D3D_DRAW
 	{
@@ -3192,6 +3202,7 @@ HRESULT WINAPI Hooked_Present(IDirect3DDevice9* device, const RECT* source, cons
 finish_draw:
 #endif
 
+	ImGui::GetIO().MouseDrawCursor = g_bIsShowMenu;
 	g_pDrawRender->FinishImGuiRender();
 
 	return oPresent(device, source, dest, window, region);

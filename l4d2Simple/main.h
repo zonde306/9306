@@ -163,24 +163,24 @@ extern std::string g_sCurPath;
 namespace Config
 {
 	// 屏幕绘制：玩家
-	bool bDrawBox = true;
-	bool bDrawBone = true;
-	bool bDrawName = true;
-	bool bDrawDist = true;
-	bool bDrawAmmo = true;
-	bool bDrawCrosshairs = true;
-	bool bDrawSpectator = true;
+	bool bDrawBox = false;
+	bool bDrawBone = false;
+	bool bDrawName = false;
+	bool bDrawDist = false;
+	bool bDrawAmmo = false;
+	bool bDrawCrosshairs = false;
+	bool bDrawSpectator = false;
 	bool bDrawOffScreen = false;
-	bool bDrawCarryItem = true;
+	bool bDrawCarryItem = false;
 
 	// 屏幕绘制：实体
-	bool bDrawT1Weapon = true;
-	bool bDrawT2Weapon = true;
-	bool bDrawT3Weapon = true;
-	bool bDrawMeleeWeapon = true;
-	bool bDrawMedicalItem = true;
-	bool bDrawGrenadeItem = true;
-	bool bDrawAmmoStack = true;
+	bool bDrawT1Weapon = false;
+	bool bDrawT2Weapon = false;
+	bool bDrawT3Weapon = false;
+	bool bDrawMeleeWeapon = false;
+	bool bDrawMedicalItem = false;
+	bool bDrawGrenadeItem = false;
+	bool bDrawAmmoStack = false;
 
 	// Direct3D 顶点透视
 	bool bBufferSurvivor = false;
@@ -201,7 +201,7 @@ namespace Config
 	bool bTriggerBot = false;
 	bool bTriggerBotHead = false;
 	bool bAnitFirendlyFire = true;
-	bool bForwardTrack = true;
+	bool bForwardTrack = false;
 	bool bBackTrack = false;
 
 	// 自动操作
@@ -230,7 +230,7 @@ namespace Config
 	float fAimbotRCSX = 2.0f;
 	float fAimbotRCSY = 2.0f;
 	float fSpeedHackSpeed = 8.0f;
-	int iDuckAimbotTick = 90;
+	int iDuckAimbotTick = 0;
 
 	int iFastMeleeTick = 10;
 	bool bMustFastMelee = false;
