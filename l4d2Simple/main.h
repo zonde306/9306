@@ -222,6 +222,9 @@ namespace Config
 	bool bRemoveFog = false;
 	bool bTriggerExtra = false;
 	bool bTeleportExploit = false;
+	bool bSpecialSpawnnedHint = false;
+	bool bClientConnectHint = false;
+	bool bClientDisconnectHint = false;
 
 	float fAimbotFov = 30.0f;
 	float fAimbotRCSX = 2.0f;

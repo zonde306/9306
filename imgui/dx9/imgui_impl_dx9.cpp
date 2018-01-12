@@ -88,7 +88,7 @@ LRESULT WINAPI ImGui_WindowProccess(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
 		isPressed = false;
 		g_bIsShowMenu = !g_bIsShowMenu;
 
-		if (g_pCallbackOnMenuToggle != nullptr)
+		if (g_pCallbackOnMenuToggle)
 			g_pCallbackOnMenuToggle(g_bIsShowMenu);
 	}
 

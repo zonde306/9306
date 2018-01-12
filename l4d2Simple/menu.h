@@ -98,6 +98,9 @@ namespace Config
 	extern bool bRemoveFog;
 	extern bool bTriggerExtra;
 	extern bool bTeleportExploit;
+	extern bool bSpecialSpawnnedHint;
+	extern bool bClientConnectHint;
+	extern bool bClientDisconnectHint;
 
 	extern float fAimbotFov;
 	extern float fAimbotRCSX;

@@ -53,7 +53,8 @@ namespace indexes
 	const int DrawPrintText = 22;
 	const int DrawUnicodeChar = 23;
 	const int DrawFlushText = 24;
-	const int SetCursor = 49;
+	const int SetCursor = 48;
+	const int SetCursorAlwaysVisible = 49;
 	const int IsCursorVisible = 50;
 	const int UnlockCursor = 58;
 	const int LockCursor = 59;

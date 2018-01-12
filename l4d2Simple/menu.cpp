@@ -43,7 +43,7 @@ void CBaseMenu::DrawMenu()
 
 	ImGui::Text(XorStr("Version: 1.0"));
 	ImGui::Text(XorStr("Created by zonde306"));
-	ImGui::GetIO().MouseDrawCursor = true;
+	// ImGui::GetIO().MouseDrawCursor = true;
 
 	if (ImGui::TreeNode("Aimbot"))
 	{
@@ -86,6 +86,12 @@ void CBaseMenu::DrawMenu()
 		ImGui::Checkbox("Survivor Ammo", &Config::bDrawAmmo);
 		ImGui::Checkbox("Off Screen ESP", &Config::bDrawOffScreen);
 		ImGui::Checkbox("Crosshairs", &Config::bDrawCrosshairs);
+
+		ImGui::Separator();
+		ImGui::Checkbox("Special Spawnned", &Config::bSpecialSpawnnedHint);
+		ImGui::Checkbox("Client Connected", &Config::bClientConnectHint);
+		ImGui::Checkbox("Client Disconnected", &Config::bClientDisconnectHint);
+
 		ImGui::TreePop();
 	}
 
@@ -155,7 +161,7 @@ void CBaseMenu::DrawMenu()
 	}
 
 	ImGui::End();
-	ImGui::GetIO().MouseDrawCursor = false;
+	// ImGui::GetIO().MouseDrawCursor = false;
 	m_bStateUpdated = true;
 }
 

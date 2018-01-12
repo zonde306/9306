@@ -128,10 +128,16 @@ public:
 		return ((Fn)VMT.GetFunction(this, indexes::GetTextSize))(this, fontName);
 	}
 
-	void SetCursor(unsigned long cursor)
+	void SetCursor(HCURSOR cursor)
 	{
-		typedef void(__thiscall* Fn)(void*, unsigned long);
+		typedef void(__thiscall* Fn)(void*, HCURSOR);
 		return ((Fn)VMT.GetFunction(this, indexes::SetCursor))(this, cursor);
+	}
+
+	void SetCursorAlwaysVisible(bool visible)
+	{
+		typedef void(__thiscall* Fn)(void*, bool);
+		return ((Fn)VMT.GetFunction(this, indexes::SetCursorAlwaysVisible))(this, visible);
 	}
 
 	bool IsCursorVisible()

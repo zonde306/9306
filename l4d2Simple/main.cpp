@@ -800,52 +800,85 @@ DWORD WINAPI StartCheat(LPVOID params)
 				else if (_strcmpi(eventName, "player_spawn") == 0)
 				{
 					int client = g_interface.Engine->GetPlayerForUserID(event->GetInt("userid"));
-					if (client <= 0)
+					if (client <= 0 || !Config::bSpecialSpawnnedHint)
 						return;
 
 					CBaseEntity* entity = g_interface.ClientEntList->GetClientEntity(client);
 					if (!IsValidVictim(entity))
 						return;
 
+					std::string zombieClass;
+					int zombie = entity->GetNetProp<int>("m_zombieClass", "DT_TerrorPlayer");
+					switch (zombie)
+					{
+					case ZC_SMOKER:
+						zombieClass = "Smoker";
+						break;
+					case ZC_BOOMER:
+						zombieClass = "Boomer";
+						break;
+					case ZC_HUNTER:
+						zombieClass = "Hunter";
+						break;
+					case ZC_SPITTER:
+						zombieClass = "Spitter";
+						break;
+					case ZC_JOCKEY:
+						zombieClass = "Jockey";
+						break;
+					case ZC_CHARGER:
+						zombieClass = "Charger";
+						break;
+					case ZC_WITCH:
+						zombieClass = "Witch";
+						break;
+					case ZC_TANK:
+						zombieClass = "Tank";
+						break;
+					}
+
 					if (g_pDrawRender)
 					{
 						g_pDrawRender->PushRenderText(DrawManager::BLUE, "player %s spawned",
-							GetZombieClassName(entity).c_str());
+							zombieClass.c_str());
 					}
+
+					if(zombieClass.empty())
+						g_interface.Engine->ClientCmd("vocalize PlayerWarnCareful");
+					else
+						g_interface.Engine->ClientCmd("vocalize PlayerAlsoWarn%s", zombieClass.c_str());
 				}
 				else if (_strcmpi(eventName, "player_connect") == 0)
 				{
-					if (event->GetInt("bot"))
+					const char* steamId = event->GetString("networkid");
+					
+					if (!Config::bClientConnectHint || event->GetInt("bot") || !_stricmp(steamId, "BOT"))
 						return;
 
 					const char* name = event->GetString("name");
-					const char* steamId = event->GetString("networkid");
 					const char* ip = event->GetString("address");
 
-					/*
 					if (g_pDrawRender)
 					{
 						g_pDrawRender->PushRenderText(DrawManager::ORANGE,
 							"client %s (%s) connect... ip %s", name, steamId, ip);
 					}
-					*/
 				}
 				else if (_strcmpi(eventName, "player_disconnect") == 0)
 				{
-					if (event->GetInt("bot"))
+					const char* steamId = event->GetString("networkid");
+					
+					if (!Config::bClientDisconnectHint || event->GetInt("bot") || !_stricmp(steamId, "BOT"))
 						return;
 
 					const char* name = event->GetString("name");
-					const char* steamId = event->GetString("networkid");
 					const char* reason = event->GetString("reason");
 
-					/*
 					if (g_pDrawRender)
 					{
 						g_pDrawRender->PushRenderText(DrawManager::ORANGE,
 							"client %s (%s) disconnect... reason %s", name, steamId, reason);
 					}
-					*/
 				}
 				else if (_strcmpi(eventName, "player_say") == 0 || _strcmpi(eventName, "player_chat") == 0)
 				{
@@ -1145,7 +1178,7 @@ DWORD WINAPI StartCheat(LPVOID params)
 
 		// 注册事件监听器
 		EventListener* listener = new EventListener();
-		// g_interface.GameEvent->AddListener(listener, "player_spawn", false);
+		g_interface.GameEvent->AddListener(listener, "player_spawn", false);
 		g_interface.GameEvent->AddListener(listener, "player_death", false);
 		g_interface.GameEvent->AddListener(listener, "infected_death", false);
 		g_interface.GameEvent->AddListener(listener, "map_transition", false);
@@ -1153,10 +1186,10 @@ DWORD WINAPI StartCheat(LPVOID params)
 		g_interface.GameEvent->AddListener(listener, "weapon_fire", false);
 		g_interface.GameEvent->AddListener(listener, "player_hurt", false);
 		g_interface.GameEvent->AddListener(listener, "tongue_grab", false);
-
-		/*
 		g_interface.GameEvent->AddListener(listener, "player_connect", false);
 		g_interface.GameEvent->AddListener(listener, "player_disconnect", false);
+
+		/*
 		g_interface.GameEvent->AddListener(listener, "player_chat", false);
 		g_interface.GameEvent->AddListener(listener, "player_team", false);
 		g_interface.GameEvent->AddListener(listener, "door_unlocked", false);
@@ -2640,6 +2673,7 @@ HRESULT WINAPI Hooked_Present(IDirect3DDevice9* device, const RECT* source, cons
 			if (g_conVar["cl_mouseenable"] != nullptr)
 				g_conVar["cl_mouseenable"]->SetValue(showMenu);
 
+			g_interface.Surface->SetCursorAlwaysVisible(showMenu);
 			// ImGui::GetIO().MouseDrawCursor = false;
 			// g_bIsShowMenu = false;
 		};
@@ -3861,7 +3895,7 @@ void __fastcall Hooked_PaintTraverse(CPanel* _ecx, void* _edx, unsigned int pane
 								}
 							}
 						}
-						else if(!info.isBot)
+						else if(!_stricmp(info.steamId, "BOT"))
 						{
 							// 如果特感不是机器人的话就显示特感类型
 							// 机器人特感名字就是类型
