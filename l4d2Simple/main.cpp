@@ -694,7 +694,7 @@ DWORD WINAPI StartCheat(LPVOID params)
 
 		for (const auto& cvars : g_conVar)
 		{
-			Utils::log("%s = 0x%X", cvars.first, cvars.second);
+			Utils::log("%s = 0x%X", cvars.first.c_str(), cvars.second);
 		}
 	}
 
