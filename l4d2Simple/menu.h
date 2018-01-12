@@ -104,6 +104,7 @@ namespace Config
 	extern bool bSpecialSpawnnedHint;
 	extern bool bClientConnectHint;
 	extern bool bClientDisconnectHint;
+	extern bool bAllowConsoleMessage;
 
 	extern float fAimbotFov;
 	extern float fAimbotRCSX;

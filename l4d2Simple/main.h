@@ -225,6 +225,7 @@ namespace Config
 	bool bSpecialSpawnnedHint = false;
 	bool bClientConnectHint = false;
 	bool bClientDisconnectHint = false;
+	bool bAllowConsoleMessage = false;
 
 	float fAimbotFov = 30.0f;
 	float fAimbotRCSX = 2.0f;

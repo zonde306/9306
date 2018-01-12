@@ -154,6 +154,7 @@ void CBaseMenu::DrawMenu()
 		ImGui::Checkbox("Wirteframe", &Config::bCvarWireframe);
 		ImGui::Checkbox("sv_cheats 1", &Config::bCvarCheats);
 		// ImGui::Checkbox("mp_gamemode coop", &Config::bCvarGameMode);
+		ImGui::Checkbox("Output Debug Info", &Config::bAllowConsoleMessage);
 
 		ImGui::Separator();
 		ImGui::Checkbox("Teleport", &Config::bTeleport);

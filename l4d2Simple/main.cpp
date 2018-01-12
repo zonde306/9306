@@ -1316,7 +1316,8 @@ void showSpectator()
 
 		CBaseEntity* player = nullptr, *target = nullptr;
 
-		g_interface.Engine->ClientCmd("echo \"========= player list =========\"");
+		if (Config::bAllowConsoleMessage)
+			g_interface.Engine->ClientCmd("echo \"========= player list =========\"");
 
 		for (int i = 1; i < 64; ++i)
 		{
@@ -1347,26 +1348,32 @@ void showSpectator()
 				if ((DWORD)target == (DWORD)local)
 				{
 					// 姝ｅ湪瑙傚療鏈湴鐜╁
+					if (Config::bAllowConsoleMessage)
+					{
 #ifdef USE_PLAYER_INFO
-					g_interface.Engine->ClientCmd("echo \"[spectator] player %s %s you\"",
-						info.name, (mode == 4 ? "watching" : "following"));
+						g_interface.Engine->ClientCmd("echo \"[spectator] player %s %s you\"",
+							info.name, (mode == 4 ? "watching" : "following"));
 #else
-					g_interface.Engine->ClientCmd("echo \"[spectator] player %d %s you\"",
-						player->GetIndex(), (mode == 4 ? "watching" : "following"));
+						g_interface.Engine->ClientCmd("echo \"[spectator] player %d %s you\"",
+							player->GetIndex(), (mode == 4 ? "watching" : "following"));
 #endif
+					}
 				}
 				else
 				{
-					// 姝ｅ湪瑙傚療鍏朵粬鐜╁
+					if (Config::bAllowConsoleMessage)
+					{
+						// 姝ｅ湪瑙傚療鍏朵粬鐜╁
 #ifdef USE_PLAYER_INFO
-					player_info_t other;
-					g_interface.Engine->GetPlayerInfo(target->GetIndex(), &other);
-					g_interface.Engine->ClientCmd("echo \"[spectator] player %s %s %s\"",
-						info.name, (mode == 4 ? "watching" : "following"), other.name);
+						player_info_t other;
+						g_interface.Engine->GetPlayerInfo(target->GetIndex(), &other);
+						g_interface.Engine->ClientCmd("echo \"[spectator] player %s %s %s\"",
+							info.name, (mode == 4 ? "watching" : "following"), other.name);
 #else
-					g_interface.Engine->ClientCmd("echo \"[spectator] player %d %s %d\"",
-						player->GetIndex(), (mode == 4 ? "watching" : "following"), target->GetIndex());
+						g_interface.Engine->ClientCmd("echo \"[spectator] player %d %s %d\"",
+							player->GetIndex(), (mode == 4 ? "watching" : "following"), target->GetIndex());
 #endif
+					}
 				}
 			}
 			else if (team == 2)
@@ -1374,14 +1381,17 @@ void showSpectator()
 				// 鐢熻繕鑰
 				if (player->IsAlive())
 				{
-					// 娲荤潃
+					if (Config::bAllowConsoleMessage)
+					{
+						// 娲荤潃
 #ifdef USE_PLAYER_INFO
-					g_interface.Engine->ClientCmd("echo \"[survivor] player %s is alive (%d + %.0f)\"",
-						info.name, player->GetHealth(), player->GetNetProp<float>("m_healthBuffer", "DT_TerrorPlayer"));
+						g_interface.Engine->ClientCmd("echo \"[survivor] player %s is alive (%d + %.0f)\"",
+							info.name, player->GetHealth(), player->GetNetProp<float>("m_healthBuffer", "DT_TerrorPlayer"));
 #else
-					g_interface.Engine->ClientCmd("echo \"[survivor] player %d is alive (%d + %.0f)\"",
-						player->GetIndex(), player->GetHealth(), player->GetNetProp<float>("m_healthBuffer", "DT_TerrorPlayer"));
+						g_interface.Engine->ClientCmd("echo \"[survivor] player %d is alive (%d + %.0f)\"",
+							player->GetIndex(), player->GetHealth(), player->GetNetProp<float>("m_healthBuffer", "DT_TerrorPlayer"));
 #endif
+					}
 				}
 				else
 				{
@@ -1398,27 +1408,33 @@ void showSpectator()
 
 					if ((DWORD)target == (DWORD)local)
 					{
-						// 姝ｅ湪瑙傚療鏈湴鐜╁
+						if (Config::bAllowConsoleMessage)
+						{
+							// 姝ｅ湪瑙傚療鏈湴鐜╁
 #ifdef USE_PLAYER_INFO
-						g_interface.Engine->ClientCmd("echo \"[survivor] player %s %s you\"",
-							info.name, (mode == 4 ? "watching" : "following"));
+							g_interface.Engine->ClientCmd("echo \"[survivor] player %s %s you\"",
+								info.name, (mode == 4 ? "watching" : "following"));
 #else
-						g_interface.Engine->ClientCmd("echo \"[survivor] player %d %s you\"",
-							player->GetIndex(), (mode == 4 ? "watching" : "following"));
+							g_interface.Engine->ClientCmd("echo \"[survivor] player %d %s you\"",
+								player->GetIndex(), (mode == 4 ? "watching" : "following"));
 #endif
+						}
 					}
 					else
 					{
-						// 姝ｅ湪瑙傚療鍏朵粬鐜╁
+						if (Config::bAllowConsoleMessage)
+						{
+							// 姝ｅ湪瑙傚療鍏朵粬鐜╁
 #ifdef USE_PLAYER_INFO
-						player_info_t other;
-						g_interface.Engine->GetPlayerInfo(target->GetIndex(), &other);
-						g_interface.Engine->ClientCmd("echo \"[survivor] player %s %s %s\"",
-							info.name, (mode == 4 ? "watching" : "following"), other.name);
+							player_info_t other;
+							g_interface.Engine->GetPlayerInfo(target->GetIndex(), &other);
+							g_interface.Engine->ClientCmd("echo \"[survivor] player %s %s %s\"",
+								info.name, (mode == 4 ? "watching" : "following"), other.name);
 #else
-						g_interface.Engine->ClientCmd("echo \"[survivor] player %d %s %d\"",
-							player->GetIndex(), (mode == 4 ? "watching" : "following"), target->GetIndex());
+							g_interface.Engine->ClientCmd("echo \"[survivor] player %d %s %d\"",
+								player->GetIndex(), (mode == 4 ? "watching" : "following"), target->GetIndex());
 #endif
+						}
 					}
 				}
 			}
@@ -1456,25 +1472,31 @@ void showSpectator()
 
 				if (player->IsAlive())
 				{
-					// 娲荤潃
+					if (Config::bAllowConsoleMessage)
+					{
+						// 娲荤潃
 #ifdef USE_PLAYER_INFO
-					g_interface.Engine->ClientCmd("echo \"[infected] player %s is %s (%d)\"",
-						info.name, zombieName, player->GetHealth());
+						g_interface.Engine->ClientCmd("echo \"[infected] player %s is %s (%d)\"",
+							info.name, zombieName, player->GetHealth());
 #else
-					g_interface.Engine->ClientCmd("echo \"[infected] player %d is %s (%d)\"",
-						player->GetIndex(), zombieName, player->GetHealth());
+						g_interface.Engine->ClientCmd("echo \"[infected] player %d is %s (%d)\"",
+							player->GetIndex(), zombieName, player->GetHealth());
 #endif
+					}
 				}
 				else if (player->GetNetProp<byte>("m_isGhost", "DT_TerrorPlayer"))
 				{
-					// 骞界伒鐘舵€
+					if (Config::bAllowConsoleMessage)
+					{
+						// 骞界伒鐘舵€
 #ifdef USE_PLAYER_INFO
-					g_interface.Engine->ClientCmd("echo \"[infected] player %s is ghost %s (%d)\"",
-						info.name, zombieName, player->GetHealth());
+						g_interface.Engine->ClientCmd("echo \"[infected] player %s is ghost %s (%d)\"",
+							info.name, zombieName, player->GetHealth());
 #else
-					g_interface.Engine->ClientCmd("echo \"[infected] player %d is ghost %s (%d)\"",
-						player->GetIndex(), zombieName, player->GetHealth());
+						g_interface.Engine->ClientCmd("echo \"[infected] player %d is ghost %s (%d)\"",
+							player->GetIndex(), zombieName, player->GetHealth());
 #endif
+					}
 				}
 				else
 				{
@@ -1491,39 +1513,48 @@ void showSpectator()
 
 					if ((DWORD)target == (DWORD)local)
 					{
-						// 姝ｅ湪瑙傚療鏈湴鐜╁
+						if (Config::bAllowConsoleMessage)
+						{
+							// 姝ｅ湪瑙傚療鏈湴鐜╁
 #ifdef USE_PLAYER_INFO
-						g_interface.Engine->ClientCmd("echo \"[infected] player %s %s you\"",
-							info.name, (mode == 4 ? "watching" : "following"));
+							g_interface.Engine->ClientCmd("echo \"[infected] player %s %s you\"",
+								info.name, (mode == 4 ? "watching" : "following"));
 #else
-						g_interface.Engine->ClientCmd("echo \"[infected] player %s %s you\"",
-							player->GetIndex(), (mode == 4 ? "watching" : "following"));
+							g_interface.Engine->ClientCmd("echo \"[infected] player %s %s you\"",
+								player->GetIndex(), (mode == 4 ? "watching" : "following"));
 #endif
+						}
 					}
 					else
 					{
-						// 姝ｅ湪瑙傚療鍏朵粬鐜╁
+						if (Config::bAllowConsoleMessage)
+						{
+							// 姝ｅ湪瑙傚療鍏朵粬鐜╁
 #ifdef USE_PLAYER_INFO
-						player_info_t other;
-						g_interface.Engine->GetPlayerInfo(target->GetIndex(), &other);
-						g_interface.Engine->ClientCmd("echo \"[infected] player %s %s %s\"",
-							info.name, (mode == 4 ? "watching" : "following"), other.name);
+							player_info_t other;
+							g_interface.Engine->GetPlayerInfo(target->GetIndex(), &other);
+							g_interface.Engine->ClientCmd("echo \"[infected] player %s %s %s\"",
+								info.name, (mode == 4 ? "watching" : "following"), other.name);
 #else
-						g_interface.Engine->ClientCmd("echo \"[infected] player %d %s %d\"",
-							player->GetIndex(), (mode == 4 ? "watching" : "following"), target->GetIndex());
+							g_interface.Engine->ClientCmd("echo \"[infected] player %d %s %d\"",
+								player->GetIndex(), (mode == 4 ? "watching" : "following"), target->GetIndex());
 #endif
+						}
 					}
 				}
 			}
 		}
 
-		g_interface.Engine->ClientCmd("echo \"========= list end =========\"");
+		if (Config::bAllowConsoleMessage)
+			g_interface.Engine->ClientCmd("echo \"========= list end =========\"");
 	}
 }
 
 void bindAlias(int wait)
 {
-	g_interface.Engine->ClientCmd("echo \"echo \"========= alias begin =========\"\"");
+	if (Config::bAllowConsoleMessage)
+		g_interface.Engine->ClientCmd("echo \"========= alias begin =========\"");
+
 	g_interface.Engine->ClientCmd("alias +autofire \"alias autofire_launcher autofire_loop; autofire_launcher\"");
 	g_interface.Engine->ClientCmd("alias -autofire \"alias autofire_launcher autofire_stop\"");
 	g_interface.Engine->ClientCmd("alias autofire_launcher autofire_loop");
@@ -1610,21 +1641,29 @@ void bindAlias(int wait)
 	g_interface.Engine->ClientCmd("alias \"lerp_33\" \"rate 30000;cl_cmdrate 100;cl_updaterate 100;cl_interp 0.0334;cl_interp_ratio -1;alias lerp_change lerp_50;echo Lerp set to 33.4 (rate 30000, cl_cmdrate 100, cl_updaterate 100, cl_interp 0.0334, cl_interp_ratio -1).\";");
 	g_interface.Engine->ClientCmd("alias \"lerp_50\" \"rate 30000;cl_cmdrate 100;cl_updaterate 100;cl_interp 0.0501;cl_interp_ratio -1;alias lerp_change lerp_66;echo Lerp set to 50.1 (rate 30000, cl_cmdrate 100, cl_updaterate 100, cl_interp 0.0501, cl_interp_ratio -1).\";");
 	g_interface.Engine->ClientCmd("alias \"lerp_66\" \"rate 30000;cl_cmdrate 100;cl_updaterate 100;cl_interp 0.0667;cl_interp_ratio -1;alias lerp_change lerp_0;echo Lerp set to 66.7 (rate 30000, cl_cmdrate 100, cl_updaterate 100, cl_interp 0.0667, cl_interp_ratio -1).\";");
-	g_interface.Engine->ClientCmd("echo \"echo \"========= alias end =========\"\"");
+	
+	if (Config::bAllowConsoleMessage)
+		g_interface.Engine->ClientCmd("echo \"========= alias end =========\"");
 
+	/*
 	if (g_conVar["r_dynamic"])
 	{
 		CVAR_MAKE_FLAGS("r_dynamic");
 		g_conVar["r_dynamic"]->SetValue(0);
-		Utils::log("r_dynamic setting %d", g_conVar["r_dynamic"]->GetInt());
+
+		if (Config::bAllowConsoleMessage)
+			Utils::log("r_dynamic setting %d", g_conVar["r_dynamic"]->GetInt());
 	}
 
 	if (g_conVar["r_dynamiclighting"])
 	{
 		CVAR_MAKE_FLAGS("r_dynamiclighting");
 		g_conVar["r_dynamiclighting"]->SetValue(0);
-		Utils::log("r_dynamiclighting setting %d", g_conVar["r_dynamiclighting"]->GetInt());
+
+		if (Config::bAllowConsoleMessage)
+			Utils::log("r_dynamiclighting setting %d", g_conVar["r_dynamiclighting"]->GetInt());
 	}
+	*/
 
 	/*
 	if (g_conVar["mat_picmip"])
@@ -2122,18 +2161,24 @@ bool IsValidVictim(CBaseEntity* entity)
 	{
 		if (!entity->IsAlive() || entity->GetNetProp<byte>("m_isGhost", "DT_TerrorPlayer") != 0)
 		{
+			if (Config::bAllowConsoleMessage)
+			{
 #ifdef _DEBUG_OUTPUT
-			g_interface.Engine->ClientCmd("echo \"Special 0x%X healh = %d, ghost = %d\"", (DWORD)entity,
-				entity->GetNetProp<int>("m_iHealth", "DT_TerrorPlayer"), entity->GetNetProp<int>("m_isGhost", "DT_TerrorPlayer"));
+				g_interface.Engine->ClientCmd("echo \"Special 0x%X healh = %d, ghost = %d\"", (DWORD)entity,
+					entity->GetNetProp<int>("m_iHealth", "DT_TerrorPlayer"), entity->GetNetProp<int>("m_isGhost", "DT_TerrorPlayer"));
 #endif
+			}
 			return false;
 		}
 
 		if (id == ET_TANK && sequence > 70)
 		{
+			if (Config::bAllowConsoleMessage)
+			{
 #ifdef _DEBUG_OUTPUT
-			g_interface.Engine->ClientCmd("echo \"tank 0x%X is dead\"", (DWORD)entity);
+				g_interface.Engine->ClientCmd("echo \"tank 0x%X is dead\"", (DWORD)entity);
 #endif
+			}
 			return false;
 		}
 	}
@@ -2141,9 +2186,12 @@ bool IsValidVictim(CBaseEntity* entity)
 	{
 		if ((solid & SF_NOT_SOLID) || sequence > 305)
 		{
+			if (Config::bAllowConsoleMessage)
+			{
 #ifdef _DEBUG_OUTPUT
-			g_interface.Engine->ClientCmd("echo \"Common 0x%X is dead\"", (DWORD)entity);
+				g_interface.Engine->ClientCmd("echo \"Common 0x%X is dead\"", (DWORD)entity);
 #endif
+			}
 			return false;
 		}
 
@@ -2155,10 +2203,13 @@ bool IsValidVictim(CBaseEntity* entity)
 	{
 		if (!entity->IsAlive())
 		{
+			if (Config::bAllowConsoleMessage)
+			{
 #ifdef _DEBUG_OUTPUT
-			g_interface.Engine->ClientCmd("echo \"Survivor 0x%X is dead %d\"", (DWORD)entity,
-				entity->GetNetProp<int>("m_iHealth", "DT_TerrorPlayer"));
+				g_interface.Engine->ClientCmd("echo \"Survivor 0x%X is dead %d\"", (DWORD)entity,
+					entity->GetNetProp<int>("m_iHealth", "DT_TerrorPlayer"));
 #endif
+			}
 			return false;
 		}
 	}
@@ -2168,10 +2219,13 @@ bool IsValidVictim(CBaseEntity* entity)
 	}
 	else
 	{
+		if (Config::bAllowConsoleMessage)
+		{
 #ifdef _DEBUG_OUTPUT
-		// Utils::log("Invalid ClassId = %d | sequence = %d | solid = %d", id, sequence, solid);
-		g_interface.Engine->ClientCmd("echo \"Invalid Entity 0x%X ClassId %d\"", (DWORD)entity, id);
+			// Utils::log("Invalid ClassId = %d | sequence = %d | solid = %d", id, sequence, solid);
+			g_interface.Engine->ClientCmd("echo \"Invalid Entity 0x%X ClassId %d\"", (DWORD)entity, id);
 #endif
+		}
 		return false;
 	}
 
@@ -2474,10 +2528,14 @@ CBaseEntity* GetAimingTarget(int* hitbox = nullptr)
 	if (trace.m_pEnt == nullptr || trace.m_pEnt->IsDormant() ||
 		(cc = trace.m_pEnt->GetClientClass()) == nullptr || cc->m_ClassID == ET_WORLD)
 	{
+		if (Config::bAllowConsoleMessage)
+		{
 #ifdef _DEBUG_OUTPUT
-		g_interface.Engine->ClientCmd("echo \"invalid entity 0x%X | start (%.2f %.2f %.2f) end (%.2f %.2f %.2f)\"",
-			(DWORD)trace.m_pEnt, trace.start.x, trace.start.y, trace.start.z, trace.end.x, trace.end.y, trace.end.z);
+			g_interface.Engine->ClientCmd("echo \"invalid entity 0x%X | start (%.2f %.2f %.2f) end (%.2f %.2f %.2f)\"",
+				(DWORD)trace.m_pEnt, trace.start.x, trace.start.y, trace.start.z, trace.end.x, trace.end.y, trace.end.z);
 #endif
+		}
+
 		if (hitbox != nullptr)
 			*hitbox = 0;
 
@@ -2490,10 +2548,14 @@ CBaseEntity* GetAimingTarget(int* hitbox = nullptr)
 	// 检查是否命中了一个可以攻击的物体
 	if (trace.hitbox <= 0)
 	{
+		if (Config::bAllowConsoleMessage)
+		{
 #ifdef _DEBUG_OUTPUT
-		g_interface.Engine->ClientCmd("echo \"invalid hitbox 0x%X | hitbox = %d | bone = %d | group = %d\"",
-			(DWORD)trace.m_pEnt, trace.hitbox, trace.physicsBone, trace.hitGroup);
+			g_interface.Engine->ClientCmd("echo \"invalid hitbox 0x%X | hitbox = %d | bone = %d | group = %d\"",
+				(DWORD)trace.m_pEnt, trace.hitbox, trace.physicsBone, trace.hitGroup);
 #endif
+		}
+
 		if (hitbox != nullptr)
 			*hitbox = 0;
 
@@ -4288,7 +4350,7 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 	if (Config::bTriggerBot && !(pCmd->buttons & IN_USE) && IsGunWeapon(weaponId) && clip > 0)
 	{
 #ifdef _DEBUG_OUTPUT
-		if (g_pCurrentAiming != nullptr)
+		if (g_pCurrentAiming != nullptr && Config::bAllowConsoleMessage)
 		{
 			if (!IsValidVictim(g_pCurrentAiming))
 				g_interface.Engine->ClientCmd("echo \"aiming dead 0x%X\"", (DWORD)g_pCurrentAiming);
@@ -4479,10 +4541,13 @@ end_trigger_bot:
 #ifdef _DEBUG_OUTPUT
 		else
 		{
-			g_interface.Engine->ClientCmd("echo \"m_flNextPrimaryAttack = %.2f | serverTime = %.2f\"",
-				nextAttack, serverTime);
-			g_interface.Engine->ClientCmd("echo \"interval_per_tick = %.2f | m_nTickBase = %d\"",
-				g_interface.Globals->interval_per_tick, client->GetTickBase());
+			if (Config::bAllowConsoleMessage)
+			{
+				g_interface.Engine->ClientCmd("echo \"m_flNextPrimaryAttack = %.2f | serverTime = %.2f\"",
+					nextAttack, serverTime);
+				g_interface.Engine->ClientCmd("echo \"interval_per_tick = %.2f | m_nTickBase = %d\"",
+					g_interface.Globals->interval_per_tick, client->GetTickBase());
+			}
 		}
 #endif
 
@@ -4814,7 +4879,8 @@ end_aimbot:
 			ignoreTick = 0;
 			fms = FMS_None;
 
-			g_interface.Engine->ClientCmd("echo \"fastmelee reset\"");
+			if(Config::bAllowConsoleMessage)
+				g_interface.Engine->ClientCmd("echo \"fastmelee reset\"");
 		}
 	}
 
@@ -4915,8 +4981,11 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 					Utils::writeMemory(0, g_iEngineBase + sv_pure);
 					Utils::writeMemory(0, g_iEngineBase + sv_consistency);
 
-					g_interface.Engine->ClientCmd("echo \"sv_pure and sv_consistency set %d\"",
-						Utils::readMemory<int>(g_iEngineBase + sv_pure));
+					if (Config::bAllowConsoleMessage)
+					{
+						g_interface.Engine->ClientCmd("echo \"sv_pure and sv_consistency set %d\"",
+							Utils::readMemory<int>(g_iEngineBase + sv_pure));
+					}
 				}
 			}
 
@@ -4949,6 +5018,9 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 				g_bHasFirstTick = true;
 				loadConfig();
 
+				if (!g_bIsShowMenu && g_interface.Surface->IsCursorVisible())
+					g_interface.Surface->SetCursorAlwaysVisible(false);
+
 				g_interface.Trace = (IEngineTrace*)g_interface.GetPointer("engine.dll", "EngineTraceClient");
 				Utils::log("*** connected ***");
 			}
@@ -4968,6 +5040,9 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 			g_bHasFirstTick = false;
 			g_serverConVar.clear();
 
+			if (!g_bIsShowMenu && g_interface.Surface->IsCursorVisible())
+				g_interface.Surface->SetCursorAlwaysVisible(false);
+
 			Utils::log("*** disconnected ***");
 		}
 
@@ -4977,6 +5052,9 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 			// 按住 End 键三秒强制退出游戏游戏，用于游戏无响应
 			if (++iExitGame >= 3)
 				ExitProcess(0);
+
+			if (!g_bIsShowMenu && g_interface.Surface->IsCursorVisible())
+				g_interface.Surface->SetCursorAlwaysVisible(false);
 
 			if (g_pDrawRender != nullptr)
 				g_pDrawRender->PushRenderText(DrawManager::WHITE, "exit proccess timer (%d/3)", iExitGame);

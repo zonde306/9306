@@ -724,7 +724,9 @@ void Utils::log(const char* text, ...)
 #endif
 
 	// 输出到控制台
-	g_interface.Engine->ClientCmd("echo \"%s\"", buffer);
+	if(Config::bAllowConsoleMessage)
+		g_interface.Engine->ClientCmd("echo \"%s\"", buffer);
+
 	std::cout << buffer << std::endl;
 }
 
@@ -770,6 +772,8 @@ void Utils::log(const wchar_t* text, ...)
 #endif
 
 	// 输出到控制台
-	g_interface.Engine->ClientCmd("echo \"%s\"", w2c(buffer));
+	if (Config::bAllowConsoleMessage)
+		g_interface.Engine->ClientCmd("echo \"%s\"", w2c(buffer));
+
 	std::wcout << buffer << std::endl;
 }
