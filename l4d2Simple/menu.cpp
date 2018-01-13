@@ -69,6 +69,7 @@ void CBaseMenu::DrawMenu()
 		switch (timeInfo.tm_wday)
 		{
 		case 0:
+		case 7:
 			weak = XorStr(u8"星期日");
 			break;
 		case 1:
