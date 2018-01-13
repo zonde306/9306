@@ -381,6 +381,8 @@ std::vector<BacktrackingRecord> g_aaBacktrack[64];						// 后预测
 int g_iBacktrackTarget = -1;											// 当前最接近准星的敌人
 RecoilRecord g_aaCompensation[128];										// 无后坐力用
 bool g_bHasFirstTick = false;											// 是否为加入游戏第发送的 tick
+bool g_bMustKnifeBot = false;											// 自动刀
+bool g_bKnifeBotCanShov = false;										// 自动推
 
 std::string GetZombieClassName(CBaseEntity* player);
 bool IsValidVictim(CBaseEntity* entity);
@@ -691,6 +693,8 @@ DWORD WINAPI StartCheat(LPVOID params)
 		g_conVar[XorStr("fog_end")] = g_interface.Cvar->FindVar(XorStr("fog_end"));
 		g_conVar[XorStr("fog_endskybox")] = g_interface.Cvar->FindVar(XorStr("fog_endskybox"));
 		g_conVar[XorStr("addons_eclipse_content")] = g_interface.Cvar->FindVar(XorStr("addons_eclipse_content"));
+		g_conVar[XorStr("z_gun_range")] = g_interface.Cvar->FindVar(XorStr("z_gun_range"));
+		g_conVar[XorStr("claw_range")] = g_interface.Cvar->FindVar(XorStr("claw_range"));
 
 		for (const auto& cvars : g_conVar)
 		{
@@ -3444,6 +3448,32 @@ void __fastcall Hooked_PaintTraverse(CPanel* _ecx, void* _edx, unsigned int pane
 			bool targetSelected = false;
 			bool specialSelected = false;
 
+			// 当前是否扮演 Tank
+			bool isPlayingTank = (local->GetNetProp<int>("m_zombieClass", "DT_TerrorPlayer") == ZC_TANK);
+			g_bMustKnifeBot = false;
+			g_bKnifeBotCanShov = false;
+
+			// 近战攻击范围
+			int swingRange = 0;
+			if (team == 2)
+			{
+				if (g_serverConVar.find("z_gun_range") != g_serverConVar.end())
+					swingRange = atoi(g_serverConVar["z_gun_range"].c_str());
+				else if (g_conVar["z_gun_range"] != nullptr)
+					swingRange = g_conVar["z_gun_range"]->GetInt();
+				else
+					swingRange = 75;
+			}
+			else if (team == 3)
+			{
+				if (g_serverConVar.find("claw_range") != g_serverConVar.end())
+					swingRange = atoi(g_serverConVar["claw_range"].c_str());
+				else if (g_conVar["claw_range"] != nullptr)
+					swingRange = g_conVar["claw_range"]->GetInt();
+				else
+					swingRange = 52;
+			}
+
 #ifdef _DEBUG
 			try
 			{
@@ -4028,16 +4058,18 @@ void __fastcall Hooked_PaintTraverse(CPanel* _ecx, void* _edx, unsigned int pane
 					g_pDrawRender->AddText(color, foot.x, head.y, true, ss.str().c_str());
 				}
 
+				// 角度差异
+				float fov = GetAnglesFieldOfView(myViewAngles, CalculateAim(myEyeOrigin, headbox));
+
 				// 自动瞄准寻找目标
-				if (Config::bAimbot && (!targetSelected || !(g_pUserCommands->buttons & IN_ATTACK)) &&
+				if (Config::bAimbot && !isPlayingTank &&
+					(!targetSelected || !(g_pUserCommands->buttons & IN_ATTACK)) &&
 					((team == 2 && (IsSpecialInfected(classId) || classId == ET_INFECTED)) ||
 					(team == 3 && IsSurvivor(classId))))
 				{
 					// 已经选择过目标了，并且这是一个不重要的敌人
 					if (classId == ET_INFECTED && specialSelected)
 						continue;
-
-					float fov = GetAnglesFieldOfView(myViewAngles, CalculateAim(myEyeOrigin, headbox));
 
 					// 选择一个最接近的特感，因为特感越近对玩家来说越危险
 					if (entity->GetTeam() != team && fov < fovmin && visible &&
@@ -4049,6 +4081,20 @@ void __fastcall Hooked_PaintTraverse(CPanel* _ecx, void* _edx, unsigned int pane
 						if (IsSpecialInfected(classId))
 							specialSelected = true;
 					}
+				}
+
+				if (Config::bKnifeBot && !isPlayingTank && visible &&
+					swingRange > 0 && fov < swingRange && dist <= swingRange &&
+					(team == 2 && (IsSpecialInfected(classId) || classId == ET_INFECTED) ||
+					team == 3 && IsSurvivor(classId)))
+				{
+					// 检查近战武器攻击范围内是否有可攻击的敌人
+					// 当然不包括 Witch
+					g_bMustKnifeBot = true;
+
+					// 牛和坦克是推不了的
+					if(!g_bKnifeBotCanShov && classId != ZC_TANK && classId != ZC_CHARGER)
+						g_bKnifeBotCanShov = true;
 				}
 			}
 		}
@@ -4110,9 +4156,10 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 	int weaponId = (weapon != nullptr ? weapon->GetWeaponID() : 0);
 	int flags = client->GetNetProp<int>("m_fFlags", "DT_BasePlayer");
 	int clip = (weapon != nullptr ? weapon->GetNetProp<int>("m_iClip1", "DT_BaseCombatWeapon") : 0);
+	int movetype = client->GetNetProp<int>("movetype", "DT_BasePlayer");
 
 	// 自动连跳
-	if (Config::bBunnyHop && (GetAsyncKeyState(VK_SPACE) & 0x8000))
+	if (Config::bBunnyHop && movetype != MOVETYPE_LADDER && (GetAsyncKeyState(VK_SPACE) & 0x8000))
 	{
 		static bool lastJump = false;
 		static bool shouldFake = false;
@@ -4305,6 +4352,9 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 #endif
 
 	bool fireByTrigger = false;
+	static int shovDelayTick = 0;
+	if (shovDelayTick > 0)
+		--shovDelayTick;
 
 	// 自动开枪
 	if (Config::bTriggerBot && !(pCmd->buttons & IN_USE) && IsGunWeapon(weaponId) && clip > 0)
@@ -4370,8 +4420,40 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 			g_pPlayerResource = nullptr;
 		}
 	}
+	else if (Config::bKnifeBot && weapon != nullptr)
+	{
+		bool doAttack2 = false;
+		float nextAttackTime = nextAttack;
+		
+		if (myTeam == 3 || weapon->GetClientClass()->m_ClassID != ET_WeaponMelee || nextAttack > serverTime)
+		{
+			// 当前武器不是近战武器或无法进行近战攻击时改用右键
+			nextAttackTime = weapon->GetNetProp<float>("m_flNextSecondaryAttack", "DT_BaseCombatWeapon");
+			doAttack2 = true;
+		}
+		
+		// 检查攻击范围内是否有敌人
+		if (g_bMustKnifeBot && nextAttackTime <= serverTime)
+		{
+			if (doAttack2)
+			{
+				if (myTeam == 3 || (g_bKnifeBotCanShov && shovDelayTick <= 0))
+				{
+					pCmd->buttons |= IN_ATTACK2;
+
+					// 防止在短时间内连续多次推，因为有的服务器会把连续推的次数调的很低
+					shovDelayTick = Config::iAutoShovTick;
+				}
+			}
+			else
+			{
+				pCmd->buttons |= IN_ATTACK;
+			}
+		}
+	}
 
 end_trigger_bot:
+
 	static int duckTick = 0;
 	if ((pCmd->buttons & IN_DUCK) && (flags & FL_DUCKING) && (flags & FL_ONGROUND))
 	{
@@ -4539,6 +4621,7 @@ end_trigger_bot:
 				if (oldViewAngles.IsValid())
 				{
 					pCmd->viewangles = oldViewAngles;
+					// pCmd->viewangles = viewAngles;
 					pCmd->sidemove = oldSidemove;
 					pCmd->fowardmove = oldForwardmove;
 					pCmd->upmove = oldUpmove;
@@ -4635,6 +4718,7 @@ end_trigger_bot:
 				if (oldViewAngles.IsValid())
 				{
 					pCmd->viewangles = oldViewAngles;
+					// pCmd->viewangles = viewAngles;
 					pCmd->sidemove = oldSidemove;
 					pCmd->fowardmove = oldForwardmove;
 					pCmd->upmove = oldUpmove;
@@ -4671,6 +4755,41 @@ end_trigger_bot:
 		}
 
 		lastPunch = currentPunch;
+	}
+	else if (Config::bAntiAim && !(pCmd->buttons & IN_USE) && movetype != MOVETYPE_LADDER)
+	{
+		/*
+		pCmd->viewangles = oldViewAngles;
+		pCmd->sidemove = oldSidemove;
+		pCmd->fowardmove = oldForwardmove;
+		pCmd->upmove = oldUpmove;
+		*/
+
+		if (!(pCmd->buttons & IN_ATTACK) && !(pCmd->buttons & IN_ATTACK2))
+		{
+			static int chokedPackets = -1;
+			static bool flip = false;
+			++chokedPackets;
+
+			if (chokedPackets < 1)
+			{
+				*bSendPacket = true;
+			}
+			else
+			{
+				*bSendPacket = false;
+
+				if (flip)
+					pCmd->viewangles.y += 90.f;
+				else
+					pCmd->viewangles.y -= 90.f;
+
+				chokedPackets = -1;
+				CorrectMovement(viewAngles, pCmd, pCmd->fowardmove, pCmd->sidemove);
+			}
+
+			flip = !flip;
+		}
 	}
 
 end_aimbot:
@@ -4857,11 +4976,18 @@ end_aimbot:
 		}
 	}
 
+	static int teleportTick = 0;
+
 	if (Config::bTeleport)
 	{
 		// 一旦使用无法恢复
 		pCmd->viewangles.z = 9e+37f;
-		Config::bTeleport = false;
+
+		if (++teleportTick >= 30)
+		{
+			Config::bTeleport = false;
+			teleportTick = 0;
+		}
 	}
 	
 	// 发送到服务器
@@ -5142,7 +5268,6 @@ bool __fastcall Hooked_CreateMoveShared(ClientModeShared* _ecx, void* _edx, floa
 
 	// 当前正在瞄准的目标
 	// 由于 TraceRay 存在 bug 所以这里再次进行更新
-	/*
 	{
 		if (client != nullptr && client->IsAlive())
 		{
@@ -5164,7 +5289,6 @@ bool __fastcall Hooked_CreateMoveShared(ClientModeShared* _ecx, void* _edx, floa
 			}
 		}
 	}
-	*/
 
 	return false;
 }

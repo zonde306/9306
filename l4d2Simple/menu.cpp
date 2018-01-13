@@ -116,6 +116,8 @@ void CBaseMenu::DrawMenu()
 		ImGui::SliderFloat(XorStr("RCS Y"), &Config::fAimbotRCSY, 0.0f, 128.0f);
 
 		ImGui::Separator();
+		ImGui::Checkbox(XorStr("Knife Bot"), &Config::bKnifeBot);
+		ImGui::SliderInt(XorStr("Knife Bot Tick"), &Config::iAutoShovTick, 0, 250);
 		ImGui::Checkbox(XorStr("Trigger Bot"), &Config::bTriggerBot);
 		ImGui::Checkbox(XorStr("Trigger Only Head"), &Config::bTriggerBotHead);
 		ImGui::Checkbox(XorStr("Trigger Heads"), &Config::bTriggerExtra);
@@ -127,6 +129,7 @@ void CBaseMenu::DrawMenu()
 		ImGui::Checkbox(XorStr("No Recoil"), &Config::bNoRecoil);
 		ImGui::Checkbox(XorStr("Rapid Fire"), &Config::bRapidFire);
 		ImGui::Checkbox(XorStr("Dont Fire Team"), &Config::bAnitFirendlyFire);
+		ImGui::Checkbox(XorStr("Anti Aim"), &Config::bAntiAim);
 
 		ImGui::TreePop();
 	}

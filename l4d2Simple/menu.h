@@ -82,6 +82,8 @@ namespace Config
 	extern bool bAnitFirendlyFire;
 	extern bool bForwardTrack;
 	extern bool bBackTrack;
+	extern bool bAntiAim;
+	extern bool bKnifeBot;
 
 	// 自动操作
 	extern bool bBunnyHop;
@@ -113,6 +115,7 @@ namespace Config
 	extern int iDuckAimbotTick;
 
 	extern int iFastMeleeTick;
+	extern int iAutoShovTick;
 	extern bool bMustFastMelee;
 
 	// 不稳定的功能

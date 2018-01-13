@@ -203,6 +203,8 @@ namespace Config
 	bool bAnitFirendlyFire = true;
 	bool bForwardTrack = false;
 	bool bBackTrack = false;
+	bool bAntiAim = false;
+	bool bKnifeBot = false;
 
 	// 自动操作
 	bool bBunnyHop = true;
@@ -234,6 +236,7 @@ namespace Config
 	int iDuckAimbotTick = 0;
 
 	int iFastMeleeTick = 10;
+	int iAutoShovTick = 30;
 	bool bMustFastMelee = false;
 
 	// 不稳定的功能
