@@ -69,25 +69,25 @@ void CBaseMenu::DrawMenu()
 		switch (timeInfo.tm_wday)
 		{
 		case 0:
-			weak = XorStr("星期一");
+			weak = XorStr(u8"星期一");
 			break;
 		case 1:
-			weak = XorStr("星期二");
+			weak = XorStr(u8"星期二");
 			break;
 		case 2:
-			weak = XorStr("星期三");
+			weak = XorStr(u8"星期三");
 			break;
 		case 3:
-			weak = XorStr("星期四");
+			weak = XorStr(u8"星期四");
 			break;
 		case 4:
-			weak = XorStr("星期五");
+			weak = XorStr(u8"星期五");
 			break;
 		case 5:
-			weak = XorStr("星期六");
+			weak = XorStr(u8"星期六");
 			break;
 		case 6:
-			weak = XorStr("星期日");
+			weak = XorStr(u8"星期日");
 			break;
 		}
 
