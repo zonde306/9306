@@ -3,6 +3,7 @@
 #include <imgui.h>
 #include <vector>
 #include <cstring>
+#include <ctime>
 
 std::unique_ptr<CBaseMenu> g_pBaseMenu;
 extern bool g_bIsShowMenu;
@@ -48,6 +49,54 @@ void CBaseMenu::DrawMenu()
 	ImGui::Text(XorStr("Version: 1.0 | Created by zonde306"));
 	ImGui::Text(XorStr(u8"此辅助免费且开源，如果你是通过购买获得，说明你被骗了。"));
 	// ImGui::GetIO().MouseDrawCursor = true;
+
+	// 显示系统时间
+	{
+		ImGui::Separator();
+
+		tm timeInfo;
+		time_t t = time(nullptr);
+		localtime_s(&timeInfo, &t);
+
+		/*
+		int week = (timeInfo.tm_mday + 2 * (timeInfo.tm_mon + 1) + 3 *
+			((timeInfo.tm_mon + 1) + 1) / 5 + (timeInfo.tm_year + 1900) +
+			(timeInfo.tm_year + 1900) / 4 - (timeInfo.tm_year + 1900) / 100 +
+			(timeInfo.tm_year + 1900) / 400) % 7;
+		*/
+
+		std::string weak;
+		switch (timeInfo.tm_wday)
+		{
+		case 0:
+			weak = XorStr("星期一");
+			break;
+		case 1:
+			weak = XorStr("星期二");
+			break;
+		case 2:
+			weak = XorStr("星期三");
+			break;
+		case 3:
+			weak = XorStr("星期四");
+			break;
+		case 4:
+			weak = XorStr("星期五");
+			break;
+		case 5:
+			weak = XorStr("星期六");
+			break;
+		case 6:
+			weak = XorStr("星期日");
+			break;
+		}
+
+		ImGui::Text("%4d/%2d/%2d %2d:%2d:%2d %s",
+			timeInfo.tm_year + 1900, timeInfo.tm_mon + 1, timeInfo.tm_mday,
+			timeInfo.tm_hour, timeInfo.tm_min, timeInfo.tm_sec, weak.c_str());
+
+		ImGui::Separator();
+	}
 
 	if (ImGui::TreeNode(XorStr("Aimbot")))
 	{
