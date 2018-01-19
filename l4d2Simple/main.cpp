@@ -278,8 +278,8 @@ static FnConColorMsg PrintToConsoleColor;	// 打印信息到控制台（支持�
 typedef void(__cdecl* FnConMsg)(char const*, ...);
 static FnConMsg PrintToConsole;				// 打印信息到控制台
 
-typedef void(__cdecl* FnCL_Move)(float, bool);
-void __cdecl Hooked_CL_Move(float, bool);
+typedef void(__stdcall* FnCL_Move)(float, bool);
+void __stdcall Hooked_CL_Move(float, bool);
 FnCL_Move oCL_Move;							// 玩家数据处理
 
 typedef void(__cdecl* FnSharedRandomFloat)(const char*, float, float, int);
@@ -5419,7 +5419,7 @@ bool __stdcall Hooked_DispatchUserMessage(int msg_id, bf_read* msg_data)
 	return oDispatchUserMessage(msg_id, msg_data);
 }
 
-void __cdecl Hooked_CL_Move(float accumulated_extra_samples, bool bFinalTick)
+void __stdcall Hooked_CL_Move(float accumulated_extra_samples, bool bFinalTick)
 {
 	DWORD _edi;
 	BYTE _bl;
@@ -5456,7 +5456,7 @@ void __cdecl Hooked_CL_Move(float accumulated_extra_samples, bool bFinalTick)
 			call	oCL_Move
 
 			// 清理堆栈(需要内存对齐)
-			add		esp, 8
+			// add		esp, 8
 		};
 	};
 
