@@ -271,6 +271,10 @@ typedef void(__stdcall* FnDrawModelExecute)(const DrawModelState_t&, const Model
 void __stdcall Hooked_DrawModelExecute(const DrawModelState_t&, const ModelRenderInfo_t&, matrix3x4_t*);
 FnDrawModelExecute oDrawModelExecute;
 
+typedef bool(__stdcall* FnWriteUsercmdDeltaToBuffer)(int, bf_write*, int, int, bool);
+bool __stdcall Hooked_WriteUsercmdDeltaToBuffer(int, bf_write*, int, int, bool);
+FnWriteUsercmdDeltaToBuffer oWriteUsercmdDeltaToBuffer;
+
 // -------------------------------- General Function --------------------------------
 typedef void(__cdecl* FnConColorMsg)(class Color const&, char const*, ...);
 static FnConColorMsg PrintToConsoleColor;	// 打印信息到控制台（支持颜色）
@@ -278,8 +282,8 @@ static FnConColorMsg PrintToConsoleColor;	// 打印信息到控制台（支持�
 typedef void(__cdecl* FnConMsg)(char const*, ...);
 static FnConMsg PrintToConsole;				// 打印信息到控制台
 
-typedef void(__stdcall* FnCL_Move)(float, bool);
-void __stdcall Hooked_CL_Move(float, bool);
+typedef void(__cdecl* FnCL_Move)(float, bool);
+void __cdecl Hooked_CL_Move(float, bool);
 FnCL_Move oCL_Move;							// 玩家数据处理
 
 typedef void(__cdecl* FnSharedRandomFloat)(const char*, float, float, int);
@@ -332,6 +336,12 @@ FnProccessStringCmd oProcessStringCmd;
 typedef int(__thiscall* FnKeyInput)(ClientModeShared*, int, ButtonCode_t, const char*);
 int __fastcall Hooked_KeyInput(ClientModeShared*, void*, int, ButtonCode_t, const char*);
 FnKeyInput oKeyInput;
+
+typedef void(__cdecl* FnCL_SendMove)();
+FnCL_SendMove oCL_SendMove;
+
+typedef void(__cdecl* FnWriteUsercmd)(bf_write*, CUserCmd*, CUserCmd*);
+FnWriteUsercmd oWriteUsercmd;
 
 // -------------------------------- Cheats Function --------------------------------
 void thirdPerson(bool);
@@ -395,10 +405,10 @@ DWORD WINAPI StartCheat(LPVOID params)
 	// 初始化 NetProp 表
 	g_pNetVars = std::make_unique<CNetVars>();
 	
-	g_iClientBase = Utils::GetModuleBase(XorStr("client.dll"));
-	g_iEngineBase = Utils::GetModuleBase(XorStr("engine.dll"));
-	g_iMaterialModules = Utils::GetModuleBase(XorStr("materialsystem.dll"));
-	DWORD vgui = Utils::GetModuleBase(XorStr("vguimatsurface.dll"));
+	g_iClientBase = Utils::GetModuleBase(("client.dll"));
+	g_iEngineBase = Utils::GetModuleBase(("engine.dll"));
+	g_iMaterialModules = Utils::GetModuleBase(("materialsystem.dll"));
+	DWORD vgui = Utils::GetModuleBase(("vguimatsurface.dll"));
 
 	Utils::log("client.dll 0x%X", g_iClientBase);
 	Utils::log("engine.dll 0x%X", g_iEngineBase);
@@ -430,15 +440,15 @@ DWORD WINAPI StartCheat(LPVOID params)
 	g_interface.ClientMode = nullptr;
 	g_interface.ClientState = nullptr;
 
-	if ((oCL_Move = (FnCL_Move)Utils::FindPattern(XorStr("engine.dll"),
-		XorStr("55 8B EC B8 ? ? ? ? E8 ? ? ? ? A1 ? ? ? ? 33 C5 89 45 FC 53 56 57 E8"))) != nullptr)
+	if ((oCL_Move = (FnCL_Move)Utils::FindPattern(("engine.dll"),
+		XorStr("55 8B EC 83 EC 40 A1 ? ? ? ? 33 C5 89 45 FC 56 E8"))) != nullptr)
 	{
 		g_pbSendPacket = (bool*)((DWORD)oCL_Move + 0x91);
 		Utils::log("CL_Move = engine.dll + 0x%X | bSendPacket = 0x%X",
 			(DWORD)oCL_Move - g_iEngineBase, (DWORD)g_pbSendPacket);
 
-		g_pDetourCL_Move = std::make_unique<DetourXS>(oCL_Move, Hooked_CL_Move);
-		oCL_Move = (FnCL_Move)g_pDetourCL_Move->GetTrampoline();
+		// g_pDetourCL_Move = std::make_unique<DetourXS>(oCL_Move, Hooked_CL_Move);
+		// oCL_Move = (FnCL_Move)g_pDetourCL_Move->GetTrampoline();
 
 #ifdef _DEBUG
 		Utils::log("Trampoline oCL_Move = 0x%X", (DWORD)oCL_Move);
@@ -447,7 +457,23 @@ DWORD WINAPI StartCheat(LPVOID params)
 	else
 		Utils::log(XorStr("CL_Move not found"));
 
-	if ((SetPredictionRandomSeed = (FnSetPredictionRandomSeed)Utils::FindPattern(XorStr("client.dll"),
+	if ((oCL_SendMove = (FnCL_SendMove)Utils::FindPattern(("engine.dll"),
+		XorStr("55 8B EC B8 ? ? ? ? E8 ? ? ? ? A1 ? ? ? ? 33 C5 89 45 FC 53 56 57 E8"))) != nullptr)
+	{
+		Utils::log("oCL_SendMove = engine.dll + 0x%X", (DWORD)oCL_SendMove - g_iEngineBase);
+	}
+	else
+		Utils::log(XorStr("oCL_SendMove not found"));
+
+	if ((oWriteUsercmd = (FnWriteUsercmd)Utils::FindPattern(("client.dll"),
+		XorStr("55 8B EC A1 ? ? ? ? 83 78 30 00 53 8B 5D 10"))) != nullptr)
+	{
+		Utils::log("oWriteUsercmd = client.dll + 0x%X", (DWORD)oWriteUsercmd - g_iClientBase);
+	}
+	else
+		Utils::log(XorStr("oWriteUsercmd not found"));
+
+	if ((SetPredictionRandomSeed = (FnSetPredictionRandomSeed)Utils::FindPattern(("client.dll"),
 		XorStr("55 8B EC 8B 45 08 85 C0 75 0C"))) != nullptr)
 	{
 		Utils::log("SetPredictionRandomSeed found client.dll + 0x%X", (DWORD)SetPredictionRandomSeed - g_iClientBase);
@@ -469,7 +495,7 @@ DWORD WINAPI StartCheat(LPVOID params)
 	else
 		Utils::log(XorStr("SetPredictionRandomSeed not found"));
 
-	if ((SharedRandomFloat = (FnSharedRandomFloat)Utils::FindPattern(XorStr("client.dll"),
+	if ((SharedRandomFloat = (FnSharedRandomFloat)Utils::FindPattern(("client.dll"),
 		XorStr("55 8B EC 83 EC 08 A1 ? ? ? ? 53 56 57 8B 7D 14 8D 4D 14 51 89 7D F8 89 45 FC E8 ? ? ? ? 6A 04 8D 55 FC 52 8D 45 14 50 E8 ? ? ? ? 6A 04 8D 4D F8 51 8D 55 14 52 E8 ? ? ? ? 8B 75 08 56 E8 ? ? ? ? 50 8D 45 14 56 50 E8 ? ? ? ? 8D 4D 14 51 E8 ? ? ? ? 8B 15 ? ? ? ? 8B 5D 14 83 C4 30 83 7A 30 00 74 26 57 53 56 68 ? ? ? ? 68 ? ? ? ? 8D 45 14 68 ? ? ? ? 50 C7 45 ? ? ? ? ? FF 15 ? ? ? ? 83 C4 1C 53 B9 ? ? ? ? FF 15 ? ? ? ? D9 45 10"))) != nullptr)
 	{
 		Utils::log("SharedRandomFloat = client.dll + 0x%X", (DWORD)SharedRandomFloat - g_iClientBase);
@@ -479,54 +505,54 @@ DWORD WINAPI StartCheat(LPVOID params)
 	else
 		Utils::log(XorStr("SharedRandomFloat not found"));
 
-	if ((UTIL_TraceRay = (FnTraceLine)Utils::FindPattern(XorStr("client.dll"),
+	if ((UTIL_TraceRay = (FnTraceLine)Utils::FindPattern(("client.dll"),
 		XorStr("53 8B DC 83 EC 08 83 E4 F0 83 C4 04 55 8B 6B 04 89 6C 24 04 8B EC 83 EC 6C 56 8B 43 08"))) != nullptr)
 		Utils::log("UTIL_TraceRay = client.dll + 0x%X", (DWORD)UTIL_TraceRay - g_iClientBase);
 	else
 		Utils::log(XorStr("UTIL_TraceRay not found"));
 
-	if ((WeaponIdToAlias = (FnWeaponIdToAlias)Utils::FindPattern(XorStr("client.dll"),
+	if ((WeaponIdToAlias = (FnWeaponIdToAlias)Utils::FindPattern(("client.dll"),
 		XorStr("55 8B EC 8B 45 08 83 F8 37"))) != nullptr)
 		Utils::log("WeaponIdToAlias = client.dll + 0x%X", (DWORD)WeaponIdToAlias - g_iClientBase);
 	else
 		Utils::log(XorStr("WeaponIdToAlias not found"));
 
-	if ((DispatchUserMessage = (FnUserMessagesDispatch)Utils::FindPattern(XorStr("client.dll"),
+	if ((DispatchUserMessage = (FnUserMessagesDispatch)Utils::FindPattern(("client.dll"),
 		XorStr("55 8B EC 8B 45 08 83 EC 28 85 C0"))) != nullptr)
 		Utils::log("DispatchUserMessage = client.dll + 0x%X", (DWORD)DispatchUserMessage - g_iClientBase);
 	else
 		Utils::log(XorStr("DispatchUserMessage not found"));
 
-	if ((GetClientModeNormal = (FnGetClientMode)Utils::FindPattern(XorStr("client.dll"),
+	if ((GetClientModeNormal = (FnGetClientMode)Utils::FindPattern(("client.dll"),
 		XorStr("8B 0D ? ? ? ? 8B 01 8B 90 ? ? ? ? FF D2 8B 04 85 ? ? ? ? C3"))) != nullptr)
 		Utils::log("GetClientMode = client.dll + 0x%X", (DWORD)GetClientModeNormal - g_iClientBase);
 	else
 		Utils::log(XorStr("GetClientMode not found"));
 
-	if ((g_pCallGetWpnData = (FnGetWpnData)Utils::FindPattern(XorStr("client.dll"),
+	if ((g_pCallGetWpnData = (FnGetWpnData)Utils::FindPattern(("client.dll"),
 		XorStr("0F B7 81 ? ? ? ? 50 E8 ? ? ? ? 83 C4 04"))) != nullptr)
 		Utils::log("CBaseCombatWeapon::GetWpnData found client.dll + 0x%X", (DWORD)g_pCallGetWpnData - g_iClientBase);
 	else
 		Utils::log(XorStr("CBaseCombatWeapon::GetWpnData not found"));
 
-	if((PaintStartDrawing = (FnStartDrawing)Utils::FindPattern(XorStr("vguimatsurface.dll"), 
+	if((PaintStartDrawing = (FnStartDrawing)Utils::FindPattern(("vguimatsurface.dll"), 
 		XorStr("55 8B EC 6A FF 68 ? ? ? ? 64 A1 ? ? ? ? 50 83 EC 14 56 57 A1 ? ? ? ? 33 C5 50 8D 45 F4 64 A3 ? ? ? ? 8B F9 80 3D"))) != nullptr)
 		Utils::log("CMatSystemSurface::StartDrawing found client.dll + 0x%X", (DWORD)PaintStartDrawing - vgui);
 	else
 		Utils::log(XorStr("CMatSystemSurface::StartDrawing not found"));
 
-	if ((PaintFinishDrawing = (FnFinishDrawing)Utils::FindPattern(XorStr("vguimatsurface.dll"),
+	if ((PaintFinishDrawing = (FnFinishDrawing)Utils::FindPattern(("vguimatsurface.dll"),
 		XorStr("55 8B EC 6A FF 68 ? ? ? ? 64 A1 ? ? ? ? 50 51 56 A1 ? ? ? ? 33 C5 50 8D 45 F4 64 A3 ? ? ? ? 6A 00"))) != nullptr)
 		Utils::log("CMatSystemSurface::FinishDrawing found client.dll + 0x%X", (DWORD)PaintFinishDrawing - vgui);
 	else
 		Utils::log(XorStr("CMatSystemSurface::FinishDrawing not found"));
 
-	if((GetCurrentInput = (FnGetCurInput)Utils::FindPattern(XorStr("client.dll"),
+	if((GetCurrentInput = (FnGetCurInput)Utils::FindPattern(("client.dll"),
 		XorStr("55 8B EC 8B 45 08 56 8B F1 83 F8 FF 75 10 8B 0D ? ? ? ? 8B 01 8B 90 ? ? ? ? FF D2 69 C0 ? ? ? ? 8D 44 30 34 5E 5D C2 04 00"))) != nullptr)
 		Utils::log("CInput::_GetCurInput = client.dll + 0x%X", (DWORD)GetCurrentInput - g_iClientBase);
 
 	/*
-	if ((oProcessGetCvarValue = (FnProcessGetCvarValue)Utils::FindPattern(XorStr("engine.dll"),
+	if ((oProcessGetCvarValue = (FnProcessGetCvarValue)Utils::FindPattern(("engine.dll"),
 		XorStr("55 8B EC 81 EC ? ? ? ? A1 ? ? ? ? 33 C5 89 45 FC 53 56 57 8B 7D 08 8B 47 10"))) != nullptr)
 	{
 		Utils::log("CBaseClientState::ProcessGetCvarValue = engine.dll + 0x%X", (DWORD)oProcessGetCvarValue - g_iEngineBase);
@@ -538,7 +564,7 @@ DWORD WINAPI StartCheat(LPVOID params)
 		Utils::log(XorStr("CBaseClientState::ProcessGetCvarValue not found"));
 	*/
 
-	if ((oProcessSetConVar = (FnProcessSetConVar)Utils::FindPattern(XorStr("engine.dll"),
+	if ((oProcessSetConVar = (FnProcessSetConVar)Utils::FindPattern(("engine.dll"),
 		XorStr("55 8B EC 8B 49 08 8B 01 8B 50 18"))) != nullptr)
 	{
 		Utils::log("CBaseClientState::ProcessSetConVar = engine.dll + 0x%X", (DWORD)oProcessSetConVar - g_iEngineBase);
@@ -552,7 +578,7 @@ DWORD WINAPI StartCheat(LPVOID params)
 	else
 		Utils::log(XorStr("CBaseClientState::ProcessSetConVar not found"));
 
-	if ((oCreateMoveShared = (FnCreateMoveShared)Utils::FindPattern(XorStr("client.dll"),
+	if ((oCreateMoveShared = (FnCreateMoveShared)Utils::FindPattern(("client.dll"),
 		XorStr("55 8B EC 6A FF E8 ? ? ? ? 83 C4 04 85 C0 75 06 B0 01"))) != nullptr)
 	{
 		Utils::log("ClientModeShared::CreateMove = client.dll + 0x%X", (DWORD)oCreateMoveShared - g_iClientBase);
@@ -600,6 +626,21 @@ DWORD WINAPI StartCheat(LPVOID params)
 	}
 
 	if (g_interface.ClientHook && indexes::DispatchUserMessage > -1)
+	{
+		oDispatchUserMessage = (FnDispatchUserMessage)g_interface.ClientHook->HookFunction(indexes::DispatchUserMessage, Hooked_DispatchUserMessage);
+		g_interface.ClientHook->HookTable(true);
+		Utils::log("oDispatchUserMessage = 0x%X", (DWORD)oDispatchUserMessage);
+	}
+
+	/*
+	if (g_interface.ClientHook && indexes::WriteUsercmdDeltaToBuffer > -1)
+	{
+		oWriteUsercmdDeltaToBuffer = (FnWriteUsercmdDeltaToBuffer)g_interface.ClientHook->HookFunction(indexes::WriteUsercmdDeltaToBuffer, Hooked_WriteUsercmdDeltaToBuffer);
+		g_interface.ClientHook->HookTable(true);
+		Utils::log("oWriteUsercmdDeltaToBuffer = 0x%X", (DWORD)oWriteUsercmdDeltaToBuffer);
+	}
+	*/
+
 	{
 		oDispatchUserMessage = (FnDispatchUserMessage)g_interface.ClientHook->HookFunction(indexes::DispatchUserMessage, Hooked_DispatchUserMessage);
 		g_interface.ClientHook->HookTable(true);
@@ -666,35 +707,35 @@ DWORD WINAPI StartCheat(LPVOID params)
 
 	if (g_interface.Cvar)
 	{
-		g_conVar[XorStr("sv_cheats")] = g_interface.Cvar->FindVar(XorStr("sv_cheats"));
-		g_conVar[XorStr("r_drawothermodels")] = g_interface.Cvar->FindVar(XorStr("r_drawothermodels"));
-		g_conVar[XorStr("cl_drawshadowtexture")] = g_interface.Cvar->FindVar(XorStr("cl_drawshadowtexture"));
-		g_conVar[XorStr("mat_fullbright")] = g_interface.Cvar->FindVar(XorStr("mat_fullbright"));
-		g_conVar[XorStr("sv_pure")] = g_interface.Cvar->FindVar(XorStr("sv_pure"));
-		g_conVar[XorStr("sv_consistency")] = g_interface.Cvar->FindVar(XorStr("sv_consistency"));
-		g_conVar[XorStr("mp_gamemode")] = g_interface.Cvar->FindVar(XorStr("mp_gamemode"));
-		g_conVar[XorStr("c_thirdpersonshoulder")] = g_interface.Cvar->FindVar(XorStr("c_thirdpersonshoulder"));
-		g_conVar[XorStr("c_thirdpersonshoulderheight")] = g_interface.Cvar->FindVar(XorStr("c_thirdpersonshoulderheight"));
-		g_conVar[XorStr("c_thirdpersonshoulderoffset")] = g_interface.Cvar->FindVar(XorStr("c_thirdpersonshoulderoffset"));
-		g_conVar[XorStr("cl_mouseenable")] = g_interface.Cvar->FindVar(XorStr("cl_mouseenable"));
-		g_conVar[XorStr("cl_interp")] = g_interface.Cvar->FindVar(XorStr("cl_interp"));
-		g_conVar[XorStr("cl_updaterate")] = g_interface.Cvar->FindVar(XorStr("cl_updaterate"));
-		g_conVar[XorStr("sv_maxupdaterate")] = g_interface.Cvar->FindVar(XorStr("sv_maxupdaterate"));
-		g_conVar[XorStr("sv_minupdaterate")] = g_interface.Cvar->FindVar(XorStr("sv_minupdaterate"));
-		g_conVar[XorStr("cl_interp_ratio")] = g_interface.Cvar->FindVar(XorStr("cl_interp_ratio"));
-		g_conVar[XorStr("mat_hdr_enabled")] = g_interface.Cvar->FindVar(XorStr("mat_hdr_enabled"));
-		g_conVar[XorStr("mat_hdr_level")] = g_interface.Cvar->FindVar(XorStr("mat_hdr_level"));
-		g_conVar[XorStr("mat_texture_list")] = g_interface.Cvar->FindVar(XorStr("mat_texture_list"));
-		g_conVar[XorStr("r_dynamic")] = g_interface.Cvar->FindVar(XorStr("r_dynamic"));
-		g_conVar[XorStr("r_dynamiclighting")] = g_interface.Cvar->FindVar(XorStr("r_dynamiclighting"));
-		g_conVar[XorStr("mat_picmip")] = g_interface.Cvar->FindVar(XorStr("mat_picmip"));
-		g_conVar[XorStr("mat_showlowresimage")] = g_interface.Cvar->FindVar(XorStr("mat_showlowresimage"));
-		g_conVar[XorStr("fog_override")] = g_interface.Cvar->FindVar(XorStr("fog_override"));
-		g_conVar[XorStr("fog_end")] = g_interface.Cvar->FindVar(XorStr("fog_end"));
-		g_conVar[XorStr("fog_endskybox")] = g_interface.Cvar->FindVar(XorStr("fog_endskybox"));
-		g_conVar[XorStr("addons_eclipse_content")] = g_interface.Cvar->FindVar(XorStr("addons_eclipse_content"));
-		g_conVar[XorStr("z_gun_range")] = g_interface.Cvar->FindVar(XorStr("z_gun_range"));
-		g_conVar[XorStr("claw_range")] = g_interface.Cvar->FindVar(XorStr("claw_range"));
+		g_conVar[("sv_cheats")] = g_interface.Cvar->FindVar(("sv_cheats"));
+		g_conVar[("r_drawothermodels")] = g_interface.Cvar->FindVar(("r_drawothermodels"));
+		g_conVar[("cl_drawshadowtexture")] = g_interface.Cvar->FindVar(("cl_drawshadowtexture"));
+		g_conVar[("mat_fullbright")] = g_interface.Cvar->FindVar(("mat_fullbright"));
+		g_conVar[("sv_pure")] = g_interface.Cvar->FindVar(("sv_pure"));
+		g_conVar[("sv_consistency")] = g_interface.Cvar->FindVar(("sv_consistency"));
+		g_conVar[("mp_gamemode")] = g_interface.Cvar->FindVar(("mp_gamemode"));
+		g_conVar[("c_thirdpersonshoulder")] = g_interface.Cvar->FindVar(("c_thirdpersonshoulder"));
+		g_conVar[("c_thirdpersonshoulderheight")] = g_interface.Cvar->FindVar(("c_thirdpersonshoulderheight"));
+		g_conVar[("c_thirdpersonshoulderoffset")] = g_interface.Cvar->FindVar(("c_thirdpersonshoulderoffset"));
+		g_conVar[("cl_mouseenable")] = g_interface.Cvar->FindVar(("cl_mouseenable"));
+		g_conVar[("cl_interp")] = g_interface.Cvar->FindVar(("cl_interp"));
+		g_conVar[("cl_updaterate")] = g_interface.Cvar->FindVar(("cl_updaterate"));
+		g_conVar[("sv_maxupdaterate")] = g_interface.Cvar->FindVar(("sv_maxupdaterate"));
+		g_conVar[("sv_minupdaterate")] = g_interface.Cvar->FindVar(("sv_minupdaterate"));
+		g_conVar[("cl_interp_ratio")] = g_interface.Cvar->FindVar(("cl_interp_ratio"));
+		g_conVar[("mat_hdr_enabled")] = g_interface.Cvar->FindVar(("mat_hdr_enabled"));
+		g_conVar[("mat_hdr_level")] = g_interface.Cvar->FindVar(("mat_hdr_level"));
+		g_conVar[("mat_texture_list")] = g_interface.Cvar->FindVar(("mat_texture_list"));
+		g_conVar[("r_dynamic")] = g_interface.Cvar->FindVar(("r_dynamic"));
+		g_conVar[("r_dynamiclighting")] = g_interface.Cvar->FindVar(("r_dynamiclighting"));
+		g_conVar[("mat_picmip")] = g_interface.Cvar->FindVar(("mat_picmip"));
+		g_conVar[("mat_showlowresimage")] = g_interface.Cvar->FindVar(("mat_showlowresimage"));
+		g_conVar[("fog_override")] = g_interface.Cvar->FindVar(("fog_override"));
+		g_conVar[("fog_end")] = g_interface.Cvar->FindVar(("fog_end"));
+		g_conVar[("fog_endskybox")] = g_interface.Cvar->FindVar(("fog_endskybox"));
+		g_conVar[("addons_eclipse_content")] = g_interface.Cvar->FindVar(("addons_eclipse_content"));
+		g_conVar[("z_gun_range")] = g_interface.Cvar->FindVar(("z_gun_range"));
+		g_conVar[("claw_range")] = g_interface.Cvar->FindVar(("claw_range"));
 
 		for (const auto& cvars : g_conVar)
 		{
@@ -5419,7 +5460,7 @@ bool __stdcall Hooked_DispatchUserMessage(int msg_id, bf_read* msg_data)
 	return oDispatchUserMessage(msg_id, msg_data);
 }
 
-void __stdcall Hooked_CL_Move(float accumulated_extra_samples, bool bFinalTick)
+void __cdecl Hooked_CL_Move(float accumulated_extra_samples, bool bFinalTick)
 {
 	DWORD _edi;
 	BYTE _bl;
@@ -5437,11 +5478,25 @@ void __stdcall Hooked_CL_Move(float accumulated_extra_samples, bool bFinalTick)
 		Utils::log(XorStr("Hooked_CL_Move trigged."));
 	}
 
+	// int __usercall CL_Move@<eax>(char a1@<bl>, int a2@<edi>, double a3@<st0>, float a4, char a5)
 	auto CL_Move = [&_bl, &_edi](float accumulated_extra_samples, bool bFinalTick) -> void
 	{
 		// 不支持 push byte. 所以只能 push word
 		DWORD wFinalTick = bFinalTick;
 
+		/*	函数调用方式
+			.text:10189A75 8B 45 0C						mov     eax, [ebp+arg_4]
+			.text:10189A78 50							push    eax
+			.text:10189A79 DC 05 B8 3B 69 10			fadd    dbl_10693BB8
+			.text:10189A7F 51							push    ecx
+			.text:10189A80 DD 1D B8 3B 69 10			fstp    dbl_10693BB8
+			.text:10189A86 D9 45 08						fld     [ebp+arg_0]
+			.text:10189A89 D9 1C 24						fstp    [esp+14h+var_14]
+			.text:10189A8C E8 9F 2A EF FF				call    CL_Move
+			.text:10189A91 83 C4 08						add     esp, 8
+		*/
+
+		// 编译器调用函数时有可能会用到寄存器，导致需要传递的值被覆盖
 		__asm
 		{
 			// 寄存器传参
@@ -5456,7 +5511,7 @@ void __stdcall Hooked_CL_Move(float accumulated_extra_samples, bool bFinalTick)
 			call	oCL_Move
 
 			// 清理堆栈(需要内存对齐)
-			// add		esp, 8
+			add		esp, 8
 		};
 	};
 
@@ -5492,6 +5547,109 @@ void __stdcall Hooked_CL_Move(float accumulated_extra_samples, bool bFinalTick)
 			CL_Move(accumulated_extra_samples, bFinalTick);
 		}
 	}
+}
+
+bool __stdcall Hooked_WriteUsercmdDeltaToBuffer(int nSlot, bf_write* buf, int from, int to, bool isNewCmd)
+{
+	static bool showHint = true;
+	if (showHint)
+	{
+		showHint = false;
+		Utils::log(XorStr("Hooked_WriteUsercmdDeltaToBuffer trigged."));
+	}
+	
+	if (oWriteUsercmd == nullptr)
+		return oWriteUsercmdDeltaToBuffer(nSlot, buf, from, to, isNewCmd);
+
+	oWriteUsercmd(buf, g_interface.Input->GetUserCmd(nSlot, to), g_interface.Input->GetUserCmd(nSlot, from));
+	return !(buf->IsOverflowed());
+
+
+	/*
+	static int tickBaseShift = 0;
+	static bool inSendMove = false, firstSendMovePack = false, dontMoreCall = false;
+
+	if(g_interface.ClientState == nullptr || g_pNetChannelInfo == nullptr || tickBaseShift <= 0 || dontMoreCall)
+		return oWriteUsercmdDeltaToBuffer(nSlot, buf, from, to, isNewCmd);
+
+	if (from != -1)
+		return true;
+
+	DWORD dwEBP = NULL;
+	__asm mov dwEBP, ebp;
+	CCLCMsg_Move_t* msg = (CCLCMsg_Move_t*)(*(byte**)dwEBP - 0x1008);
+	INetChannel* netChan = (INetChannel*)g_pNetChannelInfo;
+
+	int newCommands = msg->numNewCommands;
+
+	// Call CL_SendMove multiple times - split fake move commands between packets to bypass 62 limit
+	if (!inSendMove)
+	{
+		if (newCommands <= 0)
+			return false;
+
+		inSendMove = true;
+		firstSendMovePack = true;
+		tickBaseShift += newCommands;
+
+		while (tickBaseShift > 0)
+		{
+			oCL_SendMove();
+			netChan->Transmit(false);
+			firstSendMovePack = false;
+		}
+
+		inSendMove = false;
+		return false; // Stop current CL_SendMove from sending
+	}
+
+	// Pack 10 more ticks by faking packet loss
+	if (!firstSendMovePack)
+	{
+		int loss = min(tickBaseShift, MAX_USERCMD_LOSS);
+		tickBaseShift -= loss;
+		netChan->m_nOutSequenceNr += loss;
+	}
+
+	// Manipulate CLC_Move
+	int nextCmdNr = g_interface.ClientState->lastOutgoingCommand + g_interface.ClientState->chokedCommands + 1;
+	int totalNewCommands = min(tickBaseShift, MAX_USERCMDS_SEND);
+	tickBaseShift -= totalNewCommands;
+
+	from = -1;
+	msg->numNewCommands = totalNewCommands;
+	msg->numBackupCommands = 0;
+
+	// Write real commands
+
+	for (to = nextCmdNr - newCommands + 1; to <= nextCmdNr; to++)
+	{
+		if (!oWriteUsercmdDeltaToBuffer(nSlot, buf, from, to, true))
+			return false;
+		
+		from = to;
+	}
+
+	// Write fake commands
+
+	CUserCmd* lastRealCmd = g_interface.Input->GetUserCmd(nSlot, from);
+	CUserCmd fromCmd;
+	if (lastRealCmd)
+		fromCmd = *lastRealCmd;
+
+	CUserCmd toCmd = fromCmd;
+	toCmd.command_number++;
+	toCmd.tick_count += 200; // Prevent server from executing fake commands sometimes
+
+	for (int i = newCommands; i <= totalNewCommands; i++)
+	{
+		oWriteUsercmd(buf, &toCmd, &fromCmd);
+		fromCmd = toCmd;
+		toCmd.command_number++;
+		toCmd.tick_count++;
+	}
+	return true;
+	*/
 }
 
 bool __cdecl Hooked_IsInDebugSession()
@@ -6185,28 +6343,28 @@ bool __fastcall Hooked_EngineKeyEvent(CEngineVGui *_ecx, void *_edx, const Input
 // 禁止被服务器查询的 ConVar
 std::vector<std::string> g_vsBannedQueryConVar
 {
-	XorStr("cl_"), XorStr("sv_"), XorStr("mat_"), XorStr("c_"), XorStr("cam_"), XorStr("net_"), XorStr("sm_"), XorStr("mm_"), XorStr("rcon_password"), XorStr("r_"), XorStr("cam_"), 
-	XorStr("z_"), XorStr("mp_"), XorStr("survivor_"), XorStr("con_"), XorStr("fps_max"), XorStr("fog_"), XorStr("crosshair"), XorStr("hud_"), XorStr("ui_"), XorStr("gameui_"), 
-	XorStr("rate"), XorStr("c_thirdpersonshoulder"), XorStr("sv_cheats")
+	("cl_"), ("sv_"), ("mat_"), ("c_"), ("cam_"), ("net_"), ("sm_"), ("mm_"), ("rcon_password"), ("r_"), ("cam_"), 
+	("z_"), ("mp_"), ("survivor_"), ("con_"), ("fps_max"), ("fog_"), ("crosshair"), ("hud_"), ("ui_"), ("gameui_"), 
+	("rate"), ("c_thirdpersonshoulder"), ("sv_cheats")
 };
 
 // 禁止被服务器设置的 ConVar
 std::vector<std::string> g_vsBannedSettingConVar
 {
-	XorStr("cl_"), XorStr("rate"), XorStr("fog_"), XorStr("net_"), XorStr("ui_"), XorStr("vgui_"), XorStr("mat_"), XorStr("r_"), XorStr("hud_"), XorStr("joy_"), XorStr("snd_"), XorStr("c_"), XorStr("cam_"), 
-	XorStr("sm_"), XorStr("mm_"), XorStr("con_"), XorStr("fps_max"), XorStr("crosshair"), XorStr("r_screenoverlay"), XorStr("sv_allow_wait_command"), 
-	XorStr("addons_eclipse_content"), XorStr("sv_pure"), XorStr("sv_consistency"), XorStr("c_thirdpersonshoulder")
+	("cl_"), ("rate"), ("fog_"), ("net_"), ("ui_"), ("vgui_"), ("mat_"), ("r_"), ("hud_"), ("joy_"), ("snd_"), ("c_"), ("cam_"), 
+	("sm_"), ("mm_"), ("con_"), ("fps_max"), ("crosshair"), ("r_screenoverlay"), ("sv_allow_wait_command"), 
+	("addons_eclipse_content"), ("sv_pure"), ("sv_consistency"), ("c_thirdpersonshoulder")
 };
 
 // 禁止被服务器执行的 Commands
 std::vector<std::string> g_vsBannedExecuteCommand
 {
-	XorStr("hidehud"), XorStr("crosshair"), XorStr("r_screenoverlay"), XorStr("jpeg"), XorStr("screenshot"), XorStr("bind"), XorStr("kill"), 
-	XorStr("explode"), XorStr("connect"), XorStr("retry"), XorStr("disconnect"), XorStr("exit"), XorStr("quit"), XorStr("record"), XorStr("say"), XorStr("say_team"), 
-	XorStr("shake"), XorStr("fadein"), XorStr("fadeout"), XorStr("forcebind"), XorStr("fps_max"), XorStr("cl_"), XorStr("rate"), XorStr("mat_"), XorStr("r_"), XorStr("hud_"), 
-	XorStr("gameui_"), XorStr("cam_"), XorStr("ammo_"), XorStr("c_"), XorStr("con_"), XorStr("debug_"), XorStr("test_"), XorStr("demo_"), XorStr("dsp_"), XorStr("fog_"), 
-	XorStr("joy_"), XorStr("+"), XorStr("-"), XorStr("mem_"), XorStr("mm_"), XorStr("sm_"), XorStr("mod_"), XorStr("music_"), XorStr("net_"), XorStr("overview_"), XorStr("particle_"), 
-	XorStr("snd_"), XorStr("Test_"), XorStr("ui_"), XorStr("vgui_"), XorStr("voice_"), XorStr("vprof_"), XorStr("alias"), XorStr("unbind"), XorStr("unbindall")
+	("hidehud"), ("crosshair"), ("r_screenoverlay"), ("jpeg"), ("screenshot"), ("bind"), ("kill"), 
+	("explode"), ("connect"), ("retry"), ("disconnect"), ("exit"), ("quit"), ("record"), ("say"), ("say_team"), 
+	("shake"), ("fadein"), ("fadeout"), ("forcebind"), ("fps_max"), ("cl_"), ("rate"), ("mat_"), ("r_"), ("hud_"), 
+	("gameui_"), ("cam_"), ("ammo_"), ("c_"), ("con_"), ("debug_"), ("test_"), ("demo_"), ("dsp_"), ("fog_"), 
+	("joy_"), ("+"), ("-"), ("mem_"), ("mm_"), ("sm_"), ("mod_"), ("music_"), ("net_"), ("overview_"), ("particle_"), 
+	("snd_"), ("Test_"), ("ui_"), ("vgui_"), ("voice_"), ("vprof_"), ("alias"), ("unbind"), ("unbindall")
 };
 
 bool __fastcall Hooked_ProcessGetCvarValue(CBaseClientState *_ecx, void *_edx, SVC_GetCvarValue *msg)

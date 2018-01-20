@@ -1,5 +1,118 @@
 #pragma once
 
+typedef void *FileHandle_t;
+#define MAX_STREAMS 2
+#define MAX_OSPATH 260
+#define MAX_FLOWS 2 // in & out
+
+#define SUBCHANNEL_FREE 0	// subchannel is free to use
+#define SUBCHANNEL_TOSEND 1  // subchannel has data, but not send yet
+#define SUBCHANNEL_WAITING 2 // sbuchannel sent data, waiting for ACK
+#define SUBCHANNEL_DIRTY 3   // subchannel is marked as dirty during changelevel
+
+class INetChannelHandler;
+class INetMessage;
+class IDemoRecorder;
+
+#undef SetPort
+typedef struct netadr_s
+{
+public:
+	typedef enum
+	{
+		NA_NULL = 0,
+		NA_LOOPBACK,
+		NA_BROADCAST,
+		NA_IP,
+	} netadrtype_t;
+
+	netadr_s()
+	{
+		SetIP(0);
+		SetPort(0);
+		SetType(NA_IP);
+	}
+	netadr_s(unsigned int unIP, uint16_t usPort)
+	{
+		SetIP(unIP);
+		SetPort(usPort);
+		SetType(NA_IP);
+	}
+	netadr_s(const char *pch) { SetFromString(pch); }
+	void Clear() { ZeroMemory(ip, 4); }; // invalids Address
+
+	void SetType(netadrtype_t type) { this->type = type; };
+	void SetPort(unsigned short port) { this->port = port; };
+	bool SetFromSockadr(const struct sockaddr *s);
+	void SetIP(uint8_t b1, uint8_t b2, uint8_t b3, uint8_t b4)
+	{
+		ip[0] = b1; ip[1] = b2; ip[2] = b3; ip[3] = b4;
+	};
+	void SetIP(unsigned int unIP) // Sets IP.  unIP is in host order (little-endian)
+	{
+		ip[0] = ((unIP & 0xFF000000) >> 24);
+		ip[1] = ((unIP & 0xFF0000) >> 16);
+		ip[2] = ((unIP & 0xFF00) >> 8);
+		ip[3] = (unIP & 0xFF);
+	};
+	void SetIPAndPort(unsigned int unIP, unsigned short usPort)
+	{
+		SetIP(unIP);
+		SetPort(usPort);
+	}
+	void SetFromString(const char *pch, bool bUseDNS = false) // if bUseDNS is true then do a DNS lookup if needed
+	{
+		std::vector<std::string> addr = Utils::split(pch, ".");
+		if (addr.size() < 4)
+			return;
+
+		if (addr[3].find(":") != std::string::npos)
+		{
+			addr.push_back(addr[3].substr(addr[3].find(":")));
+			addr[3] = addr[3].substr(0, addr[3].find(":") - 1);
+			port = atoi(addr[4].c_str());
+		}
+
+		ip[0] = atoi(addr[0].c_str());
+		ip[1] = atoi(addr[1].c_str());
+		ip[2] = atoi(addr[2].c_str());
+		ip[3] = atoi(addr[3].c_str());
+	};
+
+	bool CompareAdr(const netadr_s &a, bool onlyBase = false) const
+	{
+		return (memcmp(ip, a.ip, 4) == 0 && port == a.port && type == a.type);
+	};
+	bool CompareClassBAdr(const netadr_s &a) const;
+	bool CompareClassCAdr(const netadr_s &a) const;
+
+	netadrtype_t GetType() const { return type; };
+	unsigned short GetPort() const { return port; };
+	const char *ToString(bool onlyBase = false) const // returns xxx.xxx.xxx.xxx:ppppp
+	{
+		std::stringstream ss;
+		ss << ip[0] << "." << ip[1] << "." << ip[2] << "." << ip[3] << ":" << port;
+		return ss.str().c_str();
+	};
+	void ToSockadr(struct sockaddr *s) const;
+	unsigned int GetIP() const { return ((ip[0] << 24) | (ip[1] << 16) | (ip[2] << 8) | (ip[3])); };
+
+	bool IsLocalhost() const { return (ip[0] == 127 && ip[1] == 0 && ip[2] == 0 && ip[3] == 1); };   // true, if this is the localhost IP
+	bool IsLoopback() const { return (type == NA_LOOPBACK); };	// true if engine loopback buffers are used
+	bool IsReservedAdr() const { return (ip[0] == 192 && ip[1] == 168); }; // true, if this is a private LAN IP
+	bool IsValid() const { return (GetIP() > 0 && port > 0); };		// ip & port != 0
+	void SetFromSocket(int hSocket);
+	// These function names are decorated because the Xbox360 defines macros for ntohl and htonl
+	unsigned long addr_ntohl() const;
+	unsigned long addr_htonl() const;
+	bool operator==(const netadr_s &netadr) const { return (CompareAdr(netadr)); }
+	bool operator<(const netadr_s &netadr) const;
+
+public: // members are public to avoid to much changes
+	netadrtype_t type;
+	unsigned char ip[4];
+	unsigned short port;
+} netadr_t;
 
 class INetChannelInfo
 {
@@ -52,6 +165,166 @@ public:
 	virtual void GetRemoteFramerate(float *pflFrameTime, float *pflFrameTimeStdDeviation) const = 0;
 
 	virtual float GetTimeoutSeconds() const = 0;
+
+public: // netchan structurs
+	typedef struct dataFragments_s
+	{
+		FileHandle_t file;				// open file handle
+		char filename[MAX_OSPATH];		// filename
+		char *buffer;					// if NULL it's a file
+		unsigned int BYTEs;				// size in BYTEs
+		unsigned int bits;				// size in bits
+		unsigned int transferID;		// only for files
+		bool isCompressed;				// true if data is bzip compressed
+		unsigned int nUncompressedSize; // full size in BYTEs
+		bool asTCP;						// send as TCP stream
+		int numFragments;				// number of total fragments
+		int ackedFragments;				// number of fragments send & acknowledged
+		int pendingFragments;			// number of fragments send, but not acknowledged yet
+	} dataFragments_t;
+
+	struct subChannel_s
+	{
+		int startFraggment[MAX_STREAMS];
+		int numFragments[MAX_STREAMS];
+		int sendSeqNr;
+		int state; // 0 = free, 1 = scheduled to send, 2 = send & waiting, 3 = dirty
+		int index; // index in m_SubChannels[]
+
+		void Free()
+		{
+			state = SUBCHANNEL_FREE;
+			sendSeqNr = -1;
+			for (int i = 0; i < MAX_STREAMS; i++)
+			{
+				numFragments[i] = 0;
+				startFraggment[i] = -1;
+			}
+		}
+	};
+
+	// Client's now store the command they sent to the server and the entire results set of
+	//  that command.
+	typedef struct netframe_s
+	{
+		// Data received from server
+		float time;		   // net_time received/send
+		int size;		   // total size in BYTEs
+		float latency;	 // raw ping for this packet, not cleaned. set when acknowledged otherwise -1.
+		float avg_latency; // averaged ping for this packet
+		bool valid;		   // false if dropped, lost, flushed
+		int choked;		   // number of previously chocked packets
+		int dropped;
+		float m_flInterpolationAmount;
+		unsigned short msggroups[INetChannelInfo::TOTAL]; // received BYTEs for each message group
+	} netframe_t;
+
+	typedef struct
+	{
+		float nextcompute;		  // Time when we should recompute k/sec data
+		float avgBYTEspersec;	 // average BYTEs/sec
+		float avgpacketspersec;   // average packets/sec
+		float avgloss;			  // average packet loss [0..1]
+		float avgchoke;			  // average packet choke [0..1]
+		float avglatency;		  // average ping, not cleaned
+		float latency;			  // current ping, more accurate also more jittering
+		int totalpackets;		  // total processed packets
+		int totalBYTEs;			  // total processed BYTEs
+		int currentindex;		  // current frame index
+		netframe_t frames[64];	// frame history
+		netframe_t *currentframe; // current frame
+	} netflow_t;
+
+public:
+	bool m_bProcessingMessages;
+	bool m_bShouldDelete;
+
+	// last send outgoing sequence number
+	int m_nOutSequenceNr;
+	// last received incoming sequnec number
+	int m_nInSequenceNr;
+	// last received acknowledge outgoing sequnce number
+	int m_nOutSequenceNrAck;
+
+	// state of outgoing reliable data (0/1) flip flop used for loss detection
+	int m_nOutReliableState;
+	// state of incoming reliable data
+	int m_nInReliableState;
+
+	int m_nChokedPackets; //number of choked packets
+
+						  // Reliable data buffer, send which each packet (or put in waiting list)
+	bf_write m_StreamReliable;
+	CUtlMemory<BYTE> m_ReliableDataBuffer;
+
+	// unreliable message buffer, cleared which each packet
+	bf_write m_StreamUnreliable;
+	CUtlMemory<BYTE> m_UnreliableDataBuffer;
+
+	bf_write m_StreamVoice;
+	CUtlMemory<BYTE> m_VoiceDataBuffer;
+
+	// don't use any vars below this (only in net_ws.cpp)
+
+	int m_Socket;		// NS_SERVER or NS_CLIENT index, depending on channel.
+	int m_StreamSocket; // TCP socket handle
+
+	unsigned int m_MaxReliablePayloadSize; // max size of reliable payload in a single packet
+
+										   // Address this channel is talking to.
+	netadr_t remote_address;
+
+	// For timeouts.  Time last message was received.
+	float last_received;
+	// Time when channel was connected.
+	double connect_time;
+
+	// Bandwidth choke
+	// BYTEs per second
+	int m_Rate;
+	// If realtime > cleartime, free to send next packet
+	double m_fClearTime;
+
+	CUtlVector<dataFragments_t *> m_WaitingList[MAX_STREAMS]; // waiting list for reliable data and file transfer
+	dataFragments_t m_ReceiveList[MAX_STREAMS];				  // receive buffers for streams
+	subChannel_s m_SubChannels[8];
+
+	unsigned int m_FileRequestCounter; // increasing counter with each file request
+	bool m_bFileBackgroundTranmission; // if true, only send 1 fragment per packet
+	bool m_bUseCompression;			   // if true, larger reliable data will be bzip compressed
+
+									   // TCP stream state maschine:
+	bool m_StreamActive;		   // true if TCP is active
+	int m_SteamType;			   // STREAM_CMD_*
+	int m_StreamSeqNr;			   // each blob send of TCP as an increasing ID
+	int m_StreamLength;			   // total length of current stream blob
+	int m_StreamReceived;		   // length of already received BYTEs
+	char m_SteamFile[MAX_OSPATH];  // if receiving file, this is it's name
+	CUtlMemory<BYTE> m_StreamData; // Here goes the stream data (if not file). Only allocated if we're going to use it.
+
+								   // packet history
+	netflow_t m_DataFlow[MAX_FLOWS];
+	int m_MsgStats[INetChannelInfo::TOTAL]; // total BYTEs for each message group
+
+	int m_PacketDrop; // packets lost before getting last update (was global net_drop)
+
+	char m_Name[32]; // channel name
+
+	unsigned int m_ChallengeNr; // unique, random challenge number
+
+	float m_Timeout; // in seconds
+
+	INetChannelHandler *m_MessageHandler;	// who registers and processes messages
+	CUtlVector<INetMessage *> m_NetMessages; // list of registered message
+	IDemoRecorder *m_DemoRecorder;			 // if != NULL points to a recording/playback demo object
+	int m_nQueuedPackets;
+
+	float m_flInterpolationAmount;
+	float m_flRemoteFrameTime;
+	float m_flRemoteFrameTimeStdDeviation;
+	int m_nMaxRoutablePayloadSize;
+
+	int m_nSplitPacketSequence;
 };
 
 class INetChannel;
@@ -127,104 +400,6 @@ public:
 
 	virtual void ResetDemoInterpolation() = 0;
 };
-
-#undef SetPort
-typedef struct netadr_s
-{
-public:
-	typedef enum
-	{
-		NA_NULL = 0,
-		NA_LOOPBACK,
-		NA_BROADCAST,
-		NA_IP,
-	} netadrtype_t;
-
-	netadr_s()
-	{
-		SetIP(0);
-		SetPort(0);
-		SetType(NA_IP);
-	}
-	netadr_s(unsigned int unIP, uint16_t usPort)
-	{
-		SetIP(unIP);
-		SetPort(usPort);
-		SetType(NA_IP);
-	}
-	netadr_s(const char *pch) { SetFromString(pch); }
-	void Clear() { ZeroMemory(ip, 4); }; // invalids Address
-
-	void SetType(netadrtype_t type) { this->type = type; };
-	void SetPort(unsigned short port) { this->port = port; };
-	bool SetFromSockadr(const struct sockaddr *s);
-	void SetIP(uint8_t b1, uint8_t b2, uint8_t b3, uint8_t b4)
-	{ ip[0] = b1; ip[1] = b2; ip[2] = b3; ip[3] = b4; };
-	void SetIP(unsigned int unIP) // Sets IP.  unIP is in host order (little-endian)
-	{
-		ip[0] = ((unIP & 0xFF000000) >> 24);
-		ip[1] = ((unIP & 0xFF0000) >> 16);
-		ip[2] = ((unIP & 0xFF00) >> 8);
-		ip[3] = (unIP & 0xFF);
-	};
-	void SetIPAndPort(unsigned int unIP, unsigned short usPort)
-	{
-		SetIP(unIP);
-		SetPort(usPort);
-	}
-	void SetFromString(const char *pch, bool bUseDNS = false) // if bUseDNS is true then do a DNS lookup if needed
-	{
-		std::vector<std::string> addr = Utils::split(pch, ".");
-		if (addr.size() < 4)
-			return;
-
-		if (addr[3].find(":") != std::string::npos)
-		{
-			addr.push_back(addr[3].substr(addr[3].find(":")));
-			addr[3] = addr[3].substr(0, addr[3].find(":") - 1);
-			port = atoi(addr[4].c_str());
-		}
-
-		ip[0] = atoi(addr[0].c_str());
-		ip[1] = atoi(addr[1].c_str());
-		ip[2] = atoi(addr[2].c_str());
-		ip[3] = atoi(addr[3].c_str());
-	};
-
-	bool CompareAdr(const netadr_s &a, bool onlyBase = false) const
-	{
-		return (memcmp(ip, a.ip, 4) == 0 && port == a.port && type == a.type);
-	};
-	bool CompareClassBAdr(const netadr_s &a) const;
-	bool CompareClassCAdr(const netadr_s &a) const;
-
-	netadrtype_t GetType() const { return type; };
-	unsigned short GetPort() const { return port; };
-	const char *ToString(bool onlyBase = false) const // returns xxx.xxx.xxx.xxx:ppppp
-	{
-		std::stringstream ss;
-		ss << ip[0] << "." << ip[1] << "." << ip[2] << "." << ip[3] << ":" << port;
-		return ss.str().c_str();
-	};
-	void ToSockadr(struct sockaddr *s) const;
-	unsigned int GetIP() const { return ((ip[0] << 24) | (ip[1] << 16) | (ip[2] << 8) | (ip[3])); };
-
-	bool IsLocalhost() const { return (ip[0] == 127 && ip[1] == 0 && ip[2] == 0 && ip[3] == 1); };   // true, if this is the localhost IP
-	bool IsLoopback() const { return (type == NA_LOOPBACK); };	// true if engine loopback buffers are used
-	bool IsReservedAdr() const { return (ip[0] == 192 && ip[1] == 168); }; // true, if this is a private LAN IP
-	bool IsValid() const { return (GetIP() > 0 && port > 0); };		// ip & port != 0
-	void SetFromSocket(int hSocket);
-	// These function names are decorated because the Xbox360 defines macros for ntohl and htonl
-	unsigned long addr_ntohl() const;
-	unsigned long addr_htonl() const;
-	bool operator==(const netadr_s &netadr) const { return (CompareAdr(netadr)); }
-	bool operator<(const netadr_s &netadr) const;
-
-public: // members are public to avoid to much changes
-	netadrtype_t type;
-	unsigned char ip[4];
-	unsigned short port;
-} netadr_t;
 
 class INetChannel : public INetChannelInfo
 {
@@ -335,6 +510,60 @@ class SVC_GameEventList;
 class SVC_GetCvarValue;
 class SVC_SplitScreen;
 class SVC_CmdKeyValues;
+class PackedEntity;
+class CServerClassInfo;
+class CNetworkStringTableContainer;
+
+#define STEAM_KEYSIZE 2048
+
+class CClockDriftMgr
+{
+	friend class CBaseClientState;
+
+public:
+	CClockDriftMgr() {};
+
+	// Is clock correction even enabled right now?
+	static bool IsClockCorrectionEnabled();
+
+	// Clear our state.
+	void Clear();
+
+	// This is called each time a server packet comes in. It is used to correlate
+	// where the server is in time compared to us.
+	void SetServerTick(int iServerTick);
+
+	// Pass in the frametime you would use, and it will drift it towards the server clock.
+	float AdjustFrameTime(float inputFrameTime);
+
+	// Returns how many ticks ahead of the server the client is.
+	float GetCurrentClockDifference() const;
+
+private:
+	void ShowDebugInfo(float flAdjustment);
+
+	// This scales the offsets so the average produced is equal to the
+	// current average + flAmount. This way, as we add corrections,
+	// we lower the average accordingly so we don't keep responding
+	// as much as we need to after we'd adjusted it a couple times.
+	void AdjustAverageDifferenceBy(float flAmountInSeconds);
+
+private:
+	enum
+	{
+		// This controls how much it smoothes out the samples from the server.
+		NUM_CLOCKDRIFT_SAMPLES = 16
+	};
+
+	// This holds how many ticks the client is ahead each time we get a server tick.
+	// We average these together to get our estimate of how far ahead we are.
+	float m_ClockOffsets[NUM_CLOCKDRIFT_SAMPLES];
+	int m_iCurClockOffset;
+
+	int m_nServerTick; // Last-received tick from the server.
+	int m_nClientTick; // The client's own tick counter (specifically, for interpolation during rendering).
+					   // The server may be on a slightly different tick and the client will drift towards it.
+};
 
 class CBaseClientState
 {
@@ -402,6 +631,52 @@ public:
 	virtual void HandleReservationResponse(netadr_s&, bool) = 0;
 	virtual void HandleReserveServerChallengeResponse(int) = 0;
 	virtual void SetServerReservationCookie(unsigned long long) = 0;
+
+public:
+	// Connection to server.
+	int m_Socket;				 // network socket
+	INetChannel *m_NetChannel;   // Our sequenced channel to the remote server.
+	unsigned int m_nChallengeNr; // connection challenge number
+	double m_flConnectTime;		 // If gap of connect_time to net_time > 3000, then resend connect packet
+	int m_nRetryNumber;			 // number of retry connection attemps
+	char m_szRetryAddress[MAX_OSPATH];
+	int m_nSignonState;		// see SIGNONSTATE_* definitions
+	double m_flNextCmdTime; // When can we send the next command packet?
+	int m_nServerCount;		// server identification for prespawns, must match the svs.spawncount which
+	
+							// is incremented on server spawning.  This supercedes svs.spawn_issued, in that
+	// we can now spend a fair amount of time sitting connected to the server
+	// but downloading models, sounds, etc.  So much time that it is possible that the
+	// server might change levels again and, if so, we need to know that.
+	int m_nCurrentSequence; // this is the sequence number of the current incoming packet
+
+	CClockDriftMgr m_ClockDriftMgr;
+
+	int m_nDeltaTick;  //	last valid received snapshot (server) tick
+	bool m_bPaused;	// send over by server
+	int m_nViewEntity; // cl_entitites[cl.viewentity] == player point of view
+
+	int m_nPlayerSlot; // own player entity index-1. skips world. Add 1 to get cl_entitites index;
+
+	char m_szLevelName[40];		 // for display on solo scoreboard
+	char m_szLevelNameShort[40]; // removes maps/ and .bsp extension
+
+	int m_nMaxClients; // max clients on server
+
+	PackedEntity *m_pEntityBaselines[2][MAX_EDICTS]; // storing entity baselines
+
+	// This stuff manages the receiving of data tables and instantiating of client versions
+	// of server-side classes.
+	CServerClassInfo *m_pServerClasses;
+	int m_nServerClasses;
+	int m_nServerClassBits;
+	char m_szEncrytionKey[STEAM_KEYSIZE];
+	unsigned int m_iEncryptionKeySize;
+
+	CNetworkStringTableContainer *m_StringTableContainer;
+
+	bool m_bRestrictServerCommands; // If true, then the server is only allowed to execute commands marked with FCVAR_SERVER_CAN_EXECUTE on the client.
+	bool m_bRestrictClientCommands; // If true, then IVEngineClient::ClientCmd is only allowed to execute commands marked with FCVAR_CLIENTCMD_CAN_EXECUTE on the client.
 };
 
 #define DECLARE_BASE_MESSAGE(msgtype)           \
@@ -609,3 +884,19 @@ private:
 	char		m_szSkyNameBuffer[256];// name of current skybox 
 	char		m_szHostNameBuffer[256];// name of current skybox 
 };
+
+template<typename T>
+class CNetMessagePB : public INetMessage, public T
+{
+};
+
+class CCLCMsg_Move
+{
+private:
+	char __PAD0[0x8];
+public:
+	int numBackupCommands;
+	int numNewCommands;
+};
+
+using CCLCMsg_Move_t = CNetMessagePB<CCLCMsg_Move>;
