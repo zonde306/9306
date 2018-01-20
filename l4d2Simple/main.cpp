@@ -343,6 +343,9 @@ FnCL_SendMove oCL_SendMove;
 typedef void(__cdecl* FnWriteUsercmd)(bf_write*, CUserCmd*, CUserCmd*);
 FnWriteUsercmd oWriteUsercmd;
 
+typedef DWORD(__cdecl* FnGetInterfacePointer)();
+FnGetInterfacePointer eGetInterfacePointer, cGetInterfacePointer;
+
 // -------------------------------- Cheats Function --------------------------------
 void thirdPerson(bool);
 void showSpectator();
@@ -472,6 +475,25 @@ DWORD WINAPI StartCheat(LPVOID params)
 	}
 	else
 		Utils::log(XorStr("oWriteUsercmd not found"));
+
+	if ((eGetInterfacePointer = (FnGetInterfacePointer)Utils::FindPattern(("engine.dll"),
+		XorStr("A1 ? ? ? ? 83 C0 08 C3"))) != nullptr)
+	{
+		// chokedcommands = *(eGetInterfacePointer() + 0x4A48)
+		// lastoutgoingcommand = *(eGetInterfacePointer() + 0x4A44)
+		Utils::log("eGetInterfacePointer = client.dll + 0x%X", (DWORD)eGetInterfacePointer - g_iEngineBase);
+	}
+	else
+		Utils::log(XorStr("eGetInterfacePointer not found"));
+
+	if ((cGetInterfacePointer = (FnGetInterfacePointer)Utils::FindPattern(("client.dll"),
+		XorStr("8B 0D ? ? ? ? 8B 01 8B 90 ? ? ? ? FF D2 8B 04 85 ? ? ? ? C3"))) != nullptr)
+	{
+		// IClientMode* ptr = cGetInterfacePointer();
+		Utils::log("cGetInterfacePointer = client.dll + 0x%X", (DWORD)cGetInterfacePointer - g_iClientBase);
+	}
+	else
+		Utils::log(XorStr("cGetInterfacePointer not found"));
 
 	if ((SetPredictionRandomSeed = (FnSetPredictionRandomSeed)Utils::FindPattern(("client.dll"),
 		XorStr("55 8B EC 8B 45 08 85 C0 75 0C"))) != nullptr)
@@ -5564,7 +5586,6 @@ bool __stdcall Hooked_WriteUsercmdDeltaToBuffer(int nSlot, bf_write* buf, int fr
 	oWriteUsercmd(buf, g_interface.Input->GetUserCmd(nSlot, to), g_interface.Input->GetUserCmd(nSlot, from));
 	return !(buf->IsOverflowed());
 
-
 	/*
 	static int tickBaseShift = 0;
 	static bool inSendMove = false, firstSendMovePack = false, dontMoreCall = false;
@@ -5581,6 +5602,8 @@ bool __stdcall Hooked_WriteUsercmdDeltaToBuffer(int nSlot, bf_write* buf, int fr
 	INetChannel* netChan = (INetChannel*)g_pNetChannelInfo;
 
 	int newCommands = msg->numNewCommands;
+	int chokedCommands = *(int*)(eGetInterfacePointer() + 0x4A48);
+	int lastOutgoingCommand = *(int*)(eGetInterfacePointer() + 0x4A44);
 
 	// Call CL_SendMove multiple times - split fake move commands between packets to bypass 62 limit
 	if (!inSendMove)
@@ -5612,7 +5635,7 @@ bool __stdcall Hooked_WriteUsercmdDeltaToBuffer(int nSlot, bf_write* buf, int fr
 	}
 
 	// Manipulate CLC_Move
-	int nextCmdNr = g_interface.ClientState->lastOutgoingCommand + g_interface.ClientState->chokedCommands + 1;
+	int nextCmdNr = lastOutgoingCommand + chokedCommands + 1;
 	int totalNewCommands = min(tickBaseShift, MAX_USERCMDS_SEND);
 	tickBaseShift -= totalNewCommands;
 
@@ -5620,18 +5643,23 @@ bool __stdcall Hooked_WriteUsercmdDeltaToBuffer(int nSlot, bf_write* buf, int fr
 	msg->numNewCommands = totalNewCommands;
 	msg->numBackupCommands = 0;
 
-	// Write real commands
+	dontMoreCall = true;
 
+	// Write real commands
 	for (to = nextCmdNr - newCommands + 1; to <= nextCmdNr; to++)
 	{
 		if (!oWriteUsercmdDeltaToBuffer(nSlot, buf, from, to, true))
+		{
+			dontMoreCall = false;
 			return false;
+		}
 		
 		from = to;
 	}
 
-	// Write fake commands
+	dontMoreCall = false;
 
+	// Write fake commands
 	CUserCmd* lastRealCmd = g_interface.Input->GetUserCmd(nSlot, from);
 	CUserCmd fromCmd;
 	if (lastRealCmd)
