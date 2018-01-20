@@ -346,6 +346,12 @@ FnWriteUsercmd oWriteUsercmd;
 typedef DWORD(__cdecl* FnGetInterfacePointer)();
 FnGetInterfacePointer eGetInterfacePointer, cGetInterfacePointer;
 
+typedef void*(__cdecl* FnLookupWeaponInfoSlot)(const char* weaponName);
+FnLookupWeaponInfoSlot LookupWeaponInfoSlot;
+
+typedef void*(__cdecl* FnGetFileWeaponInfoFromHandle)(void* weaponHandle);
+FnGetFileWeaponInfoFromHandle GetFileWeaponInfoFromHandle;
+
 // -------------------------------- Cheats Function --------------------------------
 void thirdPerson(bool);
 void showSpectator();
@@ -538,6 +544,18 @@ DWORD WINAPI StartCheat(LPVOID params)
 		Utils::log("WeaponIdToAlias = client.dll + 0x%X", (DWORD)WeaponIdToAlias - g_iClientBase);
 	else
 		Utils::log(XorStr("WeaponIdToAlias not found"));
+
+	if ((LookupWeaponInfoSlot = (FnLookupWeaponInfoSlot)Utils::FindPattern(("client.dll"),
+		XorStr("55 8B EC 8B 45 08 83 EC 08 85 C0"))) != nullptr)
+		Utils::log("LookupWeaponInfoSlot = client.dll + 0x%X", (DWORD)LookupWeaponInfoSlot - g_iClientBase);
+	else
+		Utils::log(XorStr("LookupWeaponInfoSlot not found"));
+
+	if ((GetFileWeaponInfoFromHandle = (FnGetFileWeaponInfoFromHandle)Utils::FindPattern(("client.dll"),
+		XorStr("55 8B EC 66 8B 45 08 66 3B 05"))) != nullptr)
+		Utils::log("GetFileWeaponInfoFromHandle = client.dll + 0x%X", (DWORD)GetFileWeaponInfoFromHandle - g_iClientBase);
+	else
+		Utils::log(XorStr("GetFileWeaponInfoFromHandle not found"));
 
 	if ((DispatchUserMessage = (FnUserMessagesDispatch)Utils::FindPattern(("client.dll"),
 		XorStr("55 8B EC 8B 45 08 83 EC 28 85 C0"))) != nullptr)
