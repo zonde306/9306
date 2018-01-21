@@ -2493,6 +2493,8 @@ Vector GetHeadHitboxPosition(CBaseEntity* entity)
 	case ET_INFECTED:
 		position = entity->GetHitboxPosition(HITBOX_COMMON);
 		break;
+	case ET_TankRock:
+		position = entity->GetNetProp<Vector>("m_vecOrigin", "DT_BaseCombatCharacter");
 	}
 
 	/*
@@ -4610,13 +4612,16 @@ end_trigger_bot:
 			}
 		}
 
+		if (!IsValidVictim(g_pCurrentAimbot))
+			goto end_aimbot;
+
 		bool canAimbot = false;
 		int zombieClass = g_pCurrentAimbot->GetNetProp<int>("m_zombieClass", "DT_TerrorPlayer");
 
 		if (myTeam == 2)
 		{
 			// 近战武器可以解决舌头拉人和牛冲刺
-			if (g_pCurrentAiming != nullptr && weaponId == WeaponId_TerrorMeleeWeapon &&
+			if (g_pCurrentAimbot != nullptr && weaponId == WeaponId_TerrorMeleeWeapon &&
 				(zombieClass == ZC_SMOKER || zombieClass == ZC_CHARGER))
 				canAimbot = true;
 			else
