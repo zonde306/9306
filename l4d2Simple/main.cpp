@@ -4073,7 +4073,7 @@ void __fastcall Hooked_PaintTraverse(CPanel* _ecx, void* _edx, unsigned int pane
 
 					if (classId == ET_WeaponAmmoPack || classId == ET_WeaponAmmoSpawn)
 					{
-						if(Config::bDrawAmmoStack)
+						if (Config::bDrawAmmoStack)
 							ss << "ammo_stack";				// 子弹堆
 					}
 					else if (classId == ET_WeaponPipeBomb || classId == ET_WeaponMolotov ||
@@ -4130,6 +4130,8 @@ void __fastcall Hooked_PaintTraverse(CPanel* _ecx, void* _edx, unsigned int pane
 					}
 					else if (classId == ET_BaseUpgradeItem && Config::bDrawAmmoStack)
 						ss << "upgrade_unknown";		// 武器升级
+					else if (classId == ET_SurvivorDeathModel && Config::bDrawDeadSurvivor)
+						ss << "death_survivor";			// 死亡的生还者
 				}
 
 				if (!ss.str().empty())
@@ -4438,7 +4440,8 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 		--shovDelayTick;
 
 	// 自动开枪
-	if (Config::bTriggerBot && !(pCmd->buttons & IN_USE) && IsGunWeapon(weaponId) && clip > 0)
+	if (Config::bTriggerBot && !(pCmd->buttons & IN_USE) && IsGunWeapon(weaponId) &&
+		clip > 0 && nextAttack <= serverTime)
 	{
 #ifdef _DEBUG_OUTPUT
 		if (g_pCurrentAiming != nullptr && Config::bAllowConsoleMessage)
@@ -4480,15 +4483,26 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 
 		try
 		{
-			if (classId == ET_TankRock && myTeam == 2)
+			if (classId == ET_TankRock)
 			{
-				pCmd->buttons |= IN_ATTACK;
-				fireByTrigger = false;
+				if (myTeam == 2)
+				{
+					pCmd->buttons |= IN_ATTACK;
+					fireByTrigger = false;
+				}
 			}
-			else if (g_pCurrentAiming->GetTeam() != myTeam && classId != ET_WITCH &&			// 不攻击队友和 Witch
-				g_pCurrentAiming->GetTeam() != 4 && (!IsSpecialInfected(classId) ||				// 不攻击 L4D1 生还者(因为他们是无敌的)
-					!IsPlayerGhost(g_iCurrentAiming) || !IsGhostInfected(g_pCurrentAiming)) &&	// 不攻击幽灵状态的特感
-					(myTeam == 2 || classId != ET_INFECTED))									// 特感队伍不攻击普感
+			else if (g_pCurrentAiming->GetTeam() == myTeam)
+			{
+				// 在队友被控的情况下攻击队友视为攻击特感
+				if (myTeam == 2 && IsControlled(g_pCurrentAiming))
+				{
+					pCmd->buttons |= IN_ATTACK;
+					fireByTrigger = true;
+				}
+			}
+			else if (classId != ET_WITCH && g_pCurrentAiming->GetTeam() != 4 && (!IsSpecialInfected(classId) ||
+				!IsPlayerGhost(g_iCurrentAiming) || !IsGhostInfected(g_pCurrentAiming)) &&
+				(myTeam == 2 || classId != ET_INFECTED))
 			{
 				pCmd->buttons |= IN_ATTACK;
 				fireByTrigger = true;
@@ -4567,7 +4581,7 @@ end_trigger_bot:
 		Vector myOrigin = client->GetEyePosition();
 
 		bool runAimbot = false;
-		bool runByUser = !!(GetAsyncKeyState(VK_LBUTTON) & 0x8000);
+		bool runByUser = ((GetAsyncKeyState(VK_LBUTTON) & 0x8000) || (GetAsyncKeyState('C') & 0x8000));
 
 		// 优先使用自动开枪选中的敌人，使自动开枪有自动瞄准的效果
 		if (fireByTrigger && g_pCurrentAiming != nullptr)
@@ -4596,8 +4610,27 @@ end_trigger_bot:
 			}
 		}
 
+		bool canAimbot = false;
+		int zombieClass = g_pCurrentAimbot->GetNetProp<int>("m_zombieClass", "DT_TerrorPlayer");
+
+		if (myTeam == 2)
+		{
+			// 近战武器可以解决舌头拉人和牛冲刺
+			if (g_pCurrentAiming != nullptr && weaponId == WeaponId_TerrorMeleeWeapon &&
+				(zombieClass == ZC_SMOKER || zombieClass == ZC_CHARGER))
+				canAimbot = true;
+			else
+				canAimbot = (IsGunWeapon(weaponId) && clip > 0);
+		}
+		else if (myTeam == 3)
+		{
+			// 防 Tank 空拳
+			canAimbot = (weaponId == WeaponId_ChargerClaw || weaponId == WeaponId_SmokerClaw ||
+				weaponId == WeaponId_JockeyClaw || weaponId == WeaponId_TankClaw);
+		}
+
 		// 目标在另一个地方选择
-		if (g_pCurrentAimbot != nullptr && IsGunWeapon(weaponId) && nextAttack <= serverTime && clip > 0)
+		if (g_pCurrentAimbot != nullptr && canAimbot && nextAttack <= serverTime)
 		{
 			// 鐩爣浣嶇疆
 			Vector position;
@@ -4615,7 +4648,6 @@ end_trigger_bot:
 				Utils::log("CBasePlayer::SetupBone error");
 
 				// 鏍规嵁涓嶅悓鐨勬儏鍐电‘瀹氶珮搴
-				int zombieClass = g_pCurrentAimbot->GetNetProp<int>("m_zombieClass", "DT_TerrorPlayer");
 				if (zombieClass == ZC_JOCKEY)
 					position.z = g_pCurrentAimbot->GetAbsOrigin().z + 30.0f;
 				else if (zombieClass == ZC_HUNTER && (g_pCurrentAimbot->GetFlags() & FL_DUCKING))
@@ -4878,8 +4910,8 @@ end_aimbot:
 	// 在开枪前检查，防止攻击队友
 	if (Config::bAnitFirendlyFire && (pCmd->buttons & IN_ATTACK) && IsGunWeapon(weaponId) && myTeam == 2)
 	{
-		if (IsValidVictim(g_pCurrentAiming) &&
-			g_pCurrentAiming->GetTeam() == myTeam &&
+		if (!fireByTrigger && IsValidVictim(g_pCurrentAiming) &&
+			g_pCurrentAiming->GetTeam() == myTeam && !IsControlled(g_pCurrentAiming) &&
 			!IsNeedRescue(g_pCurrentAiming) && !IsFallDown(client))
 		{
 			// 取消开枪

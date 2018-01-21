@@ -144,6 +144,7 @@ void CBaseMenu::DrawMenu()
 		ImGui::Checkbox(XorStr("Off Screen ESP"), &Config::bDrawOffScreen);
 		ImGui::Checkbox(XorStr("Crosshairs"), &Config::bDrawCrosshairs);
 		ImGui::Checkbox(XorStr("Spectator List"), &Config::bDrawSpectator);
+		ImGui::Checkbox(XorStr("Dead Survivors"), &Config::bDrawDeadSurvivor);
 
 		ImGui::Separator();
 		ImGui::Checkbox(XorStr("Special Spawnned"), &Config::bSpecialSpawnnedHint);

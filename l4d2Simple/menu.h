@@ -51,6 +51,7 @@ namespace Config
 	extern bool bDrawSpectator;
 	extern bool bDrawOffScreen;
 	extern bool bDrawCarryItem;
+	extern bool bDrawDeadSurvivor;
 
 	// 屏幕绘制：实体
 	extern bool bDrawT1Weapon;
