@@ -379,6 +379,16 @@ struct RecoilRecord
 	}
 };
 
+struct BulletTrace
+{
+	Vector start, end;
+	D3DCOLOR color;
+	float duration;
+	BulletTrace(Vector start, Vector end, D3DCOLOR color = DrawManager::WHITE, float duration = 0.5f) :
+		start(start), end(end), color(color), duration(duration)
+	{}
+};
+
 static int g_iCurrentAiming = 0;										// 当前正在瞄准的玩家的 ID
 static bool g_bNewFrame = false;										// 现在是否运行在新的一帧
 static bool* g_pbSendPacket;											// 数据包是否发送到服务器
@@ -402,6 +412,8 @@ RecoilRecord g_aaCompensation[128];										// 无后坐力用
 bool g_bHasFirstTick = false;											// 是否为加入游戏第发送的 tick
 bool g_bMustKnifeBot = false;											// 自动刀
 bool g_bKnifeBotCanShov = false;										// 自动推
+std::vector<BulletTrace> g_vBulletTrace;								// 子弹跟踪
+std::mutex g_lockBulletTrace;
 
 std::string GetZombieClassName(CBaseEntity* player);
 bool IsValidVictim(CBaseEntity* entity);
@@ -1218,6 +1230,28 @@ DWORD WINAPI StartCheat(LPVOID params)
 					if((DWORD)victimEntity == (DWORD)local)
 						g_pCurrentAimbot = attackerEntity;
 				}
+				else if (_strcmpi(eventName, "bullet_impact") == 0)
+				{
+					if (!Config::bDrawBulletTrace)
+						return;
+					
+					int client = g_interface.Engine->GetPlayerForUserID(event->GetInt("userid"));
+					if (client <= 0)
+						return;
+
+					CBaseEntity* clientEntity = g_interface.ClientEntList->GetClientEntity(client);
+					if (IsValidVictim(clientEntity))
+						return;
+
+					if (g_lockBulletTrace.try_lock())
+					{
+						g_vBulletTrace.emplace_back(clientEntity->GetEyePosition(),
+							Vector(event->GetFloat("x"), event->GetFloat("y"), event->GetFloat("z")),
+							DrawManager::WHITE, Config::fBulletTraceDuration);
+
+						g_lockBulletTrace.unlock();
+					}
+				}
 			}
 		};
 
@@ -1233,6 +1267,7 @@ DWORD WINAPI StartCheat(LPVOID params)
 		g_interface.GameEvent->AddListener(listener, "tongue_grab", false);
 		g_interface.GameEvent->AddListener(listener, "player_connect", false);
 		g_interface.GameEvent->AddListener(listener, "player_disconnect", false);
+		g_interface.GameEvent->AddListener(listener, "bullet_impact", false);
 
 		/*
 		g_interface.GameEvent->AddListener(listener, "player_chat", false);
@@ -4010,13 +4045,13 @@ void __fastcall Hooked_PaintTraverse(CPanel* _ecx, void* _edx, unsigned int pane
 
 					if (Config::bDrawAmmo)
 					{
+						CBaseEntity* weapon = (CBaseEntity*)entity->GetActiveWeapon();
+						if (weapon != nullptr)
+							weapon = g_interface.ClientEntList->GetClientEntityFromHandle((CBaseHandle*)weapon);
+						
 						// 给生还者显示弹药
 						if (IsSurvivor(classId))
-						{
-							CBaseEntity* weapon = (CBaseEntity*)entity->GetActiveWeapon();
-							if (weapon != nullptr)
-								weapon = g_interface.ClientEntList->GetClientEntityFromHandle((CBaseHandle*)weapon);
-								
+						{	
 							if (weapon != nullptr)
 							{
 								int ammoType = weapon->GetNetProp<int>("m_iPrimaryAmmoType", "DT_BaseCombatWeapon");
@@ -4041,11 +4076,30 @@ void __fastcall Hooked_PaintTraverse(CPanel* _ecx, void* _edx, unsigned int pane
 								}
 							}
 						}
-						else if(!_stricmp(info.steamId, "BOT"))
+						else
 						{
-							// 如果特感不是机器人的话就显示特感类型
-							// 机器人特感名字就是类型
-							ss << " (" << GetZombieClassName(entity) << ")";
+							ss << " (";
+							
+							if (_stricmp(info.steamId, "BOT"))
+							{
+								// 如果特感不是机器人的话就显示特感类型
+								// 机器人特感名字就是类型
+								ss << GetZombieClassName(entity) << "/";
+							}
+
+							if (weapon != nullptr)
+							{
+								float serverTime = GetServerTime();
+								float primaryAttack = weapon->GetNetProp<float>("m_flNextPrimaryAttack", "DT_BaseCombatWeapon");
+								float secondaryAttack = weapon->GetNetProp<float>("m_flNextSecondaryAttack", "DT_BaseCombatWeapon");
+								
+								ss << (int)max(primaryAttack - serverTime, 0.0f);
+
+								if (classId == ET_TANK)
+									ss << "/" << (int)max(secondaryAttack - serverTime, 0.0f);
+								
+								ss << ")";
+							}
 						}
 					}
 				}
@@ -4631,7 +4685,7 @@ end_trigger_bot:
 		{
 			// 防 Tank 空拳
 			canAimbot = (weaponId == WeaponId_ChargerClaw || weaponId == WeaponId_SmokerClaw ||
-				weaponId == WeaponId_JockeyClaw || weaponId == WeaponId_TankClaw);
+				weaponId == WeaponId_JockeyClaw);
 		}
 
 		// 目标在另一个地方选择
@@ -5147,6 +5201,17 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 	if (stage == FRAME_RENDER_START && g_interface.Engine->IsInGame())
 	{
 		// 在这里可以使用 DebugOverlay 来进行 3D 绘制
+
+		g_lockBulletTrace.lock();
+		for (const BulletTrace& item : g_vBulletTrace)
+		{
+			g_interface.DebugOverlay->AddLineOverlayAlpha(item.start, item.end,
+				(item.color & 0x00FF0000) >> 16, (item.color & 0x0000FF00) >> 8, (item.color & 0x000000FF),
+				(item.color & 0xFF000000) >> 24, true, item.duration);
+		}
+
+		g_vBulletTrace.clear();
+		g_lockBulletTrace.unlock();
 	}
 
 	static time_t nextUpdate = 0;

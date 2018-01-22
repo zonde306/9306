@@ -26,6 +26,7 @@
 #include <chrono>
 #include <memory>
 #include <map>
+#include <mutex>
 
 #include "../imgui/dx9/imgui_impl_dx9.h"
 
@@ -182,6 +183,7 @@ namespace Config
 	bool bDrawMedicalItem = false;
 	bool bDrawGrenadeItem = false;
 	bool bDrawAmmoStack = false;
+	bool bDrawBulletTrace = false;
 
 	// Direct3D 顶点透视
 	bool bBufferSurvivor = false;
@@ -239,6 +241,7 @@ namespace Config
 	int iFastMeleeTick = 10;
 	int iAutoShovTick = 30;
 	bool bMustFastMelee = false;
+	float fBulletTraceDuration = 0.5f;
 
 	// 不稳定的功能
 	bool bTeleport = false;

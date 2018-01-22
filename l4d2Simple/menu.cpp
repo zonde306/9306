@@ -198,6 +198,10 @@ void CBaseMenu::DrawMenu()
 		ImGui::Checkbox(XorStr("Thrid Persons"), &Config::bThirdPersons);
 
 		ImGui::Separator();
+		ImGui::Checkbox(XorStr("Bullet Trace"), &Config::bDrawBulletTrace);
+		ImGui::SliderFloat(XorStr("Bullet Duration"), &Config::fBulletTraceDuration, 0.1f, 3.0f, "%.1f");
+
+		ImGui::Separator();
 		ImGui::Checkbox(XorStr("Fast Melee"), &Config::bMustFastMelee);
 		// ImGui::DragInt(XorStr("Fast Melee Tick"), &Config::iFastMeleeTick);
 		ImGui::SliderInt(XorStr("Fast Melee Tick"), &Config::iFastMeleeTick, 1, 100);

@@ -61,6 +61,7 @@ namespace Config
 	extern bool bDrawMedicalItem;
 	extern bool bDrawGrenadeItem;
 	extern bool bDrawAmmoStack;
+	extern bool bDrawBulletTrace;
 
 	// Direct3D 顶点透视
 	extern bool bBufferSurvivor;
@@ -118,6 +119,7 @@ namespace Config
 	extern int iFastMeleeTick;
 	extern int iAutoShovTick;
 	extern bool bMustFastMelee;
+	extern float fBulletTraceDuration;
 
 	// 不稳定的功能
 	extern bool bTeleport;
