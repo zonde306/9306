@@ -7,6 +7,7 @@ static std::map<std::string, unsigned int> g_offsetList;
 extern CBaseEntity* g_pPlayerResource;
 extern CBaseEntity* g_pGameRulesProxy;
 extern std::map<std::string, ConVar*> g_conVar;
+extern std::map<std::string, std::string> g_serverConVar;
 
 #define NETPROP_GET_MAKE(_f,_t,_p,_r)	_r& _f()\
 {\
@@ -67,9 +68,21 @@ public:
 		static int buffer = g_pNetVars->GetOffset("DT_TerrorPlayer", "m_healthBuffer");
 		static int time = g_pNetVars->GetOffset("DT_TerrorPlayer", "m_healthBufferTime");
 
-		return ceil(*(float*)(this + buffer) -
-			((GetServerTime() - *(float*)(this + time)) *
-			g_conVar["pain_pills_decay_rate"]->GetFloat()));
+		int amount = 0;
+		if (g_serverConVar.find("pain_pills_decay_rate") != g_serverConVar.end())
+		{
+			amount = (int)ceil(*(float*)(this + buffer) -
+				((GetServerTime() - *(float*)(this + time)) *
+					atof(g_serverConVar["pain_pills_decay_rate"].c_str())));
+		}
+		else
+		{
+			amount = (int)ceil(*(float*)(this + buffer) -
+				((GetServerTime() - *(float*)(this + time)) *
+					g_conVar["pain_pills_decay_rate"]->GetFloat()));
+		}
+
+		return max(amount, 0);
 	}
 
 	int Index()

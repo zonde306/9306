@@ -4003,6 +4003,7 @@ void __fastcall Hooked_PaintTraverse(CPanel* _ecx, void* _edx, unsigned int pane
 						// 检查是否为生还者
 						if (IsSurvivor(classId))
 						{
+							int bufferHealth = entity->GetTempHealth();
 							if (IsIncapacitated(entity))
 							{
 								// 倒地时只有普通血量
@@ -4011,15 +4012,22 @@ void __fastcall Hooked_PaintTraverse(CPanel* _ecx, void* _edx, unsigned int pane
 							else if (IsControlled(entity))
 							{
 								// 玩家被控了
-								ss << "[" << (int)(entity->GetHealth() +
-									entity->GetTempHealth()) <<
+								ss << "[" << (entity->GetHealth() + bufferHealth) <<
 									" + grabbed] ";
 							}
 							else
 							{
-								// 生还者显示血量，临时血量
-								ss << "[" << entity->GetHealth() << " + " << std::setprecision(0) <<
-									(int)(entity->GetTempHealth()) << "] ";
+								if (bufferHealth > 0)
+								{
+									// 生还者显示血量，临时血量
+									ss << "[" << entity->GetHealth() << " + " << std::setprecision(0) <<
+										bufferHealth << "] ";
+								}
+								else
+								{
+									// 生还者显示血量
+									ss << "[" << entity->GetHealth() << "]";
+								}
 							}
 						}
 						else
