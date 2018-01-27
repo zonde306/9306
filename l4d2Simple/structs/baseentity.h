@@ -1,10 +1,12 @@
 ﻿#pragma once
 #include "../../Utils.h"
 #include "../libraries/math.h"
+#include "cliententlist.h"
 
 static std::map<std::string, unsigned int> g_offsetList;
 extern CBaseEntity* g_pPlayerResource;
 extern CBaseEntity* g_pGameRulesProxy;
+extern std::map<std::string, ConVar*> g_conVar;
 
 #define NETPROP_GET_MAKE(_f,_t,_p,_r)	_r& _f()\
 {\
@@ -58,6 +60,16 @@ public:
 	{
 		static int offset = g_pNetVars->GetOffset("DT_BasePlayer", "m_iHealth");
 		return *(int*)(this + offset);
+	}
+
+	int GetTempHealth()
+	{
+		static int buffer = g_pNetVars->GetOffset("DT_TerrorPlayer", "m_healthBuffer");
+		static int time = g_pNetVars->GetOffset("DT_TerrorPlayer", "m_healthBufferTime");
+
+		return ceil(*(float*)(this + buffer) -
+			((GetServerTime() - *(float*)(this + time)) *
+			g_conVar["pain_pills_decay_rate"]->GetFloat()));
 	}
 
 	int Index()

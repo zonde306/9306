@@ -788,6 +788,7 @@ DWORD WINAPI StartCheat(LPVOID params)
 		g_conVar[("addons_eclipse_content")] = g_interface.Cvar->FindVar(("addons_eclipse_content"));
 		g_conVar[("z_gun_range")] = g_interface.Cvar->FindVar(("z_gun_range"));
 		g_conVar[("claw_range")] = g_interface.Cvar->FindVar(("claw_range"));
+		g_conVar[("pain_pills_decay_rate")] = g_interface.Cvar->FindVar(("pain_pills_decay_rate"));
 
 		for (const auto& cvars : g_conVar)
 		{
@@ -4011,14 +4012,14 @@ void __fastcall Hooked_PaintTraverse(CPanel* _ecx, void* _edx, unsigned int pane
 							{
 								// 玩家被控了
 								ss << "[" << (int)(entity->GetHealth() +
-									entity->GetNetProp<float>("m_healthBuffer", "DT_TerrorPlayer")) <<
+									entity->GetTempHealth()) <<
 									" + grabbed] ";
 							}
 							else
 							{
 								// 生还者显示血量，临时血量
 								ss << "[" << entity->GetHealth() << " + " << std::setprecision(0) <<
-									(int)(entity->GetNetProp<float>("m_healthBuffer", "DT_TerrorPlayer")) << "] ";
+									(int)(entity->GetTempHealth()) << "] ";
 							}
 						}
 						else
@@ -4497,7 +4498,7 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 
 	// 自动开枪
 	if (Config::bTriggerBot && !(pCmd->buttons & IN_USE) && IsGunWeapon(weaponId) &&
-		clip > 0 && nextAttack <= serverTime)
+		clip > 0 && (nextAttack <= serverTime || IsShotgun(weaponId)))
 	{
 #ifdef _DEBUG_OUTPUT
 		if (g_pCurrentAiming != nullptr && Config::bAllowConsoleMessage)
