@@ -275,6 +275,10 @@ typedef bool(__stdcall* FnWriteUsercmdDeltaToBuffer)(int, bf_write*, int, int, b
 bool __stdcall Hooked_WriteUsercmdDeltaToBuffer(int, bf_write*, int, int, bool);
 FnWriteUsercmdDeltaToBuffer oWriteUsercmdDeltaToBuffer;
 
+typedef void(__thiscall* FnSceneEnd)(CRenderView*);
+void __fastcall Hooked_SceneEnd(CRenderView*, void*);
+FnSceneEnd oSceneEnd;
+
 // -------------------------------- General Function --------------------------------
 typedef void(__cdecl* FnConColorMsg)(class Color const&, char const*, ...);
 static FnConColorMsg PrintToConsoleColor;	// 打印信息到控制台（支持颜色）
@@ -723,6 +727,13 @@ DWORD WINAPI StartCheat(LPVOID params)
 		Utils::log("oVgui_Paint = 0x%X", (DWORD)oVGUIPaint);
 	}
 	*/
+
+	if (g_interface.ViewRenderHook && indexes::SceneEnd > -1)
+	{
+		oSceneEnd = (FnSceneEnd)g_interface.ViewRenderHook->HookFunction(indexes::SceneEnd, &Hooked_SceneEnd);
+		g_interface.ViewRenderHook->HookTable(true);
+		Utils::log("oSceneEnd = 0x%X", (DWORD)oSceneEnd);
+	}
 
 	if (g_interface.EngineVGuiHook && indexes::EnginePaint > -1)
 	{
@@ -5806,6 +5817,24 @@ bool __stdcall Hooked_WriteUsercmdDeltaToBuffer(int nSlot, bf_write* buf, int fr
 		toCmd.tick_count++;
 	}
 	return true;
+	*/
+}
+
+void __fastcall Hooked_SceneEnd(CRenderView* _ecx, void* _edx)
+{
+	oSceneEnd(_ecx);
+
+	/*
+	int maxEntity = g_interface.ClientEntList->GetHighestEntityIndex();
+	for (int i = 1; i <= maxEntity; ++i)
+	{
+		CBaseEntity* entity = g_interface.ClientEntList->GetClientEntity(i);
+		if (entity == nullptr || !entity->IsAlive())
+			continue;
+
+		int classId = entity->GetClientClass()->m_ClassID;
+		// TODO: 在这里绘制模型透视
+	}
 	*/
 }
 
