@@ -4690,13 +4690,14 @@ end_trigger_bot:
 			goto end_aimbot;
 
 		bool canAimbot = false;
-		int zombieClass = g_pCurrentAimbot->GetNetProp<int>("m_zombieClass", "DT_TerrorPlayer");
+		// int zombieClass = g_pCurrentAimbot->GetNetProp<int>("m_zombieClass", "DT_TerrorPlayer");
+		int classId = g_pCurrentAimbot->GetClientClass()->m_ClassID;
 
 		if (myTeam == 2)
 		{
 			// 近战武器可以解决舌头拉人和牛冲刺
 			if (g_pCurrentAimbot != nullptr && weaponId == WeaponId_TerrorMeleeWeapon &&
-				(zombieClass == ZC_SMOKER || zombieClass == ZC_CHARGER))
+				(classId == ET_SMOKER || classId == ET_CHARGER))
 				canAimbot = true;
 			else
 				canAimbot = (IsGunWeapon(weaponId) && clip > 0);
@@ -4719,7 +4720,7 @@ end_trigger_bot:
 			}
 			catch (...)
 			{
-				if (g_pCurrentAimbot->GetClientClass()->m_ClassID == ET_INFECTED)
+				if (classId == ET_INFECTED)
 					goto end_aimbot;
 
 				// 鑾峰彇楠ㄩ浣嶇疆澶辫触
@@ -4727,9 +4728,9 @@ end_trigger_bot:
 				Utils::log("CBasePlayer::SetupBone error");
 
 				// 鏍规嵁涓嶅悓鐨勬儏鍐电‘瀹氶珮搴
-				if (zombieClass == ZC_JOCKEY)
+				if (classId == ET_JOCKEY)
 					position.z = g_pCurrentAimbot->GetAbsOrigin().z + 30.0f;
-				else if (zombieClass == ZC_HUNTER && (g_pCurrentAimbot->GetFlags() & FL_DUCKING))
+				else if (classId == ET_HUNTER && (g_pCurrentAimbot->GetFlags() & FL_DUCKING))
 					position.z -= 12.0f;
 			}
 
