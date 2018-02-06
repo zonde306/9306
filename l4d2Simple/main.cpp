@@ -4180,8 +4180,8 @@ void __fastcall Hooked_PaintTraverse(CPanel* _ecx, void* _edx, unsigned int pane
 								ss << "adrenaline";				// 肾上腺素
 						}
 					}
-					else if (classId == ET_WeaponMelee && Config::bDrawMeleeWeapon)
-						ss << "melee";					// 近战武器
+					else if (classId == ET_WeaponMelee && Config::bDrawMeleeWeapon)	// 近战武器
+						ss << "melee_"/* << (const char*)((DWORD)entity + CBaseEntity::GetNetPropOffset("DT_TerrorMeleeWeapon", "m_strMapSetScriptName"))*/;
 					else if (classId == ET_WeaponMagnum && Config::bDrawT2Weapon)
 						ss << "pistol_magnum";			// 马格南
 					else if (classId == ET_WeaponIncendiary || classId == ET_WeaponExplosive)
@@ -4221,6 +4221,8 @@ void __fastcall Hooked_PaintTraverse(CPanel* _ecx, void* _edx, unsigned int pane
 				float fov = GetAnglesFieldOfView(myViewAngles, CalculateAim(myEyeOrigin, headbox));
 
 				// 自动瞄准寻找目标
+				// 坦克处于死亡前无法行动时 m_isIncapacitated 会是 1
+				// 某些插件支持把生还者的副武器改成特感的技能(左键可以控住特感)
 				if (Config::bAimbot && !isPlayingTank &&
 					(!targetSelected || !(g_pUserCommands->buttons & IN_ATTACK)) &&
 					((team == 2 && (IsSpecialInfected(classId) || classId == ET_INFECTED)) ||
@@ -4228,7 +4230,10 @@ void __fastcall Hooked_PaintTraverse(CPanel* _ecx, void* _edx, unsigned int pane
 				{
 					// 已经选择过目标了，并且这是一个不重要的敌人
 					if (classId == ET_INFECTED && specialSelected)
-						continue;
+						goto end_find_aimbot;
+
+					if (classId != ET_INFECTED && (IsFallDown(entity) || IsControlled(entity)))
+						goto end_find_aimbot;
 
 					// 选择一个最接近的特感，因为特感越近对玩家来说越危险
 					if (entity->GetTeam() != team && fov < fovmin && visible &&
@@ -4241,6 +4246,8 @@ void __fastcall Hooked_PaintTraverse(CPanel* _ecx, void* _edx, unsigned int pane
 							specialSelected = true;
 					}
 				}
+
+			end_find_aimbot:
 
 				if (Config::bKnifeBot && !isPlayingTank && visible &&
 					swingRange > 0 && fov < swingRange && dist <= swingRange &&
@@ -4512,6 +4519,8 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 
 	bool fireByTrigger = false;
 	static int shovDelayTick = 0;
+	static int duckTick = 0;
+
 	if (shovDelayTick > 0)
 		--shovDelayTick;
 
@@ -4576,7 +4585,19 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 					fireByTrigger = true;
 				}
 			}
-			else if (classId != ET_WITCH && g_pCurrentAiming->GetTeam() != 4 && (!IsSpecialInfected(classId) ||
+			else if (classId == ET_WITCH)
+			{
+				// 蹲妹爆头可以击退
+				if ((Config::bAimbot || duckTick > Config::iDuckAimbotTick) &&
+					g_pCurrentAiming->GetNetProp<int>("m_nSequence", "DT_BaseAnimating") == 4 &&
+					g_pCurrentAiming->GetNetProp<float>("m_rage", "DT_Witch") == 0.0f)
+				{
+					// 还是手动好，比较安全
+					// pCmd->buttons |= IN_ATTACK;
+					fireByTrigger = true;
+				}
+			}
+			else if (g_pCurrentAiming->GetTeam() != 4 && (!IsSpecialInfected(classId) ||
 				!IsPlayerGhost(g_iCurrentAiming) || !IsGhostInfected(g_pCurrentAiming)) &&
 				(myTeam == 2 || classId != ET_INFECTED))
 			{
@@ -4625,7 +4646,6 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 
 end_trigger_bot:
 
-	static int duckTick = 0;
 	if ((pCmd->buttons & IN_DUCK) && (flags & FL_DUCKING) && (flags & FL_ONGROUND))
 	{
 		if (Config::iDuckAimbotTick > 0)
@@ -4652,7 +4672,8 @@ end_trigger_bot:
 	static QAngle lastPunch(0.0f, 0.0f, 0.0f);
 
 	// 自动瞄准
-	if ((Config::bAimbot || duckTick > Config::iDuckAimbotTick) && weapon != nullptr && (pCmd->buttons & IN_ATTACK))
+	if ((Config::bAimbot || duckTick > Config::iDuckAimbotTick) && weapon != nullptr &&
+		(pCmd->buttons & IN_ATTACK))
 	{
 		Vector myOrigin = client->GetEyePosition();
 
