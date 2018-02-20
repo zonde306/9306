@@ -4935,7 +4935,8 @@ end_trigger_bot:
 			CorrectMovement(viewAngles, pCmd, pCmd->fowardmove, pCmd->sidemove);
 		}
 
-		QAngle currentPunch = client->GetLocalNetProp<QAngle>("m_vecPunchAngle");
+		// QAngle currentPunch = client->GetLocalNetProp<QAngle>("m_vecPunchAngle");
+		QAngle currentPunch = client->GetPunch();
 		if (!currentPunch.IsValid())
 			currentPunch.x = currentPunch.y = currentPunch.z = 0.0f;
 
@@ -5257,7 +5258,8 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 			local->GetPunch() = g_aaCompensation[command].punch2;
 			*/
 
-			local->GetPunch() = Vector(0.0f, 0.0f, 0.0f);
+			Vector& punch = local->GetPunch();
+			punch.x = punch.y = 0.0f;
 		}
 	}
 
