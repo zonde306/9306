@@ -147,6 +147,16 @@ void CBaseMenu::DrawMenu()
 		ImGui::Checkbox(XorStr("Dead Survivors"), &Config::bDrawDeadSurvivor);
 
 		ImGui::Separator();
+		ImGui::Checkbox(XorStr("Chams Survivor"), &Config::bDrawChamsSurvivor);
+		ImGui::Checkbox(XorStr("Chams Special"), &Config::bDrawChamsSpecial);
+		ImGui::Checkbox(XorStr("Chams Common"), &Config::bDrawChamsInfected);
+
+		ImGui::Separator();
+		ImGui::Checkbox(XorStr("No Vomit Effects"), &Config::bNoVomitEffects);
+		ImGui::Checkbox(XorStr("No Smoker Effects"), &Config::bNoSmokerEffects);
+		ImGui::Checkbox(XorStr("No Mud Effects"), &Config::bNoMudEffects);
+
+		ImGui::Separator();
 		ImGui::Checkbox(XorStr("Special Spawnned"), &Config::bSpecialSpawnnedHint);
 		ImGui::Checkbox(XorStr("Client Connected"), &Config::bClientConnectHint);
 		ImGui::Checkbox(XorStr("Client Disconnected"), &Config::bClientDisconnectHint);

@@ -143,12 +143,12 @@ public:
 };
 
 struct vcollide_t;
-class IMaterial;
 class CUtlBuffer;
 class CPhysCollide;
 struct MDLHandle_t;
 class IClientRenderable;
 struct cplane_t;
+class IMaterial;
 
 class IModelInfo
 {

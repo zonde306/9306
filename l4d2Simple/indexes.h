@@ -115,7 +115,11 @@ namespace indexes
 	const int IsDormant = 7;
 	const int GetModel = 8;
 	const int GetWeaponId = 383;
-	const int GetSpread = 0xD0C;	// CTerrorWeapon* + 0xD0C
+	const int RenderTableDrawModel = 9;
+
+	// Entity Offset
+	const int GetSpread = 0xD0C;
+	const int GetPunch = 0x1224;
 
 	// ClientModeShared
 	const int SharedCreateMove = 27;
@@ -141,6 +145,8 @@ namespace indexes
 	const int FindMaterial = 71;
 	const int IsMaterialLoaded = 72;
 	const int FindTexture = 77;
+	const int SetMaterialVarFlag = 29;
+	const int ColorModuleate = 28;
 
 	// CBaseClientState
 	const int ProcessStringCmd = 2;
@@ -154,4 +160,7 @@ namespace indexes
 	
 	// INetChannelInfo/CNetChan
 	const int SendDatagram = 188;
+
+	// RenderView
+	const int RenderViewSetColorModulation = 1;
 }

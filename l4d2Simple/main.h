@@ -150,6 +150,7 @@ public:
 	std::unique_ptr<CVMTHookManager> ViewRenderHook;
 	std::unique_ptr<CVMTHookManager> EngineVGuiHook;
 	std::unique_ptr<CVMTHookManager> ClientStateHook;
+	std::unique_ptr<CVMTHookManager> MaterialSystemHook;
 
 	void GetInterfaces();
 	void* GetPointer(const char* Module, const char* InterfaceName);
@@ -184,6 +185,9 @@ namespace Config
 	bool bDrawGrenadeItem = false;
 	bool bDrawAmmoStack = false;
 	bool bDrawBulletTrace = false;
+	bool bDrawChamsSurvivor = false;
+	bool bDrawChamsSpecial = false;
+	bool bDrawChamsInfected = false;
 
 	// Direct3D 顶点透视
 	bool bBufferSurvivor = false;
@@ -231,6 +235,9 @@ namespace Config
 	bool bClientConnectHint = false;
 	bool bClientDisconnectHint = false;
 	bool bAllowConsoleMessage = false;
+	bool bNoVomitEffects = true;
+	bool bNoSmokerEffects = true;
+	bool bNoMudEffects = true;
 
 	float fAimbotFov = 30.0f;
 	float fAimbotRCSX = 2.0f;

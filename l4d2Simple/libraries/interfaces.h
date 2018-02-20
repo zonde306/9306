@@ -59,6 +59,7 @@ void CInterfaces::GetInterfaces()
 	GameEventHook = std::make_unique<CVMTHookManager>(GameEvent);
 	ViewRenderHook = std::make_unique<CVMTHookManager>(RenderView);
 	EngineVGuiHook = std::make_unique<CVMTHookManager>(EngineVGui);
+	MaterialSystemHook = std::make_unique<CVMTHookManager>(MaterialSystem);
 }
 
 void* CInterfaces::GetPointer(const char* Module, const char* InterfaceName)

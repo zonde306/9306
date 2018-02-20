@@ -347,6 +347,13 @@ public:
 		return ((OriginalFn)VMT.GetFunction(pRenderable, indexes::SetupBones))(pRenderable, pBoneToWorldOut, nMaxBones, boneMask, currentTime);
 	}
 
+	int DrawModel(int flags, float alpha = 1.f)
+	{
+		IClientRenderable* pRenderable = (IClientRenderable*)(this + 0x4);
+		typedef int(__thiscall* Fn)(IClientRenderable*, int, float);
+		return ((Fn)VMT.GetFunction(pRenderable, indexes::RenderTableDrawModel))(pRenderable, flags, alpha);
+	}
+
 	model_t* GetModel()
 	{
 		IClientRenderable* pRenderable = (IClientRenderable*)(this + 0x4);
@@ -438,9 +445,14 @@ public:
 	}
 #endif // m_iCrosshairsId
 
-	float GetSpread()
+	float& GetSpread()
 	{
 		return *(float*)(this + indexes::GetSpread);
+	}
+
+	Vector& GetPunch()
+	{
+		return *(Vector*)(this + indexes::GetPunch);
 	}
 };
 

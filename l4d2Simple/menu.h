@@ -52,6 +52,9 @@ namespace Config
 	extern bool bDrawOffScreen;
 	extern bool bDrawCarryItem;
 	extern bool bDrawDeadSurvivor;
+	extern bool bDrawChamsSurvivor;
+	extern bool bDrawChamsSpecial;
+	extern bool bDrawChamsInfected;
 
 	// 屏幕绘制：实体
 	extern bool bDrawT1Weapon;
@@ -109,6 +112,9 @@ namespace Config
 	extern bool bClientConnectHint;
 	extern bool bClientDisconnectHint;
 	extern bool bAllowConsoleMessage;
+	extern bool bNoVomitEffects;
+	extern bool bNoSmokerEffects;
+	extern bool bNoMudEffects;
 
 	extern float fAimbotFov;
 	extern float fAimbotRCSX;

@@ -279,6 +279,10 @@ typedef void(__thiscall* FnSceneEnd)(CRenderView*);
 void __fastcall Hooked_SceneEnd(CRenderView*, void*);
 FnSceneEnd oSceneEnd;
 
+typedef IMaterial*(__thiscall* FnFindMaterial)(IMaterialSystem*, char const*, const char*, bool, const char*);
+IMaterial* __fastcall Hooked_FindMaterial(IMaterialSystem*, void*, char const*, const char*, bool, const char*);
+FnFindMaterial oFindMaterial;
+
 // -------------------------------- General Function --------------------------------
 typedef void(__cdecl* FnConColorMsg)(class Color const&, char const*, ...);
 static FnConColorMsg PrintToConsoleColor;	// 打印信息到控制台（支持颜色）
@@ -376,9 +380,12 @@ struct RecoilRecord
 {
 	Vector punch;
 	Vector velocity;
-	RecoilRecord(const Vector& punch = Vector(0.0, 0.0, 0.0),
-		const Vector& velocity = Vector(0.0, 0.0, 0.0)) :
-		punch(punch), velocity(velocity)
+	Vector punch2;
+
+	RecoilRecord(const Vector& punch = Vector(0.0f, 0.0f, 0.0f),
+		const Vector& velocity = Vector(0.0f, 0.0f, 0.0f),
+		const Vector& punch2 =  Vector(0.0f, 0.0f, 0.0f)) :
+		punch(punch), velocity(velocity), punch2(punch2)
 	{
 	}
 };
@@ -750,6 +757,13 @@ DWORD WINAPI StartCheat(LPVOID params)
 		Utils::log("oEngineKeyEvent = 0x%X", (DWORD)oEngineKeyEvent);
 	}
 	*/
+
+	if (g_interface.MaterialSystemHook && indexes::FindMaterial > -1)
+	{
+		oFindMaterial = (FnFindMaterial)g_interface.MaterialSystemHook->HookFunction(indexes::FindMaterial, &Hooked_FindMaterial);
+		g_interface.MaterialSystemHook->HookTable(true);
+		Utils::log("oFindMaterial = 0x%X", (DWORD)oFindMaterial);
+	}
 
 	HMODULE tier0 = Utils::GetModuleHandleSafe(XorStr("tier0.dll"));
 	if (tier0 != NULL)
@@ -4420,6 +4434,7 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 	// 引擎预测备份
 	float oldCurtime = g_interface.Globals->curtime;
 	float oldFrametime = g_interface.Globals->frametime;
+	int oldTickBase = client->GetTickBase();
 
 	// 引擎预测
 	if (g_interface.MoveHelper)
@@ -4437,6 +4452,7 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 
 		// 清空预测结果的数据
 		ZeroMemory(&g_predMoveData, sizeof(CMoveData));
+		g_predMoveData.m_nButtons = pCmd->buttons;
 
 		// 设置需要预测的玩家
 		g_interface.MoveHelper->SetHost(client);
@@ -4807,7 +4823,8 @@ end_trigger_bot:
 		}
 #endif
 
-		QAngle currentPunch = client->GetLocalNetProp<QAngle>("m_vecPunchAngle");
+		// QAngle currentPunch = client->GetLocalNetProp<QAngle>("m_vecPunchAngle");
+		QAngle currentPunch = client->GetPunch();
 		if (!currentPunch.IsValid())
 			currentPunch.x = currentPunch.y = currentPunch.z = 0.0f;
 		
@@ -5083,6 +5100,7 @@ end_aimbot:
 	{
 		// 结束预测
 		// g_interface.Prediction->FinishMove(client, pCmd, &g_predMoveData);
+		client->GetTickBase() = oldTickBase;
 		g_interface.GameMovement->FinishTrackPredictionErrors(client);
 		g_interface.MoveHelper->SetHost(nullptr);
 		// SetPredictionRandomSeed(-1);
@@ -5232,9 +5250,14 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 		CBaseEntity* local = GetLocalClient();
 		if (local != nullptr)
 		{
+			/*
 			int command = local->GetTickBase() % 128;
 			local->SetLocalNetProp("m_vecPunchAngle", g_aaCompensation[command].punch);
 			local->SetLocalNetProp("m_vecPunchAngleVel", g_aaCompensation[command].velocity);
+			local->GetPunch() = g_aaCompensation[command].punch2;
+			*/
+
+			local->GetPunch() = Vector(0.0f, 0.0f, 0.0f);
 		}
 	}
 
@@ -5392,6 +5415,7 @@ void __fastcall Hooked_RunCommand(CPrediction* _ecx, void* _edx, CBaseEntity* pE
 		int command = local->GetTickBase() % 128;
 		g_aaCompensation[command].punch = local->GetLocalNetProp<Vector>("m_vecPunchAngle");
 		g_aaCompensation[command].velocity = local->GetLocalNetProp<Vector>("m_vecPunchAngleVel");
+		g_aaCompensation[command].punch2 = local->GetPunch();
 	}
 	
 	oRunCommand(_ecx, pEntity, pCmd, moveHelper);
@@ -5846,18 +5870,49 @@ void __fastcall Hooked_SceneEnd(CRenderView* _ecx, void* _edx)
 {
 	oSceneEnd(_ecx);
 
-	/*
-	int maxEntity = g_interface.ClientEntList->GetHighestEntityIndex();
-	for (int i = 1; i <= maxEntity; ++i)
+	CBaseEntity* client = GetLocalClient();
+	if (client == nullptr)
+		return;
+
+	static IMaterial* chams = nullptr;
+	if (chams == nullptr)
+	{
+		chams = g_interface.MaterialSystem->FindMaterial("debug/debugambientcube", "Model textures");
+		chams->SetMaterialVarFlag(MATERIAL_VAR_IGNOREZ, true);
+		chams->ColorModuleate(1.0f, 1.0f, 1.0f);
+	}
+
+	int heightIndex = g_interface.ClientEntList->GetHighestEntityIndex();
+	for (int i = 1; i <= heightIndex; ++i)
 	{
 		CBaseEntity* entity = g_interface.ClientEntList->GetClientEntity(i);
-		if (entity == nullptr || !entity->IsAlive())
+		if (entity == nullptr || entity == client || !entity->IsAlive())
 			continue;
 
 		int classId = entity->GetClientClass()->m_ClassID;
-		// TODO: 在这里绘制模型透视
+		if ((IsSurvivor(classId) && Config::bDrawChamsSurvivor) ||
+			(IsSpecialInfected(classId) && Config::bDrawChamsSpecial) ||
+			(IsCommonInfected(classId) && Config::bDrawChamsInfected))
+		{
+			g_interface.ModelRender->ForcedMaterialOverride(chams);
+			entity->DrawModel(0x1);
+			g_interface.ModelRender->ForcedMaterialOverride(nullptr);
+		}
 	}
-	*/
+}
+
+IMaterial* __fastcall Hooked_FindMaterial(IMaterialSystem* _ecx, void* _edx, char const* pMaterialName, const char* pTextureGroupName, bool complain, const char* pComplainPrefix)
+{
+	if (((strstr(pMaterialName, "boomer") != nullptr || strstr(pMaterialName, "vomit") != nullptr) && Config::bNoMudEffects) ||
+		((strstr(pMaterialName, "smoker") != nullptr || strstr(pMaterialName, "cloud") != nullptr) && Config::bNoSmokerEffects) ||
+		(strstr(pMaterialName, "mud") != nullptr && Config::bNoMudEffects))
+	{
+		IMaterial* clearMaterial = oFindMaterial(_ecx, "dev/clearalpha", nullptr, complain, pComplainPrefix);
+		if (clearMaterial != nullptr)
+			return clearMaterial;
+	}
+	
+	return oFindMaterial(_ecx, pMaterialName, pTextureGroupName, complain, pComplainPrefix);
 }
 
 bool __cdecl Hooked_IsInDebugSession()

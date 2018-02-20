@@ -106,14 +106,29 @@ public:
 	}
 };
 
+class IMaterial
+{
+public:
+	void SetMaterialVarFlag(MaterialVarFlags_t flag, bool on)
+	{
+		typedef void(__thiscall* Fn)(void*, MaterialVarFlags_t, bool);
+		((Fn)VMT.GetFunction)(this, flag, on);
+	}
+
+	void ColorModuleate(float r, float g, float b)
+	{
+		typedef void(__thiscall* Fn)(void*, float, float, float);
+		((Fn)VMT.GetFunction)(this, r, g, b);
+	}
+};
 
 class IMaterialSystem
 {
 public:
-	CMaterial* FindMaterial(char const* pMaterialName, const char *pTextureGroupName,
+	IMaterial* FindMaterial(char const* pMaterialName, const char *pTextureGroupName,
 		bool complain = true, const char *pComplainPrefix = NULL)
 	{
-		typedef CMaterial*(__thiscall* Fn)(PVOID, char const*, const char*, bool, const char*);
+		typedef IMaterial*(__thiscall* Fn)(PVOID, char const*, const char*, bool, const char*);
 		return VMT.getvfunc<Fn>(this, indexes::FindMaterial)(this, pMaterialName, pTextureGroupName,
 			complain, pComplainPrefix);
 	}
@@ -129,9 +144,9 @@ public:
 		VMT.getvfunc<OriginalFn>(this, indexes::DrawModel)(this, context, state, pInfo, pCustomBoneToWorld);
 	}
 
-	void ForcedMaterialOverride(CMaterial *newMaterial, OverrideType_t nOverrideType = OVERRIDE_NORMAL)
+	void ForcedMaterialOverride(IMaterial *newMaterial, OverrideType_t nOverrideType = OVERRIDE_NORMAL)
 	{
-		typedef void(__thiscall* OriginalFn)(PVOID, CMaterial *newMaterial, OverrideType_t nOverrideType);
+		typedef void(__thiscall* OriginalFn)(PVOID, IMaterial *newMaterial, OverrideType_t nOverrideType);
 		VMT.getvfunc<OriginalFn>(this, indexes::ForcedMaterialOverride)(this, newMaterial, nOverrideType);
 	}
 
