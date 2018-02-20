@@ -115,6 +115,9 @@ namespace Config
 	extern bool bNoVomitEffects;
 	extern bool bNoSmokerEffects;
 	extern bool bNoMudEffects;
+	extern bool bNoBloodEffects;
+	extern bool bNoAdrenalineEffects;
+	extern bool bNoBurnEffects;
 
 	extern float fAimbotFov;
 	extern float fAimbotRCSX;

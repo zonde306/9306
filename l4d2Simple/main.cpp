@@ -5872,6 +5872,9 @@ void __fastcall Hooked_SceneEnd(CRenderView* _ecx, void* _edx)
 {
 	oSceneEnd(_ecx);
 
+	if (!Config::bDrawChamsSurvivor && !Config::bDrawChamsSpecial && !Config::bDrawChamsInfected)
+		return;
+
 	CBaseEntity* client = GetLocalClient();
 	if (client == nullptr)
 		return;
@@ -5905,9 +5908,12 @@ void __fastcall Hooked_SceneEnd(CRenderView* _ecx, void* _edx)
 
 IMaterial* __fastcall Hooked_FindMaterial(IMaterialSystem* _ecx, void* _edx, char const* pMaterialName, const char* pTextureGroupName, bool complain, const char* pComplainPrefix)
 {
-	if (((strstr(pMaterialName, "boomer") != nullptr || strstr(pMaterialName, "vomit") != nullptr) && Config::bNoMudEffects) ||
-		((strstr(pMaterialName, "smoker") != nullptr || strstr(pMaterialName, "cloud") != nullptr) && Config::bNoSmokerEffects) ||
-		(strstr(pMaterialName, "mud") != nullptr && Config::bNoMudEffects))
+	if ((strstr(pMaterialName, "vomit") != nullptr && Config::bNoVomitEffects) ||
+		(strstr(pMaterialName, "screen") != nullptr && Config::bNoSmokerEffects) ||
+		(strstr(pMaterialName, "splatter") != nullptr && Config::bNoMudEffects) ||
+		(strstr(pMaterialName, "blood") != nullptr && Config::bNoBloodEffects) ||
+		(strstr(pMaterialName, "adrenaline") != nullptr && Config::bNoAdrenalineEffects) ||
+		(strstr(pMaterialName, "burning") != nullptr && Config::bNoBurnEffects))
 	{
 		IMaterial* clearMaterial = oFindMaterial(_ecx, "dev/clearalpha", nullptr, complain, pComplainPrefix);
 		if (clearMaterial != nullptr)

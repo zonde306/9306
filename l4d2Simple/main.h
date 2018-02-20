@@ -235,9 +235,12 @@ namespace Config
 	bool bClientConnectHint = false;
 	bool bClientDisconnectHint = false;
 	bool bAllowConsoleMessage = false;
-	bool bNoVomitEffects = true;
-	bool bNoSmokerEffects = true;
-	bool bNoMudEffects = true;
+	bool bNoVomitEffects = false;
+	bool bNoSmokerEffects = false;
+	bool bNoMudEffects = false;
+	bool bNoBloodEffects = false;
+	bool bNoAdrenalineEffects = false;
+	bool bNoBurnEffects = false;
 
 	float fAimbotFov = 30.0f;
 	float fAimbotRCSX = 2.0f;

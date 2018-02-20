@@ -155,6 +155,9 @@ void CBaseMenu::DrawMenu()
 		ImGui::Checkbox(XorStr("No Vomit Effects"), &Config::bNoVomitEffects);
 		ImGui::Checkbox(XorStr("No Smoker Effects"), &Config::bNoSmokerEffects);
 		ImGui::Checkbox(XorStr("No Mud Effects"), &Config::bNoMudEffects);
+		ImGui::Checkbox(XorStr("No Adrenaline Effects"), &Config::bNoAdrenalineEffects);
+		ImGui::Checkbox(XorStr("No Blood Effects"), &Config::bNoBloodEffects);
+		ImGui::Checkbox(XorStr("No Burn Effects"), &Config::bNoBurnEffects);
 
 		ImGui::Separator();
 		ImGui::Checkbox(XorStr("Special Spawnned"), &Config::bSpecialSpawnnedHint);
