@@ -11,7 +11,7 @@
 
 // D3D 的函数 jmp 挂钩
 static std::unique_ptr<DetourXS> g_pDetourReset, g_pDetourPresent, g_pDetourEndScene,
-	g_pDetourDrawIndexedPrimitive, g_pDetourCreateQuery, g_pDetourCL_Move, g_pDetourDebugger,
+	g_pDetourDrawIndexedPrimitive, g_pDetourCreateQuery, g_pDetourCL_SendMove, g_pDetourDebugger,
 	g_pDetourCreateMove, g_pDetourGetCvarValue, g_pDetourSetConVar, g_pDetourQueryPerformanceCounter;
 static std::unique_ptr<SPLICE_ENTRY> g_pSpliceQueryPerformanceCounter;
 
@@ -167,7 +167,7 @@ BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved)
 			DETOURXS_DESTORY(g_pDetourDrawIndexedPrimitive);
 			DETOURXS_DESTORY(g_pDetourCreateQuery);
 			DETOURXS_DESTORY(g_pDetourDebugger);
-			DETOURXS_DESTORY(g_pDetourCL_Move);
+			DETOURXS_DESTORY(g_pDetourCL_SendMove);
 			DETOURXS_DESTORY(g_pDetourCreateMove);
 			DETOURXS_DESTORY(g_pDetourGetCvarValue);
 			DETOURXS_DESTORY(g_pDetourSetConVar);
@@ -346,6 +346,7 @@ int __fastcall Hooked_KeyInput(ClientModeShared*, void*, int, ButtonCode_t, cons
 FnKeyInput oKeyInput;
 
 typedef void(__cdecl* FnCL_SendMove)();
+void __cdecl Hooked_CL_SendMove();
 FnCL_SendMove oCL_SendMove;
 
 typedef void(__cdecl* FnWriteUsercmd)(bf_write*, CUserCmd*, CUserCmd*);
@@ -425,6 +426,7 @@ bool g_bMustKnifeBot = false;											// 自动刀
 bool g_bKnifeBotCanShov = false;										// 自动推
 std::vector<BulletTrace> g_vBulletTrace;								// 子弹跟踪
 std::mutex g_lockBulletTrace;
+bool g_bLastSendPacket = true;
 
 std::string GetZombieClassName(CBaseEntity* player);
 bool IsValidVictim(CBaseEntity* entity);
@@ -493,6 +495,9 @@ DWORD WINAPI StartCheat(LPVOID params)
 		XorStr("55 8B EC B8 ? ? ? ? E8 ? ? ? ? A1 ? ? ? ? 33 C5 89 45 FC 53 56 57 E8"))) != nullptr)
 	{
 		Utils::log("oCL_SendMove = engine.dll + 0x%X", (DWORD)oCL_SendMove - g_iEngineBase);
+
+		g_pDetourCL_SendMove = std::make_unique<DetourXS>(oCL_SendMove, Hooked_CL_SendMove);
+		oCL_SendMove = (FnCL_SendMove)g_pDetourCL_SendMove->GetTrampoline();
 	}
 	else
 		Utils::log(XorStr("oCL_SendMove not found"));
@@ -5229,6 +5234,7 @@ end_aimbot:
 
 	// 将当前按钮保存到全局变量，用于检查一些东西
 	g_pUserCommands = pCmd;
+	g_bLastSendPacket = *bSendPacket;
 
 	// 加速效果
 	if (Config::bSpeedHack && (pCmd->buttons & IN_USE))
@@ -5757,6 +5763,17 @@ void __cdecl Hooked_CL_Move(float accumulated_extra_samples, bool bFinalTick)
 			CL_Move(accumulated_extra_samples, bFinalTick);
 		}
 	}
+}
+
+void __cdecl Hooked_CL_SendMove()
+{
+	if (!g_bLastSendPacket)
+	{
+		Utils::log("Warring: bSendPacket is false, but CL_SendMove called.");
+		return;
+	}
+
+	oCL_SendMove();
 }
 
 bool __stdcall Hooked_WriteUsercmdDeltaToBuffer(int nSlot, bf_write* buf, int from, int to, bool isNewCmd)
