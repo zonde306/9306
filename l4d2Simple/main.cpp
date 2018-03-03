@@ -5030,6 +5030,32 @@ end_trigger_bot:
 				CorrectMovement(viewAngles, pCmd, pCmd->fowardmove, pCmd->sidemove);
 			}
 
+			if (Config::bAntiAimFix)
+			{
+				pCmd->buttons &= ~IN_MOVERIGHT;
+				pCmd->buttons &= ~IN_MOVELEFT;
+				pCmd->buttons &= ~IN_LEFT;
+				pCmd->buttons &= ~IN_RIGHT;
+				pCmd->buttons &= ~IN_FORWARD;
+				pCmd->buttons &= ~IN_BACK;
+
+				if (pCmd->fowardmove > .0f)
+					pCmd->buttons |= IN_FORWARD;
+				else if (pCmd->fowardmove < .0f)
+					pCmd->buttons |= IN_BACK;
+
+				if (pCmd->sidemove > .0f)
+				{
+					pCmd->buttons |= IN_MOVERIGHT;
+					pCmd->buttons |= IN_RIGHT;
+				}
+				else if (pCmd->sidemove < .0f)
+				{
+					pCmd->buttons |= IN_MOVELEFT;
+					pCmd->buttons |= IN_LEFT;
+				}
+			}
+
 			flip = !flip;
 		}
 	}

@@ -172,6 +172,7 @@ void CBaseMenu::DrawMenu()
 		ImGui::Checkbox(XorStr("Rapid Fire"), &Config::bRapidFire);
 		ImGui::Checkbox(XorStr("Dont Fire Team"), &Config::bAnitFirendlyFire);
 		ImGui::Checkbox(XorStr("Anti Aim"), &Config::bAntiAim);
+		ImGui::Checkbox(XorStr("Anti Aim Fix"), &Config::bAntiAimFix);
 
 		ImGui::TreePop();
 	}

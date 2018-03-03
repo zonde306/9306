@@ -213,6 +213,7 @@ namespace Config
 	bool bBackTrack = false;
 	bool bAntiAim = false;
 	bool bKnifeBot = false;
+	bool bAntiAimFix = false;
 
 	// 自动操作
 	bool bBunnyHop = true;

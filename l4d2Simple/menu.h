@@ -90,6 +90,7 @@ namespace Config
 	extern bool bBackTrack;
 	extern bool bAntiAim;
 	extern bool bKnifeBot;
+	extern bool bAntiAimFix;
 
 	// 自动操作
 	extern bool bBunnyHop;
