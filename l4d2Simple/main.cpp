@@ -5445,7 +5445,7 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 
 		// 快速离开当前服务器
 		if (GetAsyncKeyState(VK_DELETE) & 0x01)
-			g_interface.Engine->ClientCmd("disconnect");
+			g_interface.Engine->ClientCmd("killserver");
 	}
 }
 
