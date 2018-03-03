@@ -55,6 +55,7 @@ namespace Config
 	extern bool bDrawChamsSurvivor;
 	extern bool bDrawChamsSpecial;
 	extern bool bDrawChamsInfected;
+	extern bool bDrawHealth;
 
 	// 屏幕绘制：实体
 	extern bool bDrawT1Weapon;

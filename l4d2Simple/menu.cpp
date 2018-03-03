@@ -4,12 +4,16 @@
 #include <vector>
 #include <cstring>
 #include <ctime>
+#include <chrono>
+#include <sstream>
 
 std::unique_ptr<CBaseMenu> g_pBaseMenu;
 extern bool g_bIsShowMenu;
 extern std::vector<std::string> g_vsBannedQueryConVar;
 extern std::vector<std::string> g_vsBannedSettingConVar;
 extern std::vector<std::string> g_vsBannedExecuteCommand;
+time_t g_tpPlayingTimer;
+time_t g_tpGameTimer;
 
 CBaseMenu::CBaseMenu() : m_bStateUpdated(false), m_pfnOnMenuEnd(nullptr)
 {
@@ -32,6 +36,8 @@ void CBaseMenu::Init()
 		m_vCommandExecute.emplace_back(value);
 
 	ImGui::StyleColorsDark();
+	g_tpGameTimer = time(nullptr);
+	g_tpPlayingTimer = 0;
 }
 
 void CBaseMenu::DrawMenu()
@@ -50,6 +56,64 @@ void CBaseMenu::DrawMenu()
 	ImGui::Text(XorStr(u8"此辅助免费且开源，如果你是通过购买获得，说明你被骗了。"));
 	// ImGui::GetIO().MouseDrawCursor = true;
 
+	const static auto GetWeakName = [](int weak) -> std::string
+	{
+		switch (weak)
+		{
+		case 0:
+		case 7:
+			return XorStr(u8"星期日");
+		case 1:
+			return XorStr(u8"星期一");
+		case 2:
+			return XorStr(u8"星期二");
+		case 3:
+			return XorStr(u8"星期三");
+		case 4:
+			return XorStr(u8"星期四");
+		case 5:
+			return XorStr(u8"星期五");
+		case 6:
+			return XorStr(u8"星期六");
+		}
+
+		return "";
+	};
+
+	const static auto GetTimeDuration = [](time_t duration) -> std::string
+	{
+		const auto SECONDS_IN_HOUR = 3600;
+		const auto SECONDS_IN_MINUTE = 60;
+
+		time_t bh = 0, bm = 0, bs = 0;
+
+		if (duration >= SECONDS_IN_HOUR)
+		{
+			bh = duration / SECONDS_IN_HOUR;
+			duration = duration % SECONDS_IN_HOUR;
+		}
+
+		if (duration >= SECONDS_IN_MINUTE)
+		{
+			bm = duration / SECONDS_IN_MINUTE;
+			duration = duration % SECONDS_IN_MINUTE;
+		}
+
+		bs = duration;
+
+		char buffer[16];
+		buffer[0] = '\0';
+
+		if (bh > 0)
+			sprintf_s(buffer, 16, "%I64dh %I64dm %I64ds", bh, bm, bs);
+		else if (bm > 0)
+			sprintf_s(buffer, 16, "%I64dm %I64ds", bm, bs);
+		else
+			sprintf_s(buffer, 16, "%I64ds", bs);
+
+		return buffer;
+	};
+
 	// 显示系统时间
 	{
 		ImGui::Separator();
@@ -65,36 +129,14 @@ void CBaseMenu::DrawMenu()
 			(timeInfo.tm_year + 1900) / 400) % 7;
 		*/
 
-		std::string weak;
-		switch (timeInfo.tm_wday)
-		{
-		case 0:
-		case 7:
-			weak = XorStr(u8"星期日");
-			break;
-		case 1:
-			weak = XorStr(u8"星期一");
-			break;
-		case 2:
-			weak = XorStr(u8"星期二");
-			break;
-		case 3:
-			weak = XorStr(u8"星期三");
-			break;
-		case 4:
-			weak = XorStr(u8"星期四");
-			break;
-		case 5:
-			weak = XorStr(u8"星期五");
-			break;
-		case 6:
-			weak = XorStr(u8"星期六");
-			break;
-		}
-
 		ImGui::Text("%4d/%2d/%2d %2d:%2d:%2d %s",
 			timeInfo.tm_year + 1900, timeInfo.tm_mon + 1, timeInfo.tm_mday,
-			timeInfo.tm_hour, timeInfo.tm_min, timeInfo.tm_sec, weak.c_str());
+			timeInfo.tm_hour, timeInfo.tm_min, timeInfo.tm_sec, GetWeakName(timeInfo.tm_wday).c_str());
+
+		if (g_tpPlayingTimer > 0)
+			ImGui::Text(u8"游戏时间：%s丨在线时间：%s", GetTimeDuration(t - g_tpGameTimer).c_str(), GetTimeDuration(t - g_tpPlayingTimer).c_str());
+		else
+			ImGui::Text(u8"游戏时间：%s", GetTimeDuration(t - g_tpGameTimer).c_str());
 
 		ImGui::Separator();
 	}
@@ -138,6 +180,7 @@ void CBaseMenu::DrawMenu()
 	{
 		ImGui::Checkbox(XorStr("Player Box"), &Config::bDrawBox);
 		ImGui::Checkbox(XorStr("Player Name"), &Config::bDrawName);
+		ImGui::Checkbox(XorStr("Player Health"), &Config::bDrawHealth);
 		ImGui::Checkbox(XorStr("Player/Infected Bone"), &Config::bDrawBone);
 		ImGui::Checkbox(XorStr("Player Distance"), &Config::bDrawDist);
 		ImGui::Checkbox(XorStr("Survivor Ammo"), &Config::bDrawAmmo);

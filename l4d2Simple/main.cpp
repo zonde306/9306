@@ -31,6 +31,10 @@ std::unique_ptr<DrawManager> g_pDrawRender;
 // D3D9 Device 钩子
 static std::unique_ptr<D3D9Hooker> g_pDeviceHooker;
 
+// 计时
+extern time_t g_tpPlayingTimer;
+extern time_t g_tpGameTimer;
+
 DWORD WINAPI StartCheat(LPVOID params);
 
 extern "C" __declspec(dllexport)
@@ -4025,10 +4029,7 @@ void __fastcall Hooked_PaintTraverse(CPanel* _ecx, void* _edx, unsigned int pane
 				// 根据类型决定绘制的内容
 				if (IsSurvivor(classId) || IsSpecialInfected(classId))
 				{
-					player_info_t info;
-					g_interface.Engine->GetPlayerInfo(i, &info);
-						
-					if (Config::bDrawName)
+					if (Config::bDrawHealth)
 					{
 						// 检查是否为生还者
 						if (IsSurvivor(classId))
@@ -4073,10 +4074,14 @@ void __fastcall Hooked_PaintTraverse(CPanel* _ecx, void* _edx, unsigned int pane
 								ss << "[" << entity->GetHealth() << "] ";
 							}
 						}
-
-						// 玩家名字
-						ss << info.name;
 					}
+					
+					player_info_t info;
+					g_interface.Engine->GetPlayerInfo(i, &info);
+					
+					// 玩家名字
+					if (Config::bDrawName)
+						ss << info.name;
 
 					// 显示距离
 					if(Config::bDrawDist)
@@ -5364,6 +5369,8 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 					g_interface.Surface->SetCursorAlwaysVisible(false);
 
 				g_interface.Trace = (IEngineTrace*)g_interface.GetPointer("engine.dll", "EngineTraceClient");
+
+				g_tpPlayingTimer = time(nullptr);
 				Utils::log("*** connected ***");
 			}
 
@@ -5385,6 +5392,7 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 			if (!g_bIsShowMenu && g_interface.Surface->IsCursorVisible())
 				g_interface.Surface->SetCursorAlwaysVisible(false);
 
+			g_tpPlayingTimer = 0;
 			Utils::log("*** disconnected ***");
 		}
 

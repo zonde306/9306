@@ -175,6 +175,7 @@ namespace Config
 	bool bDrawOffScreen = false;
 	bool bDrawCarryItem = false;
 	bool bDrawDeadSurvivor = false;
+	bool bDrawHealth = false;
 
 	// 屏幕绘制：实体
 	bool bDrawT1Weapon = false;
