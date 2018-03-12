@@ -4638,6 +4638,61 @@ void __stdcall Hooked_CreateMove(int sequence_number, float input_sample_frameti
 			g_pPlayerResource = nullptr;
 		}
 	}
+	else if (Config::bMustFastMelee && myTeam == 2 && ((GetAsyncKeyState('R') & 0x8000) ||
+		(GetAsyncKeyState(VK_CAPITAL) & 0x8000) || (GetAsyncKeyState(VK_XBUTTON2) & 0x8000)))
+	{
+		static enum FastMeleeStatus
+		{
+			FMS_None = 0,
+			FMS_Primary = 1,
+			FMS_Secondary = 2
+		} fms = FMS_None;
+
+		static unsigned int ignoreTick = 0;
+
+		switch (fms)
+		{
+		case FMS_None:
+			if (weaponId == Weapon_Melee && nextAttack <= serverTime)
+			{
+				// 近战武器攻击
+				pCmd->buttons |= IN_ATTACK;
+				fms = FMS_Primary;
+			}
+			else if (ignoreTick > 0)
+				ignoreTick = 0;
+			break;
+		case FMS_Primary:
+			if (weaponId == Weapon_Melee && nextAttack > serverTime)
+			{
+				// 在攻击之后切换到主武器
+				g_interface.Engine->ClientCmd("lastinv");
+				fms = FMS_Secondary;
+			}
+			else
+				++ignoreTick;
+			break;
+		case FMS_Secondary:
+			if (weaponId != Weapon_Melee)
+			{
+				// 在主武器时切换到近战武器
+				g_interface.Engine->ClientCmd("lastinv");
+				fms = FMS_None;
+			}
+			else
+				++ignoreTick;
+			break;
+		}
+
+		if (ignoreTick >= 10)
+		{
+			ignoreTick = 0;
+			fms = FMS_None;
+
+			if (Config::bAllowConsoleMessage)
+				g_interface.Engine->ClientCmd("echo \"fastmelee reset\"");
+		}
+	}
 	else if (Config::bKnifeBot && weapon != nullptr)
 	{
 		bool doAttack2 = false;
@@ -5176,8 +5231,9 @@ end_aimbot:
 	}
 
 	// 近战武器快速攻击
-	if (myTeam == 2 && ((GetAsyncKeyState(VK_CAPITAL) & 0x8000) ||
-		(GetAsyncKeyState(VK_XBUTTON2) & 0x8000) || 
+	/*
+	if (myTeam == 2 &&
+		((GetAsyncKeyState(VK_CAPITAL) & 0x8000) || (GetAsyncKeyState(VK_XBUTTON2) & 0x8000) ||
 		(Config::bMustFastMelee && (GetAsyncKeyState(VK_LBUTTON) & 0x8000))))
 	{
 		static enum FastMeleeStatus
@@ -5186,6 +5242,7 @@ end_aimbot:
 			FMS_Primary = 1,
 			FMS_Secondary = 2
 		} fms = FMS_None;
+
 		static unsigned int ignoreTick = 0;
 
 		switch (fms)
@@ -5231,6 +5288,7 @@ end_aimbot:
 				g_interface.Engine->ClientCmd("echo \"fastmelee reset\"");
 		}
 	}
+	*/
 
 	// 修复角度不正确
 	ClampAngles(pCmd->viewangles);
