@@ -5510,14 +5510,17 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 			g_interface.Engine->ClientCmd("killserver");
 	}
 
-	if (GetAsyncKeyState('E') & 0x8000)
-		g_pSpeedModifier->SetSpeed(Config::fSpeedUse);
-	else if (GetAsyncKeyState(VK_SHIFT) & 0x8000)
-		g_pSpeedModifier->SetSpeed(Config::fSpeedShift);
-	else if (GetAsyncKeyState(VK_CAPITAL) & 0x8000)
-		g_pSpeedModifier->SetSpeed(Config::fSpeedCapsLock);
-	else
-		g_pSpeedModifier->SetSpeed(1.0f);
+	if (g_pSpeedModifier)
+	{
+		if (GetAsyncKeyState('E') & 0x8000)
+			g_pSpeedModifier->SetSpeed(Config::fSpeedUse);
+		else if (GetAsyncKeyState(VK_SHIFT) & 0x8000)
+			g_pSpeedModifier->SetSpeed(Config::fSpeedShift);
+		else if (GetAsyncKeyState(VK_CAPITAL) & 0x8000)
+			g_pSpeedModifier->SetSpeed(Config::fSpeedCapsLock);
+		else
+			g_pSpeedModifier->SetSpeed(1.0f);
+	}
 }
 
 void __fastcall Hooked_RunCommand(CPrediction* _ecx, void* _edx, CBaseEntity* pEntity, CUserCmd* pCmd, CMoveHelper* moveHelper)
