@@ -245,6 +245,14 @@ void CBaseMenu::DrawMenu()
 		ImGui::TreePop();
 	}
 
+	if (ImGui::TreeNode(XorStr("Speed Hack")))
+	{
+		ImGui::SliderFloat(XorStr("+use speed"), &Config::fSpeedUse, 1.0f, 32.0f);
+		ImGui::SliderFloat(XorStr("+shift speed"), &Config::fSpeedShift, 1.0f, 32.0f);
+		ImGui::SliderFloat(XorStr("+capslock speed"), &Config::fSpeedCapsLock, 1.0f, 32.0f);
+		ImGui::TreePop();
+	}
+
 	if (ImGui::TreeNode(XorStr("Miscellaneous")))
 	{
 		ImGui::Checkbox(XorStr("Auto Bunny Hop"), &Config::bBunnyHop);

@@ -137,6 +137,11 @@ namespace Config
 	extern bool bAirStuck;
 	extern bool bPositionAdjustment;
 	extern bool bCrashServer;
+
+	// 加速
+	extern float fSpeedUse;
+	extern float fSpeedShift;
+	extern float fSpeedCapsLock;
 };
 
 extern std::unique_ptr<CBaseMenu> g_pBaseMenu;

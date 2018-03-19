@@ -260,6 +260,11 @@ namespace Config
 	bool bAirStuck = false;
 	bool bPositionAdjustment = true;
 	bool bCrashServer = false;
+
+	// 加速
+	float fSpeedUse = 1.0f;
+	float fSpeedShift = 1.0f;
+	float fSpeedCapsLock = 1.0f;
 };
 
 #include "./definitions.h"

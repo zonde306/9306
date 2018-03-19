@@ -3,6 +3,7 @@
 #include "./sqbinding/vector.h"
 #include "./sqbinding/qangle.h"
 #include "./detours/splice.h"
+#include "speedhack.h"
 #include "menu.h"
 
 #define USE_PLAYER_INFO
@@ -1330,6 +1331,9 @@ DWORD WINAPI StartCheat(LPVOID params)
 	g_pDetourQueryPerformanceCounter = std::make_unique<DetourXS>(QueryPerformanceCounter, Hooked_QueryPerformanceCounter);
 	oQueryPerformanceCounter = (FnQueryPerformanceCounter)g_pDetourQueryPerformanceCounter->GetTrampoline();
 	*/
+
+	g_pSpeedModifier = std::make_unique<CSpeedModifier>();
+	g_pSpeedModifier->Init();
 
 	return 0;
 }
@@ -5742,6 +5746,21 @@ int __fastcall Hooked_KeyInput(ClientModeShared* _ecx, void* _edx, int down, But
 		}
 
 		thirdPerson(Config::bThirdPersons);
+	}
+
+	if (down)
+	{
+		if (keynum == KEY_E)
+			g_pSpeedModifier->SetSpeed(Config::fSpeedUse);
+		else if (keynum == KEY_LSHIFT)
+			g_pSpeedModifier->SetSpeed(Config::fSpeedShift);
+		else if (keynum == KEY_CAPSLOCK)
+			g_pSpeedModifier->SetSpeed(Config::fSpeedCapsLock);
+	}
+	else
+	{
+		if (keynum == KEY_E || keynum == KEY_LSHIFT || keynum == KEY_CAPSLOCK)
+			g_pSpeedModifier->SetSpeed(1.0f);
 	}
 
 	return result;

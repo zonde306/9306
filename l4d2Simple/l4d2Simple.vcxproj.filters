@@ -228,6 +228,9 @@
     <ClInclude Include="menu.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="speedhack.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="structs\checksum_md5.cpp">
@@ -264,6 +267,9 @@
       <Filter>头文件\detours</Filter>
     </ClCompile>
     <ClCompile Include="menu.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="speedhack.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

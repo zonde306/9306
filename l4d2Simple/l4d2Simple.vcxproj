@@ -184,6 +184,7 @@
     <ClInclude Include="menu.h" />
     <ClInclude Include="ntdll.h" />
     <ClInclude Include="peb.h" />
+    <ClInclude Include="speedhack.h" />
     <ClInclude Include="structs\angle.h" />
     <ClInclude Include="structs\backtrack.h" />
     <ClInclude Include="structs\baseentity.h" />
@@ -227,6 +228,7 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="menu.cpp" />
     <ClCompile Include="peb.cpp" />
+    <ClCompile Include="speedhack.cpp" />
     <ClCompile Include="structs\checksum_md5.cpp" />
   </ItemGroup>
   <ItemGroup>
