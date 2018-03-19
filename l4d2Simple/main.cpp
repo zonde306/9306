@@ -5509,6 +5509,15 @@ void __stdcall Hooked_FrameStageNotify(ClientFrameStage_t stage)
 		if (GetAsyncKeyState(VK_DELETE) & 0x01)
 			g_interface.Engine->ClientCmd("killserver");
 	}
+
+	if (GetAsyncKeyState('E') & 0x8000)
+		g_pSpeedModifier->SetSpeed(Config::fSpeedUse);
+	else if (GetAsyncKeyState(VK_SHIFT) & 0x8000)
+		g_pSpeedModifier->SetSpeed(Config::fSpeedShift);
+	else if (GetAsyncKeyState(VK_CAPITAL) & 0x8000)
+		g_pSpeedModifier->SetSpeed(Config::fSpeedCapsLock);
+	else
+		g_pSpeedModifier->SetSpeed(1.0f);
 }
 
 void __fastcall Hooked_RunCommand(CPrediction* _ecx, void* _edx, CBaseEntity* pEntity, CUserCmd* pCmd, CMoveHelper* moveHelper)
@@ -5747,15 +5756,6 @@ int __fastcall Hooked_KeyInput(ClientModeShared* _ecx, void* _edx, int down, But
 
 		thirdPerson(Config::bThirdPersons);
 	}
-
-	if (GetAsyncKeyState('E') & 0x8000)
-		g_pSpeedModifier->SetSpeed(Config::fSpeedUse);
-	else if (GetAsyncKeyState(VK_SHIFT) & 0x8000)
-		g_pSpeedModifier->SetSpeed(Config::fSpeedShift);
-	else if (GetAsyncKeyState(VK_CAPITAL) & 0x8000)
-		g_pSpeedModifier->SetSpeed(Config::fSpeedCapsLock);
-	else
-		g_pSpeedModifier->SetSpeed(1.0f);
 
 	return result;
 }
