@@ -5748,20 +5748,14 @@ int __fastcall Hooked_KeyInput(ClientModeShared* _ecx, void* _edx, int down, But
 		thirdPerson(Config::bThirdPersons);
 	}
 
-	if (down)
-	{
-		if (keynum == KEY_E)
-			g_pSpeedModifier->SetSpeed(Config::fSpeedUse);
-		else if (keynum == KEY_LSHIFT)
-			g_pSpeedModifier->SetSpeed(Config::fSpeedShift);
-		else if (keynum == KEY_CAPSLOCK)
-			g_pSpeedModifier->SetSpeed(Config::fSpeedCapsLock);
-	}
+	if (GetAsyncKeyState('E') & 0x8000)
+		g_pSpeedModifier->SetSpeed(Config::fSpeedUse);
+	else if (GetAsyncKeyState(VK_SHIFT) & 0x8000)
+		g_pSpeedModifier->SetSpeed(Config::fSpeedShift);
+	else if (GetAsyncKeyState(VK_CAPITAL) & 0x8000)
+		g_pSpeedModifier->SetSpeed(Config::fSpeedCapsLock);
 	else
-	{
-		if (keynum == KEY_E || keynum == KEY_LSHIFT || keynum == KEY_CAPSLOCK)
-			g_pSpeedModifier->SetSpeed(1.0f);
-	}
+		g_pSpeedModifier->SetSpeed(1.0f);
 
 	return result;
 }
